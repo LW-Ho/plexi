@@ -12,3 +12,7 @@ def query_to_dictionary(query):
 		return d
 	else:
 		raise TypeError(query)
+
+def ascii_encode_dict(data):
+	ascii_encode = lambda x: x.encode('ascii')
+	return dict(map(ascii_encode, pair) for pair in data.items())

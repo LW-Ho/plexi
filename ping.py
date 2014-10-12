@@ -5,39 +5,39 @@ import os
 
 sys.path.append(os.path.join(os.getcwd(), '..', 'CoAPthon'))
 
-from schedule import maestro
+from schedule.maestro import Scheduler
 from resource.rpl import NodeID
 
 sch = None
 
 def usage():
-	print 'Command:\tping.py [-o[-p[-P]]]'
-	print 'Options:'
-	print '\tNone,\tscheduler in operation'
-	print '\t-h,\t--help=\tthis usage message'
-	print '\t-a,\t--address=\tdestination node address in IP:PORT format'
-	print '\t-o,\t--operation=\tGET|POST|DELETE|OBSERVE'
-	print '\t-p,\t--path=\t\t\tPath of the request'
-	print '\t-P,\t--payload=\t\tPayload of the request'
+	print('Command:\tping.py [-o[-p[-P]]]')
+	print('Options:')
+	print('\tNone,\tscheduler in operation')
+	print('\t-h,\t--help=\tthis usage message')
+	print('\t-a,\t--address=\tdestination node address in IP:PORT format')
+	print('\t-o,\t--operation=\tGET|POST|DELETE|OBSERVE')
+	print('\t-p,\t--path=\t\t\tPath of the request')
+	print('\t-P,\t--payload=\t\tPayload of the request')
 
 
 def client_callback(response, kwargs):
-	print "Callback"
+	print("Callback")
 
 
 def client_callback_observe(response, kwargs):
-	print "Callback_observe"
+	print("Callback_observe")
 	check = True
 	while check:
-		chosen = raw_input("Stop observing? [y/N]: ")
+		chosen = input("Stop observing? [y/N]: ")
 		if chosen != "" and not (chosen == "n" or chosen == "N" or chosen == "y" or chosen == "Y"):
-			print "Unrecognized choose."
+			print("Unrecognized choose.")
 			continue
 		elif chosen == "y" or chosen == "Y":
 			while True:
-				rst = raw_input("Send RST message? [Y/n]: ")
+				rst = input("Send RST message? [Y/n]: ")
 				if rst != "" and not (rst == "n" or rst == "N" or rst == "y" or rst == "Y"):
-					print "Unrecognized choose."
+					print("Unrecognized choose.")
 					continue
 				elif rst == "" or rst == "y" or rst == "Y":
 					sch.client.protocol.cancel_observing(response, True)
@@ -61,16 +61,16 @@ def main(arg_str):
 			opts, args = getopt.getopt(sys.argv[1:], "ha:o:p:P:", ["help", "address=", "operation=", "path=", "payload="])
 	except getopt.GetoptError as err:
 		# print help information and exit:
-		print str(err)  # will print something like "option -a not recognized"
+		print(str(err))  # will print something like "option -a not recognized"
 		usage()
 		return 2
 
 	if not opts:
-		sch = maestro.Scheduler('RICHNET', '127.0.0.1', 5683, False)
+		sch = Scheduler('RICHNET', '127.0.0.1', 5683, False)
 		sch.start()
 		return 0
 	else:
-		sch = maestro.Scheduler('RICHNET', '127.0.0.1', 5683)
+		sch = Scheduler('RICHNET', '127.0.0.1', 5683)
 
 	for o, a in opts:
 		if o in ("-o", "--operation"):
@@ -90,30 +90,30 @@ def main(arg_str):
 			return 2
 
 	if op is None or node is None or path is None:
-		print "Operation, destination node and path must be specified"
+		print("Operation, destination node and path must be specified")
 		usage()
 		return 2
 
 	if op == "GET":
-		sch.client.GET(node, path, client_callback)
+		sch.client.GET(node, path, None, client_callback)
 	elif op == "OBSERVE":
-		sch.client.OBSERVE(node, path, '1', client_callback_observe)
+		sch.client.OBSERVE(node, path, '1', None, client_callback_observe)
 	elif op == "DELETE":
-		sch.client.DELETE(node, path, client_callback)
+		sch.client.DELETE(node, path, None, client_callback)
 	elif op == "POST":
 		if payload is None:
-			print "Payload cannot be empty for a POST request"
+			print("Payload cannot be empty for a POST request")
 			usage()
 			return 2
 		import json
 		try:
 			#json.loads(payload)
-			sch.client.POST(node, path, payload, client_callback)
+			sch.client.POST(node, path, payload, None, client_callback)
 		except:
-			print 'No proper JSON format for payload'
+			print('No proper JSON format for payload')
 			return 2
 	else:
-		print "Operation not recognized"
+		print("Operation not recognized")
 		usage()
 		return 2
 	return 0

@@ -48,6 +48,7 @@ class NodeList(Resource):
 		except:
 			pass
 
+
 class ParentList(Resource):
 	def __init__(self, name, graph=None, node_id=None, parent_id=None):
 		if not isinstance(name, ParentList):
@@ -104,7 +105,8 @@ class ChildrenList(Resource):
 				self.node_id = node_id
 				self.add_content_type('application/json')
 				self.set_children(children_ids)
-				self.payload = {'application/json': []}#(i.ip, i.port) for i in self.graph.neighbors(self.node_id) if self.graph[self.node_id][i]['child'] != self.node_id]}
+				self.payload = {
+					'application/json': []}  # (i.ip, i.port) for i in self.graph.neighbors(self.node_id) if self.graph[self.node_id][i]['child'] != self.node_id]}
 			else:
 				raise TypeError('networkx undirected graph was expected, a NodeID node and a NodeID parent')
 		else:
@@ -115,7 +117,9 @@ class ChildrenList(Resource):
 	def render_GET(self, request, query=None):
 		# return nothing and a 4.04 Not Found error will be sent back
 		# return a payload and a 2.05 Content will be sent back
-		self.payload = {'application/json': [(i.ip, i.port) for i in self.graph.neigbours(self.node_id) if self.graph[self.node_id][i]['child'] != self.node_id]}
+		self.payload = {'application/json': [(i.ip, i.port) for i in self.graph.neighbors(self.node_id) if
+												'child' in self.graph[self.node_id][i] and self.graph[self.node_id][i][
+													'child'] != self.node_id]}
 		return {'Payload': self.payload}
 
 	def render_POST(self, request, payload=None, query=None):
@@ -126,7 +130,8 @@ class ChildrenList(Resource):
 		tmp_dict = json.loads(str(payload))
 		for child in tmp_dict[0]:
 			children_ids.append(NodeID(str(tmp_dict[0][0]), tmp_dict[0][1]))
-		self.payload = {'application/json': [(i.ip, i.port) for i in children_ids if self.graph[self.node_id][i]['child'] != self.node_id]}
+		self.payload = {'application/json': [(i.ip, i.port) for i in children_ids if
+		                                     self.graph[self.node_id][i]['child'] != self.node_id]}
 		self.set_children(children_ids)
 		return {'Payload': self.payload, 'Location-Query': query}
 

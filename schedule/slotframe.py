@@ -1,60 +1,67 @@
-#from something import class Node
 
 class Slotframe(object):
+	def __init__(self, name, slots):
+		self.cell_container = []  # Will contain Cell objects assigned to this slotframe.
+		self.slots = slots
+		self.name = name
+		self.fds = {}
+		c_minimal = Cell(0, 0, 0, 0,None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
+		self.cell_container.append(c_minimal)
 
-    def __init__(self, slots):
+	def setAliasID(self, node, id):
+		self.fds[node] = id
 
-        self.cell_container = [] # Will contain Cell objects assigned to this slotframe.
-        #self.deleted_cell_container = []
-        self.slots = slots
-        self.slotframe_id = 0 #We don't have a way to get slotframeId!
-        c_minimal = Cell(0,0,None,None,0,7) # Minimal cell
-        self.cell_container.append(c_minimal)
+	def cell(self, so, co, owner):
+		# TODO: return the Cell object with so, co, fd, and tx/rx
+		pass
 
-    def getCellByCoordinates(self, slot, channel):
-        pass
+	def allocate_to(self, node_id):
+		all_cells = []  #This will contain all the dictionaries with cell information.
 
-    def allocate_to(self, node_id):
-        all_cells = [] #This will contain all the dictionaries with cell information.
+		for item in self.cell_container:
 
-        for item in self.cell_container:
+			if item.tx_node == node_id or item.rx_node == node_id:
+				#cell_info = item.__dict__
+				all_cells.append(item)
 
-            if item.tx_node == node_id or item.rx_node == node_id:
-                #cell_info = item.__dict__
-                all_cells.append(item)
-
-        return all_cells
+		return all_cells
 
 
-    def delete_cell(self, node_id):
+	def delete_cell(self, node_id):
+		deleted_cell_container = []
+		for item in self.cell_container:
+			if item.tx_node == node_id or item.rx_node == node_id:
+				deleted_cell_container.append(item)  # add the deleted item to the repsective container
+				self.cell_container.remove(item)  # remove the item from the cell_container
+		return deleted_cell_container
 
-        deleted_cell_container = []
-        for item in self.cell_container:
-            if item.tx_node == node_id or item.rx_node == node_id:
-                deleted_cell_container.append(item)         # add the deleted item to the repsective container
-                self.cell_container.remove(item)            # remove the item from the cell_container
-        return deleted_cell_container
 
 class Cell(object):
+	def __init__(self, so, co, tx, rx, fd, lt, lo):
+		self.cell_id = None
+		self.slotframe_id = fd
+		self.channel = co
+		self.tx_node = tx
+		self.rx_node = rx
+		self.slot = so
+		self.link_type = lt
+		self.link_option = lo
 
-    def __init__(self, so,co,tx,rx,lt,lo):
 
-        self.cell_id = 0 #Like slotframeId we need to acquire CellID for each created object.
-        self.channel = co
-        self.tx_node = tx
-        self.rx_node = rx
-        self.slot = so
-        self.link_type = lt
-        self.link_option = lo
+	@property
+	def id(self):
+		return self.cell_id
 
-    def getID(self): #Maybe a function like this gets the CellId assigned by 6top? Can include the POST command and reply will be the ID.
-        pass
+	@id.setter
+	def id(self, cd):
+		self.cell_id = cd
 
-    def getInfo(self, cell_id):
-        # returns all info about the cell with given id.
-        pass
+	def getID(self):  #Maybe a function like this gets the CellId assigned by 6top? Can include the POST command and reply will be the ID.
+		pass
 
-    def delete_cell(self, node_id):
-        pass
-    
+	def getInfo(self, cell_id):
+		# returns all info about the cell with given id.
+		pass
 
+	def delete_cell(self, node_id):
+		pass
