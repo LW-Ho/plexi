@@ -1,3 +1,13 @@
+__author__ = "George Exarchakos"
+__version__ = "0.0.2"
+__email__ = "g.exarchakos@tue.nl"
+__copyright__ = "Copyright 2014, The RICH Project"
+#__credits__ = ["XYZ"]
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
+
 from exception import FormatError
 
 def query_to_dictionary(query):
@@ -13,6 +23,20 @@ def query_to_dictionary(query):
 	else:
 		raise TypeError(query)
 
-def ascii_encode_dict(data):
-	ascii_encode = lambda x: x.encode('ascii')
-	return dict(map(ascii_encode, pair) for pair in data.items())
+def payload(content):
+	str_payload = "{"
+	if "so" in content:
+		str_payload += '"so":' + str(content["so"]) + ","
+	if "co" in content:
+		str_payload += '"co":' + str(content["co"]) + ","
+	if "fd" in content:
+		str_payload += '"fd":' + str(content["fd"]) + ","
+	if "frame" in content:
+		str_payload += '"frame":' + str(content["frame"])
+	if "lo" in content:
+		str_payload += '"lo":' + str(content["lo"]) + ","
+	if "lt" in content:
+		str_payload += '"lt":' + str(content["lt"])
+	if "ns" in content:
+		str_payload += '"ns":' + str(content["ns"])
+	return str_payload + "}"

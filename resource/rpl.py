@@ -1,3 +1,12 @@
+__author__ = "George Exarchakos"
+__version__ = "0.0.8"
+__email__ = "g.exarchakos@tue.nl"
+__credits__ = ["Michael Chermside"]
+__copyright__ = "Copyright 2014, The RICH Project"
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
 from coapthon2.resources.resource import Resource
 from coapthon2 import defines
 import networkx
@@ -5,9 +14,11 @@ import json
 
 
 class NodeID(object):
-	def __init__(self, ip, port):
+	def __init__(self, ip, port=5684):
 		if isinstance(ip, str) and isinstance(port, int):
 			self.ip = ip
+			if self.ip.count(':') == 3:
+				self.ip = 'aaaa::' + self.ip  # TODO: bad dirty fix. Fix properly
 			self.port = port
 		else:
 			raise TypeError('IP address is a string value and the port is an integer')
@@ -22,7 +33,7 @@ class NodeID(object):
 		return self.__str__()
 
 	def __str__(self):
-		return str(self.ip) + ':' + str(self.port)
+		return '[' + str(self.ip) + ']:' + str(self.port)
 
 	def __hash__(self):
 		return hash(self.__str__())

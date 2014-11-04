@@ -1,3 +1,12 @@
+__author__ = "George Exarchakos"
+__version__ = "0.0.1"
+__email__ = "g.exarchakos@tue.nl"
+__credits__ = ["Michael Chermside"]
+__copyright__ = "Copyright 2014, The RICH Project"
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
 import warnings
 
 def deprecated(func):

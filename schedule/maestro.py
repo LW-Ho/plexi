@@ -1,10 +1,26 @@
-from endpoint.client import RichClient
+__author__ = "Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos"
+__email__ = "d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl"
+__version__ = "0.0.27"
+__copyright__ = "Copyright 2014, The RICH Project"
+#__credits__ = ["XYZ"]
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
+from endpoint.client import Communicator, LazyCommunicator
 from schedule.graph import DoDAG
 from resource.rpl import NodeID
+from util import parser
 import json
 from schedule.slotframe import Slotframe, Cell
 from util import terms, exception
-from coapthon2 import defines
+from txthings import coap
+import logging
+from util import logger
+import string
+
+logg = logging.getLogger('RiSCHER')
+logg.setLevel(logging.INFO)
 
 
 class Reflector(object):
@@ -16,9 +32,9 @@ class Reflector(object):
 			self.payload = payload
 			self.callback = callback
 
-	def __init__(self, net_name, lbr_ip, lbr_port, forward=False):
+	def __init__(self, net_name, lbr_ip, lbr_port):
 		self.root_id = NodeID(lbr_ip, lbr_port)
-		self.client = RichClient(forward)
+		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, True)
 		self.frames = {}
 		self.token = 0
@@ -26,8 +42,8 @@ class Reflector(object):
 		self.token_buffer = []
 
 	def start(self):
-		self.commander(self.command('observe', self.root_id, terms.uri['RPL_NL']), True)
-		self.commander(self.command('observe', self.root_id, terms.uri['RPL_OL']), True)
+		self.commander(self.command('observe', self.root_id, terms.uri['RPL_NL']))
+		self.commander(self.command('get', self.root_id, terms.uri['RPL_OL']))
 
 	def _decache(self, token):
 		if token:
@@ -35,36 +51,41 @@ class Reflector(object):
 			if sent_msg['op'] != 'observe':
 				del self.cache[token]
 
-	def observe_rpl_nodes(self, response, kwargs):
-		if str(response.token) not in self.cache:
+	def observe_rpl_nodes(self, response):
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
 			return
-		sender = NodeID(kwargs['from'][0], kwargs['from'][1])
-		if response.code != defines.responses['CONTENT']:
-			tmp = str(sender) + ' returned a ' + defines.inv_responses[response.code] + '\n\tRequest: ' + str(self.cache[response.token])
-			self._decache(response.token)
+		sender = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(sender) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
+		#response.payload = response.payload.strip('{}')
+		print "MID:", response.mid ,"FROM:", response.remote[0],"NODE LIST:",response.payload #<-----Print for debugging
 		payload = json.loads(response.payload)
-		self._decache(response.token)
+		self._decache(tk)
 		for n in payload:
-			node = NodeID(str(n[0]), int(n[1]))
+			node = NodeID(str(n))
 			if self.dodag.attach_node(node):
 				commands = self.popped(node)
 				if commands:
 					for comm in commands:
 						self.commander(comm)
 
-	def observe_rpl_children(self, response, kwargs):
-		if str(response.token) not in self.cache:
+	def observe_rpl_children(self, response):
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
 			return
-		parent_id = NodeID(kwargs['from'][0], kwargs['from'][1])
-		if response.code != defines.responses['CONTENT']:
-			tmp = str(parent_id) + ' returned a ' + defines.inv_responses[response.code] + '\n\tRequest: ' + str(self.cache[response.token])
-			self._decache(response.token)
+		parent_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
+		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",response.payload #<-----Print for debugging
 		payload = json.loads(response.payload)
-		self._decache(response.token)
+		self._decache(tk)
 		for n in payload:
-			child_id = NodeID(str(n[0]), int(n[1]))
+			child_id = NodeID(str(n))
 			old_parent = self.dodag.get_parent(child_id)
 			if self.dodag.attach_child(child_id, parent_id):
 				commands = self.inherited(child_id, parent_id, old_parent)
@@ -72,63 +93,69 @@ class Reflector(object):
 					for comm in commands:
 						self.commander(comm)
 
-	def receive_slotframe_id(self, response, kwargs):
-		if str(response.token) not in self.cache:
+	def receive_slotframe_id(self, response):
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
 			return
-		node_id = NodeID(kwargs['from'][0], kwargs['from'][1])
-		if response.code != defines.responses['CREATED']:
-			tmp = str(node_id) + ' returned a ' + defines.inv_responses[response.code] + '\n\tRequest: ' + str(self.cache[response.token])
-			self._decache(response.token)
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		payload = json.loads(response.payload)
+		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
+		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
 		frame_alias = payload['fd']
-		old_payload = self.cache[str(response.token)]['payload']
+		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
-		self._decache(response.token)
+		self._decache(tk)
 		commands = self.framed(node_id, frame_name, frame_alias, old_payload)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
 
-	def receive_cell_id(self, response, kwargs):
-		if str(response.token) not in self.cache:
+	def receive_cell_id(self, response):
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
 			return
-		node_id = NodeID(kwargs['from'][0], kwargs['from'][1])
-		if response.code != defines.responses['CREATED']:
-			tmp = str(node_id) + ' returned a ' + defines.inv_responses[response.code] + '\n\tRequest: ' + str(self.cache[response.token])
-			self._decache(response.token)
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		payload = json.loads(response.payload)
+		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
+		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
 		cell_cd = payload['cd']
-		old_payload = self.cache[str(response.token)]['payload']
+		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
 		so = old_payload['so']
 		co = old_payload['co']
-		self._decache(response.token)
+		self._decache(tk)
 		commands = self.celled(node_id, so, co, frame_name, cell_cd, old_payload)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
 
-	def receive_cell_info(self, response, kwargs):
-		if str(response.token) not in self.cache:
+	def receive_cell_info(self, response):
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
 			return
-		node_id = NodeID(kwargs['from'][0], kwargs['from'][1])
-		if response.code != defines.responses['CONTENT']:
-			tmp = str(node_id) + ' returned a ' + defines.inv_responses[response.code] + '\n\tRequest: ' + str(self.cache[response.token])
-			self._decache(response.token)
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		payload = json.loads(response.payload)
-		self._decache(response.token)
+		self._decache(tk)
 		print(str(node_id) + ' - ' + str(payload))
 
-	def commander(self, comm, defer=False):
+	def commander(self, comm):
 		if isinstance(comm, self.command):
 			self.token += 1
-			self.token_buffer.append(self.token)
-			self.cache[str(self.token)] = {'op': comm.op, 'to': comm.to, 'uri': comm.uri}
+			#if [x for x in self.cache.values() if x["to"]==comm.to and x["op"]==comm.op and x["uri"]==comm.uri and x["payload"]==comm.payload]:
+			#	print("bingo")
+			self.cache[self.token] = {'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
-				self.cache[str(self.token)]['payload'] = comm.payload.copy()
+				self.cache[self.token]['payload'] = comm.payload.copy()
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
 					if comm.uri == terms.uri['6TP_SF']:
 						comm.payload = {'ns': self.frames[comm.payload['frame']].slots}
@@ -145,14 +172,15 @@ class Reflector(object):
 					comm.callback = self.receive_cell_id
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self.receive_cell_info
+			print comm.op,"TO:",comm.to,"URI:",comm.uri,"PAYLOAD:",comm.payload #<----------Print for debugging
 			if comm.op == 'get':
-				self.client.GET(comm.to, comm.uri, str(self.token), comm.callback, defer)
+				self.client.GET(comm.to, comm.uri, self.token, comm.callback)
 			elif comm.op == 'observe':
-				self.client.OBSERVE(comm.to, comm.uri, str(self.token), comm.callback, defer)
+				self.client.OBSERVE(comm.to, comm.uri, self.token, comm.callback)
 			elif comm.op == 'post':
-				self.client.POST(comm.to, comm.uri, json.dumps(comm.payload), str(self.token), comm.callback, defer)
+				self.client.POST(comm.to, comm.uri, parser.payload(comm.payload), self.token, comm.callback)
 			elif comm.op == 'delete':
-				self.client.DELETE(comm.to, comm.uri, str(self.token), comm.callback, defer)
+				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
 
 	def popped(self, node):
 		pass
@@ -166,11 +194,14 @@ class Reflector(object):
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
 		pass
 
+	def updated(self):
+		pass
+
 
 class Scheduler(Reflector):
-	def __init__(self, net_name, lbr_ip, lbr_port, forward=False):
-		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, forward)
-		self.slot_counter = 0
+	def __init__(self, net_name, lbr_ip, lbr_port):
+		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port)
+		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
 
@@ -180,30 +211,28 @@ class Scheduler(Reflector):
 		f2 = Slotframe("Unicast-Frame", 101)
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
-		counter = 0
 		self.rb_flag = 0
 		for k in self.frames.keys():
-			if counter < len(self.frames)-1:
-				self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}), True)
-			else:
-				self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
-			counter += 1
-		# # schedule the root at a broadcast cell --> (so: 1, co: 0)
-		# cb_root = Cell(1, 0, self.root_id, None, self.frames['Broadcast-Frame'].name, 1, 10)
-		# self.frames['Broadcast-Frame'].cell_container.append(cb_root)
+			self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
+		#	self.frames[k].setAliasID(self.root_id, None)
+		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
+		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
+		self.client.start()     # this has to be the last line of the start function ... ALWAYS
 		# print cb_root.__dict__
 		# print " POST | 6t/6/cl | {\"so\": cb.slot, \"co\": cb.channel, \"fd\": cb.slotframe_id, \"lo\": cb.link_option, \"lt\": cb.link_type} "
 
 	def popped(self, node):
-		pass
+		logg.info(str(node) + ' popped up')
 
 	def inherited(self, child, parent, old_parent=None):
+		print "PARENT --->", parent
 		if old_parent:
-			print(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
+			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
 		else:
-			print(str(child) + ' wired to parent ' + str(parent))
+			logg.info(str(child) + ' wired to parent ' + str(parent))
 
 		commands = []
+
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
 
 		for k in self.frames.keys():
@@ -215,7 +244,7 @@ class Scheduler(Reflector):
 					print("out of broadcast cells")
 					return False
 
-		if self.frames["Broadcast-Frame"].fds[parent] == None:
+		if parent not in self.frames["Broadcast-Frame"].fds:
 			sf_id = None
 		else:
 			sf_id = self.frames["Broadcast-Frame"].fds[parent]
@@ -255,59 +284,81 @@ class Scheduler(Reflector):
 		self.frames[local_name].setAliasID(who, remote_alias)
 		commands = []
 
-		# create the b_cell(1,0) for root to start broadcasting in the start
-		if who == self.root_id and self.rb_flag == 0:
-			cb_root = Cell(1, 0, who, None, self.frames[local_name].fds[who], 1, 10)
-			self.frames["Broadcast-Frame"].cell_container.append(cb_root)
-			commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':cb_root.slot, 'co':cb_root.channel, 'fd':cb_root.slotframe_id,'frame':local_name, 'lo':cb_root.link_option, 'lt':cb_root.link_type}))
-			self.rb_flag = 1
+		if who == self.root_id and self.rb_flag == 0 and local_name == "Broadcast-Frame":
+			for item in self.frames[local_name].cell_container:
+				if item.link_option == 10 and item.tx_node == who:
+					item.slotframe_id = self.frames[local_name].fds[who]
+
+				if item.link_option == 9 and item.rx_node == who:
+					item.slotframe_id = self.frames[local_name].fds[self.root_id]
+
+			for item in self.frames[local_name].cell_container:
+				if item.link_option == 10 and item.tx_node == who and item.slotframe_id != None:
+					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
+
+			for item in self.frames[local_name].cell_container:
+				if item.link_option == 9 and item.rx_node == who and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+					#   print("bingo")
+					commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
+
+			#self.rb_flag = 1
+
+		#elif who == self.root_id and self.rb_flag == 1:
+		#	for item in self.frames[local_name].cell_container:
+		#		if item.slotframe_id != None and item.rx_node == self.root_id:
+		#			item.slotframe_id = self.frames[local_name].fds[who]
+		#			commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
 
 		else:
+			#pass
 			for item in self.frames[local_name].cell_container:
 
 				if item.slotframe_id == None:
 					if item.link_option == 1 and item.tx_node == who:
 						item.slotframe_id = self.frames[local_name].fds[who]
 
-						#commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
-						#for item2 in self.frames[local_name].cell_container:
-						#	if item.slot == item2.slot and item.channel == item2.channel and item2.link_option == 2:
-						#		commands.append(self.command('post',item2.rx_node, terms.uri['6TP_CL'],{'so':item2.slot, 'co':item2.channel, 'fd':item2.slotframe_id, 'frame': local_name, 'lo': item2.link_option, 'lt':item2.link_type}))
-
 					elif item.link_option == 2 and item.rx_node == who:
 						item.slotframe_id = self.frames[local_name].fds[who]
-
-						#commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
-						#for item2 in self.frames[local_name].cell_container:
-						#	if item.slot == item2.slot and item.channel == item2.channel and item2.link_option == 1:
-						#		commands.append(self.command('post',item2.tx_node, terms.uri['6TP_CL'],{'so':item2.slot, 'co':item2.channel, 'fd':item2.slotframe_id, 'frame': local_name, 'lo': item2.link_option, 'lt':item2.link_type}))
 
 					elif item.link_option == 10 and item.tx_node == who:
 						item.slotframe_id = self.frames[local_name].fds[who]
 
-						#commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'lo':item.link_option, 'lt':item.link_type}))
-						#for item2 in self.frames[local_name].cell_container:
-						#	if item.slot == item2.slot and item.channel == item2.channel and item2.link_option == 9:
-						#		commands.append(self.command('post', item2.rx_node, terms.uri['6TP_CL'], {'so':item2.slot, 'co':item2.channel, 'fd':item2.slotframe_id, 'frame': local_name, 'lo': item2.link_option, 'lt':item2.link_type}))
-								#for item3 in self.frames[local_name].cell_container:
-
 					elif item.link_option == 9 and item.rx_node == who:
 						item.slotframe_id = self.frames[local_name].fds[who]
+
+					#elif item.link_option == 9 and item.rx_node == self.root_id:
+					#	item.slotframe_id = self.frames[local_name].fds[self.root_id]
 
 					else:
 						#Broadcasts.
 						pass
 
-				for item in self.frames[local_name].cell_container:
-					if item.slotframe_id != None:
-						if item.link_option == 1 and item.tx_node == who:
-							commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
-						elif item.link_option == 2 and item.rx_node == who:
-							commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
-						elif item.link_option == 10 and item.tx_node == who:
-							commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-						elif item.link_option == 9 and item.rx_node == who:
-							commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
+			for item in self.frames[local_name].cell_container:
+				#item = self.frames[local_name].cell_container[i]
+
+
+				#if item.slotframe_id != None:
+				if item.link_option == 1 and item.tx_node == who and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.tx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+					#	print("bingo")
+					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
+				elif item.link_option == 2 and item.rx_node == who and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+					#	print("bingo")
+					commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
+				elif item.link_option == 10 and item.tx_node == who and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.tx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+					#	print("bingo")
+					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
+				elif item.link_option == 9 and item.rx_node == who and item.rx_node != self.root_id and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+					#   print("bingo")
+					commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
+				#elif item.link_option == 9 and item.rx_node == self.root_id and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+				#	print("bingo")
+				#	commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
 
 
 		return commands
@@ -326,10 +377,6 @@ class Scheduler(Reflector):
 
 		ct = Cell(self.slot_counter, self.channel_counter, tx_node, rx_node, sf_id, 0,1)
 		cr = Cell(self.slot_counter, self.channel_counter, tx_node, rx_node, sf_id, 0,2)
-
-		#print ct.__dict__
-		#print cr.__dict__
-		#self.frames["Unicast-Frame"].fds[tx_node]
 
 		self.frames["Unicast-Frame"].cell_container.append(ct)
 		self.frames["Unicast-Frame"].cell_container.append(cr)

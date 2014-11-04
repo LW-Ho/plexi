@@ -2,7 +2,7 @@ __author__ = 'Giacomo Tanganelli'
 __version__ = "2.0"
 
 ################### CoAP Parameters ###################
-ACK_TIMEOUT = 2
+ACK_TIMEOUT = 5
 
 SEPARATE_TIMEOUT = ACK_TIMEOUT / 2
 

@@ -1,11 +1,9 @@
 #!/bin/python
 import getopt
 import sys
-import os
-
-sys.path.append(os.path.join(os.getcwd(), '..', 'CoAPthon'))
 
 from schedule.maestro import Scheduler
+from endpoint.client import LazyCommunicator
 from resource.rpl import NodeID
 
 sch = None
@@ -66,11 +64,11 @@ def main(arg_str):
 		return 2
 
 	if not opts:
-		sch = Scheduler('RICHNET', '127.0.0.1', 5683, False)
+		sch = Scheduler('RICHNET', 'aaaa::212:7401:1:101', 5684)
 		sch.start()
 		return 0
 	else:
-		sch = Scheduler('RICHNET', '127.0.0.1', 5683)
+		client = LazyCommunicator(5)
 
 	for o, a in opts:
 		if o in ("-o", "--operation"):
@@ -80,7 +78,11 @@ def main(arg_str):
 		elif o in ("-P", "--payload"):
 			payload = a
 		elif o in ('-a', '--address'):
-			ip, port = a.split(':')
+			try:
+				ip, port = a.split(':')
+			except ValueError:
+				ip = a[:-5]
+				port = a[-4:]
 			node = NodeID(ip, int(port))
 		elif o in ("-h", "--help"):
 			usage()
@@ -95,23 +97,17 @@ def main(arg_str):
 		return 2
 
 	if op == "GET":
-		sch.client.GET(node, path, None, client_callback)
+		client.GET(node, path, 1, client_callback)
 	elif op == "OBSERVE":
-		sch.client.OBSERVE(node, path, '1', None, client_callback_observe)
+		client.OBSERVE(node, path, 1, client_callback_observe)
 	elif op == "DELETE":
-		sch.client.DELETE(node, path, None, client_callback)
+		client.DELETE(node, path, 1, client_callback)
 	elif op == "POST":
 		if payload is None:
 			print("Payload cannot be empty for a POST request")
 			usage()
 			return 2
-		import json
-		try:
-			#json.loads(payload)
-			sch.client.POST(node, path, payload, None, client_callback)
-		except:
-			print('No proper JSON format for payload')
-			return 2
+		client.POST(node, path, payload, 1, client_callback)
 	else:
 		print("Operation not recognized")
 		usage()

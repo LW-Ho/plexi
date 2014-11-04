@@ -1,10 +1,19 @@
+__author__ = "Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos"
+__email__ = "d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl"
+__version__ = "0.0.11"
+__copyright__ = "Copyright 2014, The RICH Project"
+#__credits__ = ["XYZ"]
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
 
 class Slotframe(object):
 	def __init__(self, name, slots):
 		self.cell_container = []  # Will contain Cell objects assigned to this slotframe.
 		self.slots = slots
 		self.name = name
-		self.fds = {}
+		self.fds = {}   # will contain slotframe_ids in (key : value) format --> (node : sf_id)
 		c_minimal = Cell(0, 0, 0, 0,None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
 		self.cell_container.append(c_minimal)
 

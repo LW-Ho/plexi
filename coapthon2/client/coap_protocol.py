@@ -2,11 +2,7 @@ import random
 import re
 import time
 import twisted
-from twisted.application.service import Application
 from twisted.internet.error import AlreadyCancelled
-from twisted.python import log
-from twisted.python.log import ILogObserver, FileLogObserver
-from twisted.python.logfile import DailyLogFile
 from coapthon2 import defines
 from coapthon2.messages.message import Message
 from coapthon2.messages.option import Option
@@ -22,15 +18,12 @@ from twisted.internet import reactor
 __author__ = 'Giacomo Tanganelli'
 __version__ = "2.0"
 
-from os.path import expanduser
-home = expanduser("~")
 
-# First, startLogging to capture stdout
-logfile = DailyLogFile("CoAPthon_client.log", home + "/.coapthon/")
-# Now add an observer that logs to a file
-application = Application("CoAPthon_Client")
-application.setComponent(ILogObserver, FileLogObserver(logfile).emit)
+import logging
+from util import logger
 
+logg = logging.getLogger('RiSCHER')
+logg.setLevel(logging.INFO)
 
 class CoAP(DatagramProtocol):
     def __init__(self, server, forward):
@@ -60,7 +53,7 @@ class CoAP(DatagramProtocol):
 
     def startProtocol(self):
         if self.server is None:
-            log.err("Server address for the client is not initialized")
+            logg.error("Server address for the client is not initialized")
             exit()
         host, port = self.server
         if host is not None:
@@ -72,7 +65,7 @@ class CoAP(DatagramProtocol):
         self.l.stop()
 
     def purge_mids(self):
-        log.msg("Purge mids")
+        logg.debug("Purge mids")
         now = time.time()
         sent_key_to_delete = []
         for key in self.sent.keys():
@@ -131,12 +124,13 @@ class CoAP(DatagramProtocol):
         serializer = Serializer()
         message.destination = self.server
         host, port = message.destination
-        print "Message sent to " + host + ":" + str(port)
-        print "----------------------------------------"
-        print message
-        print "----------------------------------------"
+        logg.info(message.csv())
+        # print "Message sent to " + host + ":" + str(port)
+        # print "----------------------------------------"
+        # print message
+        # print "----------------------------------------"
         datagram = serializer.serialize(message)
-        log.msg("Send datagram")
+        #log.msg("Send datagram")
         self.transport.write(datagram)
 
     def send_callback(self, req, callback, client_callback):
@@ -157,14 +151,16 @@ class CoAP(DatagramProtocol):
         serializer = Serializer()
         host, port = host
         message = serializer.deserialize(datagram, host, port)
-        print "Message received from " + host + ":" + str(port)
-        print "----------------------------------------"
-        print message
-        print "----------------------------------------"
+        logg.info(message.csv())
+        # print "Message received from " + host + ":" + str(port)
+        # print "----------------------------------------"
+        # print message
+        # print "----------------------------------------"
         if isinstance(message, Response):
             self.handle_response(message)
         elif isinstance(message, Request):
-            log.err("Received request")
+            # log.err("Received request")
+            pass
         else:
             self.handle_message(message)
 
@@ -172,7 +168,8 @@ class CoAP(DatagramProtocol):
         if message.type == defines.inv_types["ACK"] and message.code == defines.inv_codes["EMPTY"] \
            and key in self.sent.keys():
             #Separate Response
-            print "Separate Response"
+            # print "Separate Response"
+            pass
         else:
             function, args, kwargs, client_callback = self.get_operation()
             key = hash(str(host) + str(port) + str(message.token))
@@ -193,7 +190,7 @@ class CoAP(DatagramProtocol):
         if key in self.sent.keys():
             self.received[key] = message
             if message.type == defines.inv_types["RST"]:
-                print message
+                logg.info(message.csv())
             else:
                 req, timestamp, callback, client_callback = self.sent[key]
                 callback(message.mid, client_callback)
@@ -226,7 +223,7 @@ class CoAP(DatagramProtocol):
             handler, retransmit_count = self.call_id.get(key)
             if handler is not None:
                 try:
-                    log.msg("Cancel retrasmission")
+                    logg.warn(response.csv() + " - CANCELED")
                     handler.cancel()
                 except AlreadyCancelled:
                     pass
@@ -271,7 +268,7 @@ class CoAP(DatagramProtocol):
                     last.add_child(resource)
                 else:
                     break
-        log.msg(self.root.dump())
+        logg.info(self.root.dump())
 
     def get(self, client_callback, *args, **kwargs):
         path = args[0]
@@ -297,7 +294,7 @@ class CoAP(DatagramProtocol):
             handler, retransmit_count = self.call_id.get(key)
             if handler is not None:
                 try:
-                    log.msg("Cancel retrasmission")
+                    logg.warn(response.csv() + " - CANCELED")
                     handler.cancel()
                 except AlreadyCancelled:
                     pass
@@ -338,7 +335,7 @@ class CoAP(DatagramProtocol):
             handler, retransmit_count = self.call_id.get(key)
             if handler is not None:
                 try:
-                    log.msg("Cancel retrasmission")
+                    logg.warn(response.csv() + " - CANCELED")
                     handler.cancel()
                 except AlreadyCancelled:
                     pass
@@ -398,7 +395,7 @@ class CoAP(DatagramProtocol):
             handler, retransmit_count = self.call_id.get(key)
             if handler is not None:
                 try:
-                    log.msg("Cancel retrasmission")
+                    logg.warn(response.csv() + " - CANCELED")
                     handler.cancel()
                 except AlreadyCancelled:
                     pass
@@ -437,7 +434,7 @@ class CoAP(DatagramProtocol):
             handler, retransmit_count = self.call_id.get(key)
             if handler is not None:
                 try:
-                    log.msg("Cancel retrasmission")
+                    logg.warn(response.csv() + " - CANCELED")
                     handler.cancel()
                 except AlreadyCancelled:
                     pass
@@ -475,7 +472,7 @@ class CoAP(DatagramProtocol):
             handler, retransmit_count = self.call_id.get(key)
             if handler is not None:
                 try:
-                    log.msg("Cancel retrasmission")
+                    logg.warn(response.csv() + " - CANCELED")
                     handler.cancel()
                 except AlreadyCancelled:
                     pass
@@ -499,8 +496,8 @@ class CoAP(DatagramProtocol):
                                                    (request, host, port, future_time, err_callback)), 0)
 
     def retransmit(self, t):
-        log.msg("Retransmit")
         request, host, port, future_time, err_callback = t
+        logg.info(request.csv() + "- RETRANSMIT")
         key = hash(str(host) + str(port) + str(request.mid))
         call_id, retransmit_count = self.call_id[key]
         if retransmit_count < defines.MAX_RETRANSMIT and (not request.acknowledged and not request.rejected):
@@ -517,7 +514,7 @@ class CoAP(DatagramProtocol):
             del self.call_id[key]
         else:
             request.timeouted = True
-            log.err("Request timeouted")
+            logg.error(request.csv() + " - TIMEDOUT")
             del self.call_id[key]
             if err_callback is not None:
                 err_callback(request.mid, host, port)
@@ -541,6 +538,6 @@ class HelperClient(object):
         try:
             reactor.run()
         except twisted.internet.error.ReactorAlreadyRunning:
-            log.msg("Reactor already started")
+            logg.warn("reactor already started")
 
 

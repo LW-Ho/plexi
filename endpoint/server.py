@@ -1,3 +1,12 @@
+__author__ = "George Exarchakos"
+__version__ = "0.0.9"
+__email__ = "g.exarchakos@tue.nl"
+__credits__ = ["XYZ"]
+__copyright__ = "Copyright 2014, The RICH Project"
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
 from coapthon2.server.coap_protocol import CoAP
 from coapthon2.resources.resource import Resource
 from resource import rpl, sixtop
