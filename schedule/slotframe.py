@@ -14,7 +14,7 @@ class Slotframe(object):
 		self.slots = slots
 		self.name = name
 		self.fds = {}   # will contain slotframe_ids in (key : value) format --> (node : sf_id)
-		c_minimal = Cell(0, 0, 0, 0,None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
+		c_minimal = Cell(0, 0, 0, 0, None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
 		self.cell_container.append(c_minimal)
 
 	def setAliasID(self, node, id):

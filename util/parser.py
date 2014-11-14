@@ -37,6 +37,12 @@ def payload(content):
 		str_payload += '"lo":' + str(content["lo"]) + ","
 	if "lt" in content:
 		str_payload += '"lt":' + str(content["lt"])
+	if "na" in content:
+		str_payload += "," + '"na":' + str(content["na"])
+	if "mt" in content:
+		str_payload += "," + '"mt":' + str(content["mt"])
+	if "wi" in content:
+		str_payload += "," + '"wi":' + str(content["wi"])
 	if "ns" in content:
 		str_payload += '"ns":' + str(content["ns"])
 	return str_payload + "}"

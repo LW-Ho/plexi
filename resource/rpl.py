@@ -19,6 +19,10 @@ class NodeID(object):
 			self.ip = ip
 			if self.ip.count(':') == 3:
 				self.ip = 'aaaa::' + self.ip  # TODO: bad dirty fix. Fix properly
+			self.eui_64_ip = ''
+			parts = self.ip.split(':')
+			parts = parts[len(parts)-4 : len(parts)]
+			self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
 			self.port = port
 		else:
 			raise TypeError('IP address is a string value and the port is an integer')

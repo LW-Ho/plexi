@@ -19,7 +19,7 @@ class DoDAG(object):
 		self.visualize = visualize
 		if self.visualize:
 			try:
-				self.visualizer = GephiClient('http://131.155.233.64:8081/richnet', autoflush=True)
+				self.visualizer = GephiClient('http://131.155.235.134:8081/richnet', autoflush=True)
 				self.visualizer.clean()
 				self.root_attrs = {"size":40, 'r':1.0, 'g':0.0, 'b':0.0}
 				self.router_attrs = {"size":30, 'r':0.0, 'g':1.0, 'b':0.0}
@@ -53,7 +53,7 @@ class DoDAG(object):
 				demote = False
 				break
 		if demote and node != self.root:
-			self.visualizer.change_node(node, **self.leaf_attrs)
+			self.visualizer.change_node(str(node), **self.leaf_attrs)
 
 	def attach_child(self, child_id, parent_id):
 		if child_id == self.root:
@@ -87,7 +87,7 @@ class DoDAG(object):
 					promote = False
 					break
 			if promote and parent_id != self.root:
-				self.visualizer.change_node(parent_id, **self.router_attrs)
+				self.visualizer.change_node(str(parent_id), **self.router_attrs)
 		return True
 
 	@deprecated
