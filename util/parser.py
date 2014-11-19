@@ -26,19 +26,19 @@ def query_to_dictionary(query):
 def payload(content):
 	str_payload = "{"
 	if "so" in content:
-		str_payload += '"so":' + str(content["so"]) + ","
+		str_payload += '"so":' + str(content["so"])
 	if "co" in content:
-		str_payload += '"co":' + str(content["co"]) + ","
+		str_payload += "," + '"co":' + str(content["co"])
 	if "fd" in content:
-		str_payload += '"fd":' + str(content["fd"]) + ","
+		str_payload += "," + '"fd":' + str(content["fd"])
 	if "frame" in content:
 		str_payload += '"frame":' + str(content["frame"])
 	if "lo" in content:
-		str_payload += '"lo":' + str(content["lo"]) + ","
+		str_payload += "," + '"lo":' + str(content["lo"])
 	if "lt" in content:
-		str_payload += '"lt":' + str(content["lt"])
+		str_payload += "," + '"lt":' + str(content["lt"])
 	if "na" in content:
-		str_payload += "," + '"na":' + str(content["na"])
+		str_payload += "," + '"na":"' + content["na"] + '"'
 	if "mt" in content:
 		str_payload += "," + '"mt":' + str(content["mt"])
 	if "wi" in content:

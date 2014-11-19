@@ -257,8 +257,8 @@ class Scheduler(Reflector):
 
 	def start(self):
 		super(Scheduler, self).start()
-		f1 = Slotframe("Broadcast-Frame", 202)
-		f2 = Slotframe("Unicast-Frame", 101)
+		f1 = Slotframe("Broadcast-Frame", 30) #Changed values for interaction testing
+		f2 = Slotframe("Unicast-Frame", 20)
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
@@ -393,7 +393,8 @@ class Scheduler(Reflector):
 				if item.link_option == 1 and item.tx_node == who and item.slotframe_id != None:
 					#if [x for x in commands if x.to==item.tx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
 					#	print("bingo")
-					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type, 'na': item.rx_node.eui_64_ip}))  # 'na':item.rx_node
+					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
+					#print item.rx_node.eui_64_ip, type(item.rx_node.eui_64_ip)
 				elif item.link_option == 2 and item.rx_node == who and item.slotframe_id != None:
 					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
 					#	print("bingo")
