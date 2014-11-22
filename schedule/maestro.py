@@ -17,7 +17,6 @@ from util import terms, exception
 from txthings import coap
 import logging
 from util import logger
-import string
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.INFO)
@@ -32,10 +31,10 @@ class Reflector(object):
 			self.payload = payload
 			self.callback = callback
 
-	def __init__(self, net_name, lbr_ip, lbr_port):
+	def __init__(self, net_name, lbr_ip, lbr_port, visualizer=False):
 		self.root_id = NodeID(lbr_ip, lbr_port)
 		self.client = LazyCommunicator(5)
-		self.dodag = DoDAG(net_name, self.root_id, True)
+		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
 		self.token = 0
 		self.cache = {}
@@ -61,8 +60,8 @@ class Reflector(object):
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		#response.payload = response.payload.strip('{}')
-		print "MID:", response.mid ,"FROM:", response.remote[0],"NODE LIST:",response.payload #<-----Print for debugging
-		payload = json.loads(response.payload)
+		print "MID:", response.mid ,"FROM:", response.remote[0],"NODE LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		for n in payload:
 			node = NodeID(str(n))
@@ -81,8 +80,8 @@ class Reflector(object):
 			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",response.payload #<-----Print for debugging
-		payload = json.loads(response.payload)
+		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		for n in payload:
 			child_id = NodeID(str(n))
@@ -102,8 +101,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		frame_alias = payload['fd']
 		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
@@ -122,8 +121,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
@@ -144,7 +143,7 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		payload = json.loads(response.payload)
+		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		print(str(node_id) + ' - ' + str(payload))
 
@@ -157,8 +156,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		metric_id = payload[terms.keys['SM_ID']]
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
@@ -177,8 +176,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		metric_values = payload
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
@@ -222,7 +221,7 @@ class Reflector(object):
 			elif comm.op == 'observe':
 				self.client.OBSERVE(comm.to, comm.uri, self.token, comm.callback)
 			elif comm.op == 'post':
-				self.client.POST(comm.to, comm.uri, parser.payload(comm.payload), self.token, comm.callback)
+				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), self.token, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
 
@@ -249,8 +248,8 @@ class Reflector(object):
 
 
 class Scheduler(Reflector):
-	def __init__(self, net_name, lbr_ip, lbr_port):
-		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port)
+	def __init__(self, net_name, lbr_ip, lbr_port, visualizer):
+		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, visualizer)
 		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
@@ -283,7 +282,7 @@ class Scheduler(Reflector):
 		commands = []
 
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
-		commands.append(self.command('post', child, terms.uri['6TP_SM'], {"so":None,"co":None,"fd":None,"na":None,"mt":["PRR","RSSI","ETX"],"wi":0})) # First step of statistics installation.
+		commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":["PRR","RSSI"]})) # First step of statistics installation.
 
 		for k in self.frames.keys():
 			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k})) # Scheduling should start when we receive the frame ids.Move the post actions to framed.Leave schduling here.
