@@ -64,7 +64,7 @@ def main(arg_str):
 		return 2
 
 	if not opts:
-		sch = Scheduler('RICHNET', 'aaaa::212:7401:1:101', 5684)
+		sch = Scheduler('RICHNET', 'aaaa::215:8d00:52:6986', 5684)
 		sch.start()
 		return 0
 	else:

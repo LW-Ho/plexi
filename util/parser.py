@@ -9,7 +9,6 @@ __copyright__ = "Copyright 2014, The RICH Project"
 
 
 from exception import FormatError
-import string
 
 def query_to_dictionary(query):
 	if isinstance(query, basestring):
@@ -24,7 +23,7 @@ def query_to_dictionary(query):
 	else:
 		raise TypeError(query)
 
-def construct_payload(content):
+def payload(content):
 	str_payload = "{"
 	if "so" in content:
 		str_payload += '"so":' + str(content["so"])
@@ -47,27 +46,3 @@ def construct_payload(content):
 	if "ns" in content:
 		str_payload += '"ns":' + str(content["ns"])
 	return str_payload + "}"
-
-
-def clean_payload(content):
-	start_obj = content.find('{')
-	start_array = content.find('[')
-	end_obj = content.rfind('}')
-	end_array = content.rfind(']')
-	start = 0
-	end = len(content)
-	if start_obj==-1 and start_array!=-1:
-		start = start_array
-	elif start_obj!=-1 and start_array==-1:
-		start = start_obj
-	else:
-		start = min(start_obj,start_array)
-
-	if end_obj==-1 and end_array!=-1:
-		end = end_array+1
-	elif end_obj!=-1 and end_array==-1:
-		end = end_obj+1
-	else:
-		end = max(end_obj,end_array)+1
-
-	return filter(lambda x: x in string.printable, content[start:end])

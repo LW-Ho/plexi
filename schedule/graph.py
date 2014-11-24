@@ -19,7 +19,7 @@ class DoDAG(object):
 		self.visualize = visualize
 		if self.visualize:
 			try:
-				self.visualizer = GephiClient('http://'+visualize+'/richnet', autoflush=True)
+				self.visualizer = GephiClient('http://131.155.235.134:8081/richnet', autoflush=True)
 				self.visualizer.clean()
 				self.root_attrs = {"size":40, 'r':1.0, 'g':0.0, 'b':0.0}
 				self.router_attrs = {"size":30, 'r':0.0, 'g':1.0, 'b':0.0}
