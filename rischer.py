@@ -15,7 +15,7 @@ import sys
 from schedule.maestro import Scheduler
 
 def usage():
-	print('Command:\torchestra.py [-h][-b[-v]]')
+	print('Command:\trischer.py [-h][-b[-v]]')
 	print('Options:')
 	print('\t-h,\t--help=\tthis usage message')
 	print('\t-b,\t--LBR=\tIPv6 address of Low-Power and Lossy Network Border Router (port:5684 assumed)')

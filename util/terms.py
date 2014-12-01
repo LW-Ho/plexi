@@ -16,23 +16,23 @@ uri = {
 	'6TP_SF': "6t/6/sf",
 	'6TP_CL': "6t/6/cl",
 	'6TP_SV': "6t/6/cl/ml",
-    '6TP_SM': "6t/6/sm"
+	'6TP_SM': "6t/6/sm"
 }
 
 keys = {
 	'SM_ID': "smd",
-    'SF_ID': "fd",
-    'CL_ID': "cd",
-    'S_OFF': "so",
-    'C_OFF': "co",
-    'LN_OP': "lo",
-    'LN_TP': "lt",
-    'TNA'  : "na",
-    'MTRC' : "mt",
-    'WNDW' : "wi",
-    'RSSI' : "rssi",
-    'PDR'  : "pdr",
-    'PRR'  : "prr",
-    'LQI'  : "lq",
-
+	'SF_ID': "fd",
+	'CL_ID': "cd",
+	'S_OFF': "so",
+	'C_OFF': "co",
+	'LN_OP': "lo",
+	'LN_TP': "lt",
+	'TNA'  : "na",
+	'MTRC' : "mt",
+	'WNDW' : "wi",
+	'RSSI' : "rssi",
+	'PDR'  : "pdr",
+	'PRR'  : "prr",
+	'LQI'  : "lq",
+	'SLT'  : "SLOT"
 }

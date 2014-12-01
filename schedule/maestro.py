@@ -17,7 +17,6 @@ from util import terms, exception
 from txthings import coap
 import logging
 from util import logger
-import string
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.INFO)
@@ -32,10 +31,10 @@ class Reflector(object):
 			self.payload = payload
 			self.callback = callback
 
-	def __init__(self, net_name, lbr_ip, lbr_port):
+	def __init__(self, net_name, lbr_ip, lbr_port, visualizer=False):
 		self.root_id = NodeID(lbr_ip, lbr_port)
 		self.client = LazyCommunicator(5)
-		self.dodag = DoDAG(net_name, self.root_id, True)
+		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
 		self.token = 0
 		self.cache = {}
@@ -61,8 +60,8 @@ class Reflector(object):
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		#response.payload = response.payload.strip('{}')
-		print "MID:", response.mid ,"FROM:", response.remote[0],"NODE LIST:",response.payload #<-----Print for debugging
-		payload = json.loads(response.payload)
+		print "MID:", response.mid ,"FROM:", response.remote[0],"NODE LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		for n in payload:
 			node = NodeID(str(n))
@@ -81,8 +80,8 @@ class Reflector(object):
 			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",response.payload #<-----Print for debugging
-		payload = json.loads(response.payload)
+		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		for n in payload:
 			child_id = NodeID(str(n))
@@ -102,8 +101,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		frame_alias = payload['fd']
 		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
@@ -122,13 +121,17 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid, "FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
 		so = old_payload['so']
 		co = old_payload['co']
+		if 'na' in old_payload:
+			self.dodag.update_link(node_id, NodeID(old_payload['na']), 'SLT', '++')
+		else:
+			self.dodag.update_link(node_id, NodeID(old_payload['na']), 'SLT', '++')
 		self._decache(tk)
 		commands = self.celled(node_id, so, co, frame_name, cell_cd, old_payload)
 		if commands:
@@ -144,7 +147,7 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		payload = json.loads(response.payload)
+		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		print(str(node_id) + ' - ' + str(payload))
 
@@ -157,13 +160,13 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		metric_id = payload[terms.keys['SM_ID']]
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
 		self._decache(tk)
-		commands = self.stm_id(node_id, metric_id)
+		commands = self.monitored(node_id, metric_id)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -177,13 +180,12 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], response.payload #<---------------------------------Print for debugging
-		payload = json.loads(filter(lambda x: x in string.printable, response.payload))
-		metric_values = payload
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		payload = json.loads(parser.clean_payload(response.payload))
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
 		self._decache(tk)
-		commands = self.stm_value(node_id, metric_values)
+		commands = self.stated(node_id, payload)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -222,7 +224,7 @@ class Reflector(object):
 			elif comm.op == 'observe':
 				self.client.OBSERVE(comm.to, comm.uri, self.token, comm.callback)
 			elif comm.op == 'post':
-				self.client.POST(comm.to, comm.uri, parser.payload(comm.payload), self.token, comm.callback)
+				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), self.token, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
 
@@ -238,10 +240,10 @@ class Reflector(object):
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
 		pass
 
-	def stm_id(self, node_id, metric_id):
+	def monitored(self, node_id, metric_id):
 		pass
 
-	def stm_value(self, node_id, metric_values):
+	def stated(self, node_id, metric_values):
 		pass
 
 	def updated(self):
@@ -249,16 +251,16 @@ class Reflector(object):
 
 
 class Scheduler(Reflector):
-	def __init__(self, net_name, lbr_ip, lbr_port):
-		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port)
+	def __init__(self, net_name, lbr_ip, lbr_port, visualizer):
+		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, visualizer)
 		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
 
 	def start(self):
 		super(Scheduler, self).start()
-		f1 = Slotframe("Broadcast-Frame", 61) #Changed values for interaction testing
-		f2 = Slotframe("Unicast-Frame", 31)
+		f1 = Slotframe("Broadcast-Frame", 60) #Changed values for interaction testing
+		f2 = Slotframe("Unicast-Frame", 30)
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
@@ -500,11 +502,11 @@ class Scheduler(Reflector):
 
 			#self.commands.append(self.command('post', nb, terms.uri['6TP_CL'], {'so':cb_nb.slot, 'co':cb_nb.channel, 'fd':cb_nb.slotframe_id, 'lo':cb_nb.link_option, 'lt':cb_nb.link_type}))
 
-	def stm_id(self, node_id, metric_id):
+	def monitored(self, node_id, metric_id):
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
 		commands.append(self.command('get', node_id, id_appended_uri))
 
-	def stm_value(self, node_id, metric_values):
+	def stated(self, node_id, metric_values):
 		print "NODE: ", node_id, "VALUES: ", metric_values
 
 
