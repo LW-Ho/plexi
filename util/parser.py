@@ -41,7 +41,7 @@ def construct_payload(content):
 	if "na" in content:
 		str_payload += "," + '"na":"' + content["na"] + '"'
 	if "mt" in content:
-		str_payload += "," + '"mt":' + str(content["mt"])
+		str_payload += '"mt":' + str(content["mt"])
 	if "wi" in content:
 		str_payload += "," + '"wi":' + str(content["wi"])
 	if "ns" in content:

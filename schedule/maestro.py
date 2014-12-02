@@ -17,6 +17,7 @@ from util import terms, exception
 from txthings import coap
 import logging
 from util import logger
+import string
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.INFO)
@@ -121,17 +122,13 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid, "FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
 		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
 		so = old_payload['so']
 		co = old_payload['co']
-		if 'na' in old_payload:
-			self.dodag.update_link(node_id, NodeID(old_payload['na']), 'SLT', '++')
-		else:
-			self.dodag.update_link(node_id, NodeID(old_payload['na']), 'SLT', '++')
 		self._decache(tk)
 		commands = self.celled(node_id, so, co, frame_name, cell_cd, old_payload)
 		if commands:
@@ -166,7 +163,7 @@ class Reflector(object):
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
 		self._decache(tk)
-		commands = self.monitored(node_id, metric_id)
+		commands = self.stm_id(node_id, metric_id)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -182,10 +179,11 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
 		payload = json.loads(parser.clean_payload(response.payload))
+		metric_values = payload
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
 		self._decache(tk)
-		commands = self.stated(node_id, payload)
+		commands = self.stm_value(node_id, metric_values)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -240,10 +238,10 @@ class Reflector(object):
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
 		pass
 
-	def monitored(self, node_id, metric_id):
+	def stm_id(self, node_id, metric_id):
 		pass
 
-	def stated(self, node_id, metric_values):
+	def stm_value(self, node_id, metric_values):
 		pass
 
 	def updated(self):
@@ -256,11 +254,13 @@ class Scheduler(Reflector):
 		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
+		self.pairs = []
+		self.commands_waiting = []
 
 	def start(self):
 		super(Scheduler, self).start()
-		f1 = Slotframe("Broadcast-Frame", 60) #Changed values for interaction testing
-		f2 = Slotframe("Unicast-Frame", 30)
+		f1 = Slotframe("Broadcast-Frame", 201) #Changed values for interaction testing
+		f2 = Slotframe("Unicast-Frame", 101)
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
@@ -285,10 +285,10 @@ class Scheduler(Reflector):
 		commands = []
 
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
-		#commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":["PRR","RSSI"]})) # First step of statistics installation.
+		#commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":['PRR','RSSI']})) # First step of statistics installation.
 
 		for k in self.frames.keys():
-			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k})) # Scheduling should start when we receive the frame ids.Move the post actions to framed.Leave schduling here.
+			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
 
 		c_flag = False
 
@@ -330,12 +330,25 @@ class Scheduler(Reflector):
 
 		self.schedule_unicast(parent, child, sf_id)
 
+		self.pairs.append((parent,child))
+
 		return commands
 
 
 	def framed(self, who, local_name, remote_alias, old_payload):
 		self.frames[local_name].setAliasID(who, remote_alias)
 		commands = []
+
+		parent = NodeID()
+		child = NodeID()
+
+		for pair in self.pairs:
+			if pair[0].ip == who.ip:
+				child = pair[1]
+				parent = pair[0]
+			elif pair[1].ip == who.ip:
+				parent = pair[0]
+				child = pair[1]
 
 		if who == self.root_id and self.rb_flag == 0 and local_name == "Broadcast-Frame":
 			for item in self.frames[local_name].cell_container:
@@ -392,15 +405,20 @@ class Scheduler(Reflector):
 
 
 				#if item.slotframe_id != None:
-				if item.link_option == 1 and item.tx_node == who and item.slotframe_id != None:
+				if item.link_option == 2 and item.rx_node == who and item.slotframe_id != None:
+					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+					#	print("bingo")
+					commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
+				elif item.link_option == 1 and item.tx_node == who and item.slotframe_id != None and item.rx_node == parent:
 					#if [x for x in commands if x.to==item.tx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
 					#	print("bingo")
 					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
 					#print item.rx_node.eui_64_ip, type(item.rx_node.eui_64_ip)
-				elif item.link_option == 2 and item.rx_node == who and item.slotframe_id != None:
-					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
+				elif item.link_option == 1 and item.tx_node == who and item.slotframe_id != None:# and item.rx_node == child:
+					#if [x for x in commands if x.to==item.tx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
 					#	print("bingo")
-					commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
+					self.commands_waiting.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
+					#print item.rx_node.eui_64_ip, type(item.rx_node.eui_64_ip)
 				elif item.link_option == 10 and item.tx_node == who and item.slotframe_id != None:
 					#if [x for x in commands if x.to==item.tx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
 					#	print("bingo")
@@ -414,18 +432,24 @@ class Scheduler(Reflector):
 				#	print("bingo")
 				#	commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
 
-
 		return commands
-
-#		return [self.command('post', who, terms.uri['6TP_CL'],{'so': 1, 'co': 2, 'fd': remote_alias, 'frame': local_name, 'op': 3, 'ct': 4})]
-		# create a broadcast cell for the root, append the created cell at broadcast_cell_container and post the cell to the root's slotframe
 
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
+		commands = []
+
+		for item in self.commands_waiting:
+			if item.payload['na'] == who.eui_64_ip:
+				commands.append(item)
+				self.commands_waiting.remove(item)
+
+		#print old_payload
 		# TODO: self.frames[frame_name].cell(so, co, node_id).id = cell_cd
 		for item in self.frames[frame_name].cell_container:
 			if item.slot == slotoffs and item.channel == channeloffs and item.link_type == old_payload["lo"]:
 				item.cell_id = remote_cell_id
+
+		return commands
 
 	def schedule_unicast(self, tx_node, rx_node, sf_id):
 
@@ -502,11 +526,14 @@ class Scheduler(Reflector):
 
 			#self.commands.append(self.command('post', nb, terms.uri['6TP_CL'], {'so':cb_nb.slot, 'co':cb_nb.channel, 'fd':cb_nb.slotframe_id, 'lo':cb_nb.link_option, 'lt':cb_nb.link_type}))
 
-	def monitored(self, node_id, metric_id):
+	def stm_id(self, node_id, metric_id):
+		print "STM ID CALLED!"
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
 		commands.append(self.command('get', node_id, id_appended_uri))
 
-	def stated(self, node_id, metric_values):
+	def stm_value(self, node_id, metric_values):
 		print "NODE: ", node_id, "VALUES: ", metric_values
+
+
 
 
