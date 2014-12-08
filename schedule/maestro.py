@@ -179,7 +179,7 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
 		payload = json.loads(parser.clean_payload(response.payload))
-		metric_values = payload
+		#metric_values = payload
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
 		self._decache(tk)
@@ -285,7 +285,7 @@ class Scheduler(Reflector):
 		commands = []
 
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
-		#commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":['PRR','RSSI']})) # First step of statistics installation.
+		#commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
 		for k in self.frames.keys():
 			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
@@ -432,7 +432,11 @@ class Scheduler(Reflector):
 				#	print("bingo")
 				#	commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
 
+
 		return commands
+
+#		return [self.command('post', who, terms.uri['6TP_CL'],{'so': 1, 'co': 2, 'fd': remote_alias, 'frame': local_name, 'op': 3, 'ct': 4})]
+		# create a broadcast cell for the root, append the created cell at broadcast_cell_container and post the cell to the root's slotframe
 
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
@@ -448,6 +452,10 @@ class Scheduler(Reflector):
 		for item in self.frames[frame_name].cell_container:
 			if item.slot == slotoffs and item.channel == channeloffs and item.link_type == old_payload["lo"]:
 				item.cell_id = remote_cell_id
+				if item.rx_node:
+					self.dodag.update_link(item.tx_node, item.rx_node, 'SLT', '++')
+				else:
+					self.dodag.update_node(item.tx_node, 'SLT', '++')
 
 		return commands
 
@@ -527,12 +535,19 @@ class Scheduler(Reflector):
 			#self.commands.append(self.command('post', nb, terms.uri['6TP_CL'], {'so':cb_nb.slot, 'co':cb_nb.channel, 'fd':cb_nb.slotframe_id, 'lo':cb_nb.link_option, 'lt':cb_nb.link_type}))
 
 	def stm_id(self, node_id, metric_id):
-		print "STM ID CALLED!"
+		commands = []
+
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
 		commands.append(self.command('get', node_id, id_appended_uri))
 
-	def stm_value(self, node_id, metric_values):
-		print "NODE: ", node_id, "VALUES: ", metric_values
+		return commands
+
+	def stm_value(self, node_id, payload):
+
+		for item in payload:
+			if dodag.graph.has_edge(node_id.eui_64_ip, item["na"]):
+				dodag.graph[node_id.eui_64_ip][item["na"]]["statistics"] = item["mt"]
+				print item["na"] + " =",dodag.graph.edge[node_id.eui_64_ip][item["na"]]
 
 
 

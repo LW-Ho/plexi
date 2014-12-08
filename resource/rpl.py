@@ -15,10 +15,17 @@ import json
 
 class NodeID(object):
 	def __init__(self, ip="0:0:0:0", port=5684):
-		if isinstance(ip, str) and isinstance(port, int):
-			self.ip = ip
+		if isinstance(ip, str):
+			if ip[0] == '[':
+				self.ip, self.port = ip.split('[')[1].split(']')
+				self.port = self.port.split(':')[1]
+			elif isinstance(port, int):
+				self.ip = ip
+				self.port = port
+			else:
+				raise TypeError('IP address is a string value and the port is an integer')
 			if self.ip.count(':') == 3:
-				self.ip = 'bbbb::' + self.ip  # TODO: bad dirty fix. Fix properly
+				self.ip = 'aaaa::' + self.ip  # TODO: bad dirty fix. Fix properly
 			self.eui_64_ip = ''
 			parts = self.ip.split(':')
 			parts = parts[len(parts)-4 : len(parts)]

@@ -15,12 +15,12 @@ uri = {
 	'6TP_6': "6t/6",
 	'6TP_SF': "6t/6/sf",
 	'6TP_CL': "6t/6/cl",
-	'6TP_SV': "6t/6/cl/ml",
+	'6TP_SV': "6t/6/ml",
     '6TP_SM': "6t/6/sm"
 }
 
 keys = {
-	'SM_ID': "smd",
+	'SM_ID': "md",
     'SF_ID': "fd",
     'CL_ID': "cd",
     'S_OFF': "so",

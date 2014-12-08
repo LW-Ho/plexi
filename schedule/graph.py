@@ -10,6 +10,7 @@ __copyright__ = "Copyright 2014, The RICH Project"
 import networkx as nx
 from gephier import GephiClient
 from util.warn import deprecated
+from util import terms
 
 
 class DoDAG(object):
@@ -21,9 +22,9 @@ class DoDAG(object):
 			try:
 				self.visualizer = GephiClient('http://'+visualize+'/richnet', autoflush=True)
 				self.visualizer.clean()
-				self.root_attrs = {'r':1.0, 'g':0.0, 'b':0.0}
-				self.router_attrs = {'r':0.0, 'g':1.0, 'b':0.0}
-				self.leaf_attrs = {'r':0.0, 'g':0.0, 'b':1.0}
+				self.root_attrs = {'size':120, 'r':1.0, 'g':0.0, 'b':0.0}
+				self.router_attrs = {'size':120, 'r':0.0, 'g':1.0, 'b':0.0}
+				self.leaf_attrs = {'size':120, 'r':0.0, 'g':0.0, 'b':1.0}
 			except:
 				self.visualize = False
 		self.attach_node(root)
@@ -75,7 +76,7 @@ class DoDAG(object):
 						self._visual_motion(child_id)
 						self._visual_motion(neighbor)
 						tmp_attrs = {'parent':'null'}
-						self.visualizer.change_node(child_id, **tmp_attrs)
+						self.visualizer.change_node(str(child_id), **tmp_attrs)
 				elif self.graph[child_id][neighbor]['parent'] == child_id and neighbor == parent_id:
 					self.graph.remove_edge(child_id, neighbor)
 					if self.visualize:
@@ -83,14 +84,14 @@ class DoDAG(object):
 						self._visual_motion(child_id)
 						self._visual_motion(neighbor)
 						tmp_attrs = {'parent':'null'}
-						self.visualizer.change_node(neighbor, *tmp_attrs)
+						self.visualizer.change_node(str(neighbor), *tmp_attrs)
 				elif self.graph[child_id][neighbor]['parent'] == parent_id:
 					return False
 		self.graph.add_edge(child_id, parent_id, parent=parent_id, child=child_id)
 		if self.visualize:
 			self.visualizer.add_edge(str(child_id)+'-'+str(parent_id),str(child_id), str(parent_id), False)
-			tmp_attrs = {'parent':parent_id}
-			self.visualizer.change_node(child_id, **tmp_attrs)
+			tmp_attrs = {'parent':str(parent_id)}
+			self.visualizer.change_node(str(child_id), **tmp_attrs)
 			promote = True
 			for k,v in self.graph[parent_id].items():
 				if 'parent' in v and v['parent'] == parent_id and k != child_id:
@@ -99,6 +100,41 @@ class DoDAG(object):
 			if promote and parent_id != self.root:
 				self.visualizer.change_node(str(parent_id), **self.router_attrs)
 		return True
+
+	def update_link(self, sender, receiver, metric, value):
+		if sender in self.graph.nodes():
+			if metric in terms.keys.keys() and receiver in self.graph[sender]:
+				if 'parent' in self.graph[sender][receiver]:
+					if self.graph[sender][receiver]['parent']==receiver:
+						if metric=='SLT' and value=='++':
+							if 'UP-'+terms.keys[metric] not in self.graph[sender][receiver]:
+								self.graph[sender][receiver]['UP-'+terms.keys[metric]] = 0
+							self.graph[sender][receiver]['UP-'+terms.keys[metric]] = self.graph[sender][receiver]['UP-'+terms.keys[metric]]+1
+						else:
+							self.graph[sender][receiver]['UP-'+terms.keys[metric]] = value
+						tmp_attrs = {'UP-'+terms.keys[metric]: self.graph[sender][receiver]['UP-'+terms.keys[metric]]}
+						self.visualizer.change_edge(str(sender)+'-'+str(receiver), **tmp_attrs)
+					else:
+						if metric=='SLT' and value=='++':
+							if 'DOWN-'+terms.keys[metric] not in self.graph[sender][receiver]:
+								self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] = 0
+							self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] = self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] + 1
+						else:
+							self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] = value
+						tmp_attrs = {'DOWN-'+terms.keys[metric]: self.graph[sender][receiver]['DOWN-'+terms.keys[metric]]}
+					self.visualizer.change_edge(str(receiver)+'-'+str(sender), **tmp_attrs)
+
+	def update_node(self, node_id, metric, value):
+		if node_id in self.graph.nodes():
+			if metric in terms.keys.keys():
+				if metric == 'SLT' and value == '++':
+					if 'BC-'+terms.keys[metric] not in self.graph[node_id]:
+						self.graph[node_id]['BC-'+terms.keys[metric]] = 0
+					self.graph[node_id]['BC-'+terms.keys[metric]] = self.graph[node_id]['BC-'+terms.keys[metric]]+1
+				else:
+					self.graph[node_id]['BC-'+terms.keys[metric]] = value
+				tmp_attrs = {'BC-'+terms.keys[metric]: self.graph[node_id]['BC-'+terms.keys[metric]]}
+				self.visualizer.change_node(str(node_id), **tmp_attrs)
 
 	@deprecated
 	def attach_parent(self, parent_id, child_id):
