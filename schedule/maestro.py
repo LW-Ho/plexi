@@ -44,6 +44,7 @@ class Reflector(object):
 	def start(self):
 		self.commander(self.command('observe', self.root_id, terms.uri['RPL_NL']))
 		self.commander(self.command('observe', self.root_id, terms.uri['RPL_OL']))
+		self.commander(self.command('post', self.root_id, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"}))
 
 	def _decache(self, token):
 		if token:
@@ -183,7 +184,7 @@ class Reflector(object):
 		#old_payload = self.cache[tk]['payload']
 		#frame_name = old_payload['frame']
 		self._decache(tk)
-		commands = self.stm_value(node_id, metric_values)
+		commands = self.stm_value(node_id, payload)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -212,7 +213,7 @@ class Reflector(object):
 					comm.callback = self.receive_cell_id
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self.receive_statistics_metrics_id
-				elif comm.uri.startswith(terms.uri['6TP_SV']):
+				elif comm.uri.startswith(terms.uri['6TP_SV']+"/0"):
 					comm.callback = self.receive_statistics_metrics_value
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self.receive_cell_info
@@ -285,7 +286,7 @@ class Scheduler(Reflector):
 		commands = []
 
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
-		#commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
+		commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
 		for k in self.frames.keys():
 			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
@@ -538,16 +539,21 @@ class Scheduler(Reflector):
 		commands = []
 
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
-		commands.append(self.command('get', node_id, id_appended_uri))
+		commands.append(self.command('observe', node_id, id_appended_uri))
 
 		return commands
 
 	def stm_value(self, node_id, payload):
-
 		for item in payload:
-			if dodag.graph.has_edge(node_id.eui_64_ip, item["na"]):
-				dodag.graph[node_id.eui_64_ip][item["na"]]["statistics"] = item["mt"]
-				print item["na"] + " =",dodag.graph.edge[node_id.eui_64_ip][item["na"]]
+			for key in item.keys():
+				if isinstance(key, unicode):
+					key = key.encode('utf-8')
+				for node in self.dodag.graph.nodes():
+					if node.eui_64_ip == key:
+						key_id = node
+				if self.dodag.graph.has_edge(node_id, key_id): # or self.dodag.graph.has_edge(key, node_id.eui_64_ip):
+					self.dodag.graph[node_id][key_id]["statistics"] = item[key]
+					print node_id.eui_64_ip + " =",self.dodag.graph.edge[node_id][key_id]
 
 
 
