@@ -23,7 +23,7 @@ def usage():
 
 def main(arg_str):
 	lbr = None
-	visualizer = True
+	visualizer = False
 
 	try:
 		if arg_str:

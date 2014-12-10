@@ -7,6 +7,7 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__license__ = "GPL"
 #__status__ = "Production"
 
+from resource import rpl
 
 class Slotframe(object):
 	def __init__(self, name, slots):
@@ -39,7 +40,7 @@ class Slotframe(object):
 	def delete_cell(self, node_id):
 		deleted_cell_container = []
 		for item in self.cell_container:
-			if item.tx_node == node_id or item.rx_node == node_id:
+			if rpl.NodeID(item.tx_node) == node_id or rpl.NodeID(item.rx_node) == node_id: # TODO: remove the rpl.NodeID part. Make the whole software work only with NodeID types
 				deleted_cell_container.append(item)  # add the deleted item to the repsective container
 				self.cell_container.remove(item)  # remove the item from the cell_container
 		return deleted_cell_container

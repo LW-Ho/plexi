@@ -73,6 +73,7 @@ class Reflector(object):
 						self.commander(comm)
 
 	def observe_rpl_children(self, response):
+		print " ---> observe_rpl_children called <---"
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
@@ -83,12 +84,24 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
 		payload = json.loads(parser.clean_payload(response.payload))
-		self._decache(tk)
+		observed_children = []
 		for n in payload:
-			child_id = NodeID(str(n))
-			old_parent = self.dodag.get_parent(child_id)
-			if self.dodag.attach_child(child_id, parent_id):
-				commands = self.inherited(child_id, parent_id, old_parent)
+			observed_children.append(NodeID(str(n)))
+		self._decache(tk)
+
+		dodag_child_list = [child for (child, attributes) in self.dodag.graph[parent_id].items() if attributes['child'] != parent_id]
+		removed_nodes = [item for item in dodag_child_list if item not in observed_children]
+		for n in removed_nodes:
+			if self.dodag.detach_node(n):
+				commands = self.disconnected(n)
+				if commands:
+					for comm in commands:
+						self.commander(comm)
+
+		for k in observed_children:
+			old_parent = self.dodag.get_parent(k)
+			if self.dodag.attach_child(k, parent_id):
+				commands = self.inherited(k, parent_id, old_parent)
 				if commands:
 					for comm in commands:
 						self.commander(comm)
@@ -247,6 +260,8 @@ class Reflector(object):
 	def updated(self):
 		pass
 
+	def disconnected(self, node_id):
+		pass
 
 class Scheduler(Reflector):
 	def __init__(self, net_name, lbr_ip, lbr_port, visualizer):
@@ -277,6 +292,7 @@ class Scheduler(Reflector):
 		logg.info(str(node) + ' popped up')
 
 	def inherited(self, child, parent, old_parent=None):
+		print " ---> inherited called <---"
 		if old_parent:
 			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
 		else:
@@ -287,6 +303,15 @@ class Scheduler(Reflector):
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
 		#commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
+		old_child_list_full = self.dodag.graph.neighbors(parent)
+		for item in old_child_list_full:
+			old_child_list = []
+			tmp = item.eui_64_ip
+			old_child_list.append(tmp)
+
+		print 'children list is:', old_child_list
+
+		#new_child_list = response.payload
 		for k in self.frames.keys():
 			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
 
@@ -334,6 +359,17 @@ class Scheduler(Reflector):
 
 		return commands
 
+
+	def disconnected(self, node_id):
+		commands = []
+		for (name, frame) in self.frames.items():
+			deleted_cells = frame.delete_cell(node_id)
+			for cell in deleted_cells:
+				# delete command
+				to = cell.tx_node if cell.link_option == 1 else cell.rx_node
+				commands.append(self.command('delete', NodeID(to), terms.uri['6TP_CL']+'/'+str(cell.cell_id)))
+
+		return commands
 
 	def framed(self, who, local_name, remote_alias, old_payload):
 		self.frames[local_name].setAliasID(who, remote_alias)
