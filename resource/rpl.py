@@ -15,6 +15,8 @@ import json
 
 class NodeID(object):
 	def __init__(self, ip="0:0:0:0", port=5684):
+		if isinstance(ip, unicode):
+			ip = str(ip.encode('utf-8'))
 		if isinstance(ip, str):
 			if ip[0] == '[':
 				self.ip, self.port = ip.split('[')[1].split(']')
@@ -35,10 +37,17 @@ class NodeID(object):
 			raise TypeError('IP address is a string value and the port is an integer')
 
 	def __eq__(self, other):
-		return self.ip == other.ip and self.port == other.port
+		try:
+			return other is not None and self.ip == other.ip and self.port == other.port
+		except Exception:
+			print 'hooray'
 
 	def __ne__(self, other):
-		return self.ip != other.ip or self.port != other.port
+		try:
+			return other is None or self.ip != other.ip or self.port != other.port
+		except Exception:
+			print 'hooray'
+
 
 	def __repr__(self):
 		return self.__str__()

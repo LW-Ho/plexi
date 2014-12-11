@@ -15,15 +15,31 @@ class Slotframe(object):
 		self.slots = slots
 		self.name = name
 		self.fds = {}   # will contain slotframe_ids in (key : value) format --> (node : sf_id)
-		c_minimal = Cell(0, 0, 0, 0, None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
+		c_minimal = Cell(0, 0, None, None, None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
 		self.cell_container.append(c_minimal)
 
 	def setAliasID(self, node, id):
 		self.fds[node] = id
 
-	def cell(self, so, co, owner):
-		# TODO: return the Cell object with so, co, fd, and tx/rx
-		pass
+	def cell(self, **kwargs):
+		matching_cells = []
+		for i in self.cell_container:
+			if 'slot' in kwargs.keys() and kwargs['slot'] != i.slot:
+				continue
+			if 'channel' in kwargs.keys() and kwargs['channel'] != i.channel:
+				continue
+			if 'link_option' in kwargs.keys() and kwargs['link_option'] != i.link_option:
+				continue
+			if 'cell_id' in kwargs.keys() and kwargs['cell_id'] != i.cell_id:
+				continue
+			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe_id:
+				continue
+			if 'tx_node' in kwargs.keys() and kwargs['tx_node'] != i.tx_node:
+				continue
+			if 'rx_node' in kwargs.keys() and kwargs['rx_node'] != i.rx_node:
+				continue
+			matching_cells.append(i)
+		return matching_cells
 
 	def allocate_to(self, node_id):
 		all_cells = []  #This will contain all the dictionaries with cell information.
@@ -36,14 +52,26 @@ class Slotframe(object):
 
 		return all_cells
 
-
 	def delete_cell(self, node_id):
 		deleted_cell_container = []
 		for item in self.cell_container:
-			if rpl.NodeID(item.tx_node) == node_id or rpl.NodeID(item.rx_node) == node_id: # TODO: remove the rpl.NodeID part. Make the whole software work only with NodeID types
+			if item.tx_node is None and item.rx_node is None:
+				continue
+			elif item.tx_node == node_id and item.rx_node is None:
+				for j in self.cell_container:
+					if j.tx_node is None and j.rx_node is None:
+						continue
+					if j.slot == item.slot and j.channel == item.channel and j.link_option == 9:
+						deleted_cell_container.append(j)  # add the deleted item to the repsective container
 				deleted_cell_container.append(item)  # add the deleted item to the repsective container
-				self.cell_container.remove(item)  # remove the item from the cell_container
+			elif item.tx_node is None and item.rx_node == node_id and item.link_option == 9:
+				deleted_cell_container.append(item)  # add the deleted item to the repsective container
+			elif (item.tx_node == node_id or item.rx_node == node_id) and item.link_option in [1, 2]: # TODO: remove the rpl.NodeID part. Make the whole software work only with NodeID types
+				deleted_cell_container.append(item)  # add the deleted item to the repsective container
+		for dltd in deleted_cell_container:
+			self.cell_container.remove(dltd)
 		return deleted_cell_container
+
 
 
 class Cell(object):

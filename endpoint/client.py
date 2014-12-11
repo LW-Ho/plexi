@@ -64,6 +64,9 @@ class Communicator(object):
 	def OBSERVE(self, to_node, uri, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback)
 
+	# def OVERLOOK(self, to_node, uri, token, callback):
+	# 	reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback)
+
 	def POST(self, to_node, uri, payload, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.POST, uri, token, callback, payload)
 

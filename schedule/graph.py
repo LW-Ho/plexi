@@ -104,41 +104,37 @@ class DoDAG(object):
 	def update_link(self, sender, receiver, metric, value):
 		if sender in self.graph.nodes():
 			if metric in terms.keys.keys() and receiver in self.graph[sender]:
-				if 'parent' in self.graph[sender][receiver]:
-					if self.graph[sender][receiver]['parent']==receiver:
+				if 'parent' in self.graph.edge[sender][receiver]:
+					if self.graph.edge[sender][receiver]['parent']==receiver:
 						if metric=='SLT' and value=='++':
-							if 'UP-'+terms.keys[metric] not in self.graph[sender][receiver]:
-								self.graph[sender][receiver]['UP-'+terms.keys[metric]] = 0
-							self.graph[sender][receiver]['UP-'+terms.keys[metric]] = self.graph[sender][receiver]['UP-'+terms.keys[metric]]+1
+							if 'UP-'+terms.keys[metric] not in self.graph.edge[sender][receiver]:
+								self.graph.edge[sender][receiver]['UP-'+terms.keys[metric]] = 0
+							self.graph.edge[sender][receiver]['UP-'+terms.keys[metric]] = self.graph.edge[sender][receiver]['UP-'+terms.keys[metric]]+1
 						else:
-							self.graph[sender][receiver]['UP-'+terms.keys[metric]] = value
-						tmp_attrs = {'UP-'+terms.keys[metric]: self.graph[sender][receiver]['UP-'+terms.keys[metric]]}
+							self.graph.edge[sender][receiver]['UP-'+terms.keys[metric]] = value
+						tmp_attrs = {'UP-'+terms.keys[metric]: self.graph.edge[sender][receiver]['UP-'+terms.keys[metric]]}
 						self.visualizer.change_edge(str(sender)+'-'+str(receiver), **tmp_attrs)
 					else:
 						if metric=='SLT' and value=='++':
-							if 'DOWN-'+terms.keys[metric] not in self.graph[sender][receiver]:
-								self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] = 0
-							self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] = self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] + 1
+							if 'DOWN-'+terms.keys[metric] not in self.graph.edge[sender][receiver]:
+								self.graph.edge[sender][receiver]['DOWN-'+terms.keys[metric]] = 0
+							self.graph.edge[sender][receiver]['DOWN-'+terms.keys[metric]] = self.graph.edge[sender][receiver]['DOWN-'+terms.keys[metric]] + 1
 						else:
-							self.graph[sender][receiver]['DOWN-'+terms.keys[metric]] = value
-						tmp_attrs = {'DOWN-'+terms.keys[metric]: self.graph[sender][receiver]['DOWN-'+terms.keys[metric]]}
+							self.graph.edge[sender][receiver]['DOWN-'+terms.keys[metric]] = value
+						tmp_attrs = {'DOWN-'+terms.keys[metric]: self.graph.edge[sender][receiver]['DOWN-'+terms.keys[metric]]}
 					self.visualizer.change_edge(str(receiver)+'-'+str(sender), **tmp_attrs)
 
 	def update_node(self, node_id, metric, value):
 		if node_id in self.graph.nodes():
 			if metric in terms.keys.keys():
 				if metric == 'SLT' and value == '++':
-					if 'BC-'+terms.keys[metric] not in self.graph[node_id]:
-						self.graph[node_id]['BC-'+terms.keys[metric]] = 0
-					self.graph[node_id]['BC-'+terms.keys[metric]] = self.graph[node_id]['BC-'+terms.keys[metric]]+1
+					if 'BC-'+terms.keys[metric] not in self.graph.node[node_id]:
+						self.graph.node[node_id]['BC-'+terms.keys[metric]] = 0
+					self.graph.node[node_id]['BC-'+terms.keys[metric]] = self.graph.node[node_id]['BC-'+terms.keys[metric]]+1
 				else:
-					self.graph[node_id]['BC-'+terms.keys[metric]] = value
-				tmp_attrs = {'BC-'+terms.keys[metric]: self.graph[node_id]['BC-'+terms.keys[metric]]}
+					self.graph.node[node_id]['BC-'+terms.keys[metric]] = value
+				tmp_attrs = {'BC-'+terms.keys[metric]: self.graph.node[node_id]['BC-'+terms.keys[metric]]}
 				self.visualizer.change_node(str(node_id), **tmp_attrs)
-
-	@deprecated
-	def attach_parent(self, parent_id, child_id):
-		self.attach_child(child_id, parent_id)
 
 	def detach_node(self, node_id):
 		if node_id in self.graph.nodes():
