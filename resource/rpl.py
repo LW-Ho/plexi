@@ -14,6 +14,7 @@ import json
 
 
 class NodeID(object):
+	prefix = "aaaa"
 	def __init__(self, ip="0:0:0:0", port=5684):
 		if isinstance(ip, unicode):
 			ip = str(ip.encode('utf-8'))
@@ -27,7 +28,7 @@ class NodeID(object):
 			else:
 				raise TypeError('IP address is a string value and the port is an integer')
 			if self.ip.count(':') == 3:
-				self.ip = 'aaaa::' + self.ip  # TODO: bad dirty fix. Fix properly
+				self.ip = NodeID.prefix + '::' + self.ip
 			self.eui_64_ip = ''
 			parts = self.ip.split(':')
 			parts = parts[len(parts)-4 : len(parts)]

@@ -16,11 +16,9 @@ from schedule.slotframe import Slotframe, Cell
 from util import terms, exception
 from txthings import coap
 import logging
-from util import logger
-import string
 
 logg = logging.getLogger('RiSCHER')
-logg.setLevel(logging.INFO)
+logg.setLevel(logging.DEBUG)
 
 
 class Reflector(object):
@@ -32,8 +30,13 @@ class Reflector(object):
 			self.payload = payload
 			self.callback = callback
 
-	def __init__(self, net_name, lbr_ip, lbr_port, visualizer=False):
+		def __str__(self):
+			return '' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
+
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
+		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
+		logg.info("Scheduler started with LBR=" + str(self.root_id))
 		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
@@ -61,8 +64,7 @@ class Reflector(object):
 			tmp = str(sender) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		#response.payload = response.payload.strip('{}')
-		print "MID:", response.mid ,"FROM:", response.remote[0],"NODE LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
+		logg.debug("Observed node list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 		self._decache(tk)
 		for n in payload:
@@ -82,7 +84,7 @@ class Reflector(object):
 			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0],"CHILD LIST:",parser.clean_payload(response.payload) #<-----Print for debugging
+		logg.debug("Observed children list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 
 		observed_children = []
@@ -92,12 +94,9 @@ class Reflector(object):
 		self._decache(tk)
 		dodag_child_list = []
 
-		try:
-			for i in self.dodag.graph.neighbors(parent_id):
-				if 'child' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['child'] != parent_id and 'parent' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['parent'] == parent_id:
-					dodag_child_list.append(i)
-		except Exception:
-			print 'hooray'
+		for i in self.dodag.graph.neighbors(parent_id):
+			if 'child' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['child'] != parent_id and 'parent' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['parent'] == parent_id:
+				dodag_child_list.append(i)
 		removed_nodes = [item for item in dodag_child_list if item not in observed_children]
 		for n in removed_nodes:
 			if self.dodag.detach_node(n):
@@ -123,7 +122,7 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 		frame_alias = payload['fd']
 		old_payload = self.cache[tk]['payload']
@@ -143,7 +142,7 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
@@ -151,7 +150,6 @@ class Reflector(object):
 		so = old_payload['so']
 		co = old_payload['co']
 		self._decache(tk)
-		# TODO: self.frames[frame_name].cell({'slot': so, 'channel': co, 'link_option': old_payload['lo']})
 		commands = self.celled(node_id, so, co, frame_name, cell_cd, old_payload)
 		if commands:
 			for comm in commands:
@@ -169,9 +167,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		payload = json.loads(parser.clean_payload(response.payload))
+		logg.debug("Node " + str(response.remote[0]) + " replied on a cell get/delete with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		self._decache(tk)
-		print(str(node_id) + ' - ' + str(payload))
 
 	def receive_statistics_metrics_id(self, response):
 		tk = self.client.token(response.token)
@@ -182,13 +179,11 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
+		logg.debug("Node " + str(response.remote[0]) + " replied on statistics post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 		metric_id = payload[terms.keys['SM_ID']]
-		#old_payload = self.cache[tk]['payload']
-		#frame_name = old_payload['frame']
 		self._decache(tk)
-		commands = self.stm_id(node_id, metric_id)
+		commands = self.probed(node_id, metric_id)
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -205,8 +200,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		print "MID:", response.mid ,"FROM:", response.remote[0], parser.clean_payload(response.payload) #<---------------------------------Print for debugging
-		payload = ''
+		logg.debug("Observed statistics from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
+		payload = []
 		try:
 			payload = json.loads(parser.clean_payload(response.payload))
 		except Exception:
@@ -220,15 +215,10 @@ class Reflector(object):
 				if endpoint not in self.dodag.graph.nodes():
 					continue
 				for metrics in statistics:
-					for (key,value) in metrics.items():
-						if self.dodag.graph.has_edge(node_id, endpoint):
-							if "statistics" not in self.dodag.graph[node_id][endpoint]:
-								self.dodag.graph[node_id][endpoint]["statistics"] = {}
-							if endpoint not in self.dodag.graph[node_id][endpoint]["statistics"]:
-								self.dodag.graph[node_id][endpoint]["statistics"][endpoint] = {}
-							self.dodag.graph[node_id][endpoint]["statistics"][endpoint][key] = value
-							self.dodag.update_link(node_id, endpoint, key, value)
-							commands = self.stm_value(node_id, self.dodag.graph[node_id][endpoint]["statistics"])
+					for (key, value) in metrics.items():
+						self.dodag.update_link(node_id, endpoint, str(key), value)
+				if self.dodag.graph.has_edge(node_id, endpoint) and 'statistics' in self.dodag.graph.edge[node_id][endpoint]:
+					commands = self.reported(node_id, endpoint, self.dodag.graph.edge[node_id][endpoint]['statistics'])
 		if commands:
 			for comm in commands:
 				self.commander(comm)
@@ -236,8 +226,6 @@ class Reflector(object):
 	def commander(self, comm):
 		if isinstance(comm, self.command):
 			self.token += 1
-			#if [x for x in self.cache.values() if x["to"]==comm.to and x["op"]==comm.op and x["uri"]==comm.uri and x["payload"]==comm.payload]:
-			#	print("bingo")
 			self.cache[self.token] = {'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
 				self.cache[self.token]['payload'] = comm.payload.copy()
@@ -261,7 +249,7 @@ class Reflector(object):
 					comm.callback = self.receive_statistics_metrics_value
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self.receive_cell_info
-			print comm.op,"TO:",comm.to,"URI:",comm.uri,"PAYLOAD:",comm.payload #<----------Print for debugging
+			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
 				self.client.GET(comm.to, comm.uri, self.token, comm.callback)
 			elif comm.op == 'observe':
@@ -272,32 +260,29 @@ class Reflector(object):
 				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
 
 	def popped(self, node):
-		pass
+		raise NotImplementedError()
 
 	def inherited(self, child, parent, old_parent=None):
-		pass
+		raise NotImplementedError()
 
 	def framed(self, who, local_name, remote_alias, old_payload):
-		pass
+		raise NotImplementedError()
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
-		pass
+		raise NotImplementedError()
 
-	def stm_id(self, node_id, metric_id):
-		pass
+	def probed(self, node_id, metric_id):
+		raise NotImplementedError()
 
-	def stm_value(self, node_id, metric_values):
-		pass
-
-	def updated(self):
-		pass
+	def reported(self, node_id, endpoint, metric_values):
+		raise NotImplementedError()
 
 	def disconnected(self, node_id):
-		pass
+		raise NotImplementedError()
 
 class Scheduler(Reflector):
-	def __init__(self, net_name, lbr_ip, lbr_port, visualizer):
-		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, visualizer)
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer):
+		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
 		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
@@ -306,8 +291,8 @@ class Scheduler(Reflector):
 
 	def start(self):
 		super(Scheduler, self).start()
-		f1 = Slotframe("Broadcast-Frame", 201) #Changed values for interaction testing
-		f2 = Slotframe("Unicast-Frame", 101)
+		f1 = Slotframe("Broadcast-Frame", 25)
+		f2 = Slotframe("Unicast-Frame", 21)
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
@@ -379,142 +364,58 @@ class Scheduler(Reflector):
 		return commands
 
 	def disconnected(self, node_id):
+		logg.info(str(node_id) + " was removed from the network")
 		commands = []
 		for (name, frame) in self.frames.items():
 			deleted_cells = frame.delete_cell(node_id)
 			for cell in deleted_cells:
-				# delete command
 				to = cell.tx_node if cell.link_option in [1, 10] else cell.rx_node
 				if to != node_id:
 					commands.append(self.command('delete', to, terms.uri['6TP_CL']+'/'+str(cell.cell_id)))
-
+			del frame.fds[node_id]
 		return commands
 
 	def framed(self, who, local_name, remote_alias, old_payload):
+		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
 		self.frames[local_name].setAliasID(who, remote_alias)
 		commands = []
 
-		parent = NodeID()
-		child = NodeID()
+		parent = self.dodag.get_parent(who)
 
-		for pair in self.pairs:
-			if pair[0].ip == who.ip:
-				child = pair[1]
-				parent = pair[0]
-			elif pair[1].ip == who.ip:
-				parent = pair[0]
-				child = pair[1]
+		for c in self.frames[local_name].cell_container:
+			if (c.tx_node == who and c.rx_node == None and c.link_option == 10) or (c.tx_node == who and parent is not None and c.rx_node == parent and c.link_option == 1) or (c.rx_node == who and c.tx_node == None and c.link_option == 9) or (c.rx_node == who and parent is not None and c.tx_node == parent and c.link_option == 2):
+				c.slotframe_id = remote_alias
+				#print str(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+			elif c.pending == True and (c.tx_node == who or c.rx_node == who):
+				c.pending = False
+				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
 
-		if who == self.root_id and local_name == "Broadcast-Frame":
-			for item in self.frames[local_name].cell_container:
-				if item.link_option == 10 and item.tx_node == who:
-					item.slotframe_id = self.frames[local_name].fds[who]
-
-				if item.link_option == 9 and item.rx_node == who:
-					item.slotframe_id = self.frames[local_name].fds[self.root_id]
-
-			for item in self.frames[local_name].cell_container:
-				if item.link_option == 10 and item.tx_node == who and item.slotframe_id != None:
-					commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-
-			for item in self.frames[local_name].cell_container:
-				if item.link_option == 9 and item.rx_node == who and item.slotframe_id != None:
-					#if [x for x in commands if x.to==item.rx_node and x.op=='post' and x.uri==terms.uri['6TP_CL'] and x.payload=={'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}]:
-					#   print("bingo")
-					commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-
-		#elif who == self.root_id and self.rb_flag == 1:
-		#	for item in self.frames[local_name].cell_container:
-		#		if item.slotframe_id != None and item.rx_node == self.root_id:
-		#			item.slotframe_id = self.frames[local_name].fds[who]
-		#			commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-
-		else:
-			#pass
-			for item in self.frames[local_name].cell_container:
-				if item.rx_node is None and item.tx_node is None:
-					continue
-				if item.slotframe_id == None:
-					if item.link_option == 1 and item.tx_node == who:
-						item.slotframe_id = self.frames[local_name].fds[who]
-						if item.rx_node == parent:
-							commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
-						elif item.tx_node == parent:
-							self.commands_waiting.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
-						for related in self.frames[local_name].cell_container:
-							if related.rx_node is None and related.tx_node is None:
-								continue
-							if related.tx_node == who and related.link_option == 2 and related.slot == item.slot and related.channel == item.channel and related.rx_node in self.frames[local_name].fds.keys() and self.frames[local_name].fds[related.rx_node] is not None:
-								related.slotframe_id = self.frames[local_name].fds[related.rx_node]
-								commands.append(self.command('post', related.rx_node, terms.uri['6TP_CL'],{'so':related.slot, 'co':related.channel, 'fd':related.slotframe_id, 'frame': local_name, 'lo': related.link_option, 'lt': related.link_type}))
-
-					elif item.link_option == 2 and item.rx_node == who:
-						item.slotframe_id = self.frames[local_name].fds[who]
-						commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
-						for related in self.frames[local_name].cell_container:
-							if related.rx_node is None and related.tx_node is None:
-								continue
-							if related.rx_node == who and related.link_option == 1 and related.slot == item.slot and related.channel == item.channel and related.tx_node in self.frames[local_name].fds.keys() and self.frames[local_name].fds[related.tx_node] is not None:
-								related.slotframe_id = self.frames[local_name].fds[related.tx_node]
-								self.commands_waiting.append(self.command('post', related.tx_node, terms.uri['6TP_CL'],{'so':related.slot, 'co':related.channel, 'fd':related.slotframe_id, 'frame': local_name, 'lo': related.link_option, 'lt': related.link_type, 'na': related.rx_node.eui_64_ip}))
-
-					elif item.link_option == 10 and item.tx_node == who:
-						item.slotframe_id = self.frames[local_name].fds[who]
-						commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-						for related in self.frames[local_name].cell_container:
-							if related.rx_node is None and related.tx_node is None:
-								continue
-							if related.tx_node == None and related.link_option == 9 and related.slot == item.slot and related.channel == item.channel and related.rx_node in self.frames[local_name].fds.keys() and self.frames[local_name].fds[related.rx_node] is not None:
-								related.slotframe_id = self.frames[local_name].fds[related.rx_node]
-								commands.append(self.command('post', related.rx_node, terms.uri['6TP_CL'], {'so':related.slot, 'co':related.channel, 'fd':related.slotframe_id,'frame': local_name, 'lo':related.link_option, 'lt':related.link_type}))
-
-					elif item.link_option == 9 and item.rx_node == who:
-						item.slotframe_id = self.frames[local_name].fds[who]
-						commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-
-					else:
-						pass
-
-			#for item in self.frames[local_name].cell_container:
-				# if item.link_option == 2 and item.rx_node == who and item.slotframe_id != None:
-				# 	commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt':item.link_type}))
-
-				# elif item.link_option == 1 and item.tx_node == who and item.slotframe_id != None and item.rx_node == parent:
-				# 	commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
-
-				# elif item.link_option == 1 and item.tx_node == who and item.slotframe_id != None:
-				# 	self.commands_waiting.append(self.command('post', item.tx_node, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': local_name, 'lo': item.link_option, 'lt': item.link_type, 'na': item.rx_node.eui_64_ip}))
-
-				# elif item.link_option == 10 and item.tx_node == who and item.slotframe_id != None:
-				# 	commands.append(self.command('post', item.tx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-
-				# elif item.link_option == 9 and item.rx_node == who and item.rx_node != self.root_id and item.slotframe_id != None:
-				# 	commands.append(self.command('post', item.rx_node, terms.uri['6TP_CL'], {'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id,'frame': local_name, 'lo':item.link_option, 'lt':item.link_type}))
-
-
-		return commands
-
-#		return [self.command('post', who, terms.uri['6TP_CL'],{'so': 1, 'co': 2, 'fd': remote_alias, 'frame': local_name, 'op': 3, 'ct': 4})]
-		# create a broadcast cell for the root, append the created cell at broadcast_cell_container and post the cell to the root's slotframe
+ 		return commands
 
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
+		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame_name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		commands = []
 
-		for item in self.commands_waiting:
-			if item.payload['na'] == who.eui_64_ip:
-				commands.append(item)
-				self.commands_waiting.remove(item)
+		parent = self.dodag.get_parent(who)
 
-		#print old_payload
-		# TODO: self.frames[frame_name].cell(so, co, node_id).id = cell_cd
 		for item in self.frames[frame_name].cell_container:
-			if item.slot == slotoffs and item.channel == channeloffs and item.link_option == old_payload["lo"]:
-				item.cell_id = remote_cell_id
-				if item.rx_node:
-					self.dodag.update_link(item.tx_node, item.rx_node, 'SLT', '++')
-				else:
-					self.dodag.update_node(item.tx_node, 'SLT', '++')
+			if item.slot == slotoffs and item.channel == channeloffs:
+				if item.link_option == old_payload["lo"] and item.cell_id is None:
+					item.cell_id = remote_cell_id
+					if item.rx_node:
+						self.dodag.update_link(item.tx_node, item.rx_node, 'SLT', '++')
+					else:
+						self.dodag.update_node(item.tx_node, 'SLT', '++')
+				elif item.cell_id is None and ((item.rx_node == parent and item.tx_node == None and item.link_option == 9) or (item.rx_node == parent and item.tx_node == who and item.link_option == 2) or (item.rx_node == who and item.tx_node == parent and item.link_option == 1)):
+					if item.slotframe_id is None and parent in self.frames[frame_name].fds:
+						item.slotframe_id = self.frames[frame_name].fds[parent]
+					elif item.slotframe_id is None and parent not in self.frames[frame_name].fds:
+						item.pending = True
+						continue
+					commands.append(self.command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
+					# print str(self.command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
 
 		return commands
 
@@ -593,7 +494,8 @@ class Scheduler(Reflector):
 
 			#self.commands.append(self.command('post', nb, terms.uri['6TP_CL'], {'so':cb_nb.slot, 'co':cb_nb.channel, 'fd':cb_nb.slotframe_id, 'lo':cb_nb.link_option, 'lt':cb_nb.link_type}))
 
-	def stm_id(self, node_id, metric_id):
+	def probed(self, node_id, metric_id):
+		logg.info(str(node_id) + " installed statistics observer with id=" + str(metric_id))
 		commands = []
 
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
@@ -601,5 +503,6 @@ class Scheduler(Reflector):
 
 		return commands
 
-	def stm_value(self, node_id, statistics):
-		print statistics
+	def reported(self, node_id, endpoint, statistics):
+		if node_id in statistics:
+			logg.info(str(node_id) + " for " + str(endpoint) + " reported >> " + str(statistics[node_id]))

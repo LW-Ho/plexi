@@ -15,21 +15,23 @@ import sys
 from schedule.maestro import Scheduler
 
 def usage():
-	print('Command:\trischer.py [-h][-b[-v]]')
+	print('Command:\trischer.py [-h][-b[-p][-v]]')
 	print('Options:')
-	print('\t-h,\t--help=\tthis usage message')
-	print('\t-b,\t--LBR=\tIPv6 address of Low-Power and Lossy Network Border Router (port:5684 assumed)')
+	print('\t-h,\t--help\t\t\tthis usage message')
+	print('\t-b,\t--LBR=\t\t\tIPv6 address of Low-Power and Lossy Network Border Router e.g. 215:8d00:52:68c7 or aaaa::215:8d00:52:68c7 (port:5684 assumed)')
+	print('\t-p,\t--prefix=\t\t4-character address prefix e.g. aaaa')
 	print('\t-v,\t--visualizer=\tIPv4:port address of the graph visualizer server')
 
 def main(arg_str):
 	lbr = None
 	visualizer = False
+	prefix = None
 
 	try:
 		if arg_str:
-			opts, args = getopt.getopt(arg_str, "hb:v:", ["help", "LBR=", "visualizer="])
+			opts, args = getopt.getopt(arg_str, "hb:v:p:", ["help", "LBR=", "visualizer=", "prefix="])
 		else:
-			opts, args = getopt.getopt(sys.argv[1:], "hb:v:", ["help", "LBR=", "visualizer="])
+			opts, args = getopt.getopt(sys.argv[1:], "hb:v:p:", ["help", "LBR=", "visualizer=", "prefix="])
 	except getopt.GetoptError as err:
 		print(str(err))
 		usage()
@@ -38,8 +40,21 @@ def main(arg_str):
 	for o, a in opts:
 		if o in ("-b", "--LBR"):
 			lbr = a
+			parts = lbr.split(':')
+			if len(parts)==6:
+				if prefix is not None and parts[0] != a:
+					print("Cannot use -p option when the LBR address has a prefix already")
+					usage()
+					return 2
+				prefix = parts[0]
 		elif o in ("-v", "--visualizer"):
 			visualizer = a
+		elif o in ("-p", "--prefix"):
+			if prefix is not None and prefix != a:
+				print("Cannot use -p option when the LBR address has a prefix already")
+				usage()
+				return 2
+			prefix = a
 		elif o in ("-h", "--help"):
 			usage()
 			return
@@ -52,7 +67,12 @@ def main(arg_str):
 		usage()
 		return 2
 
-	sch = Scheduler('RICHNET', lbr, 5684, visualizer if visualizer else False)
+	if prefix is None:
+		print("LBR address is missing a prefix. Specify the address as e.g. aaaa::215:8d00:52:68c7 or use the -p option")
+		usage()
+		return 2
+
+	sch = Scheduler('RICHNET', lbr, 5684, prefix, visualizer if visualizer else False)
 	sch.start()
 	return 0
 

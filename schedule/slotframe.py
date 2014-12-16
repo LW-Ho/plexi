@@ -84,7 +84,7 @@ class Cell(object):
 		self.slot = so
 		self.link_type = lt
 		self.link_option = lo
-
+		self.pending = False
 
 	@property
 	def id(self):

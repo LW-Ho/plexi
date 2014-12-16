@@ -51,7 +51,7 @@ class Communicator(object):
 		else:
 			reactor.listenUDP(0, protocol)
 		if operation == coap.OBSERVE:
-			request.opt.observe = 1
+			request.opt.observe = 1 #TODO:Changed, not compliant to the documents
 			requester = coap.Requester(protocol, request, observeCallback=callback, block1Callback=None, block2Callback=None, observeCallbackArgs=None, block1CallbackArgs=None, block2CallbackArgs=None, observeCallbackKeywords=None, block1CallbackKeywords=None, block2CallbackKeywords=None)
 		else:
 			requester = coap.Requester(protocol, request, observeCallback=None, block1Callback=None, block2Callback=None, observeCallbackArgs=None, block1CallbackArgs=None, block2CallbackArgs=None, observeCallbackKeywords=None, block1CallbackKeywords=None, block2CallbackKeywords=None)

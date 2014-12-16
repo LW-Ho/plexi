@@ -30,9 +30,9 @@ keys = {
 	'TNA'  : "na",
 	'MTRC' : "mt",
 	'WNDW' : "wi",
-	'RSSI' : "rssi",
+	'RSSI' : "RSSI",
 	'PDR'  : "pdr",
-	'PRR'  : "prr",
-	'LQI'  : "lq",
+	'PRR'  : "PRR",
+	'LQI'  : "LQI",
 	'SLT'  : 'SLOT'
 }

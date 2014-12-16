@@ -56,7 +56,6 @@ class JSONClient(object):
 			self.data = ""
 		
 	def _send(self, data):
-		print 'passing'
 		pass
 		
 	def add_node(self, id, flush=True, **attributes):
@@ -74,7 +73,6 @@ class JSONClient(object):
 		attributes['source'] = source
 		attributes['target'] = target
 		attributes['directed'] = directed
-		attributes['weight'] = 2
 		self.data += json.dumps(self.peh({"ae":{id:attributes}})) + '\r\n'
 		if(self.autoflush): self.flush()
 	
@@ -93,11 +91,13 @@ class GephiClient(JSONClient):
 	def __init__(self, url='http://127.0.0.1:8080/workspace0', autoflush=False):
 		JSONClient.__init__(self, autoflush)
 		self.url = url
-		
+		urllib2.urlopen(urllib2.Request(self.url))
+
 	def _send(self, data):
 		conn = urllib2.urlopen(self.url+ '?operation=updateGraph', data)
 		return conn.read()
-	
+
+
 class GephiFileHandler(JSONClient):
 	
 	def __init__(self, out, **params):
