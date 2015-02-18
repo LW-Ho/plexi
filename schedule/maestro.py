@@ -10,7 +10,7 @@ __copyright__ = "Copyright 2014, The RICH Project"
 from endpoint.client import Communicator, LazyCommunicator
 from schedule.graph import DoDAG
 from resource.rpl import NodeID
-from util import parser
+from util import parser, logger
 import json
 from schedule.slotframe import Slotframe, Cell
 from util import terms, exception
