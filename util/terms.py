@@ -36,3 +36,8 @@ keys = {
 	'LQI'  : "LQI",
 	'SLT'  : 'SLOT'
 }
+
+cells = {
+	'broadcast',
+	'unicast'
+}

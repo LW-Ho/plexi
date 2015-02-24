@@ -18,7 +18,7 @@ class Slotframe(object):
 		c_minimal = Cell(0, 0, None, None, None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
 		self.cell_container.append(c_minimal)
 
-	def setAliasID(self, node, id):
+	def set_alias_id(self, node, id):
 		self.fds[node] = id
 
 	def cell(self, **kwargs):
@@ -83,7 +83,7 @@ class Cell(object):
 		self.rx_node = rx
 		self.slot = so
 		self.link_type = lt
-		self.link_option = lo
+		self.link_option = lo #For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
 		self.pending = False
 
 	@property

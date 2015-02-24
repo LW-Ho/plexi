@@ -12,7 +12,7 @@ __copyright__ = "Copyright 2014, The RICH Project"
 import getopt
 import sys
 
-from schedule.maestro import Scheduler
+from schedule.maestro import LazyScheduler
 
 def usage():
 	print('Command:\trischer.py [-h][-b[-p][-v]]')
@@ -72,7 +72,7 @@ def main(arg_str):
 		usage()
 		return 2
 
-	sch = Scheduler('RICHNET', lbr, 5684, prefix, visualizer if visualizer else False)
+	sch = LazyScheduler('RICHNET', lbr, 5684, prefix, visualizer if visualizer else False)
 	sch.start()
 	return 0
 

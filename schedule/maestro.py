@@ -36,7 +36,7 @@ class Reflector(object):
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
-		logg.info("Scheduler started with LBR=" + str(self.root_id))
+		logg.info("LazyScheduler started with LBR=" + str(self.root_id))
 		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
@@ -280,9 +280,87 @@ class Reflector(object):
 	def disconnected(self, node_id):
 		raise NotImplementedError()
 
+
 class Scheduler(Reflector):
+
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer):
 		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
+		self.slot_counter = 2
+		self.channel_counter = 0
+		self.b_slot_counter = 2
+		self.pairs = []
+
+	def start(self):
+		super(Scheduler, self).start()
+		f1 = Slotframe("Broadcast-Frame", 25)
+		f2 = Slotframe("Unicast-Frame", 21)
+		self.frames[f1.name] = f1
+		self.frames[f2.name] = f2
+		self.rb_flag = 0
+		for k in self.frames.keys():
+			self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
+		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
+		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
+		self.client.start()     # this has to be the last line of the start function ... ALWAYS
+
+	def get_remote_frame(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
+		assert isinstance(node, NodeID)
+		assert isinstance(slotframe, Slotframe)
+		pass # TODO self.commands.append(self.command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
+
+	def set_remote_frame(self, node, slotframe):
+		assert isinstance(node, NodeID)
+		assert isinstance(slotframe, Slotframe)
+		self.commands.append(self.command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
+
+	def framed(self, who, local_name, remote_alias, old_payload):
+		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
+		self.frames[local_name].set_alias_id(who, remote_alias)
+		commands = []
+
+		parent = self.dodag.get_parent(who)
+
+		for c in self.frames[local_name].cell_container:
+			if (c.tx_node == who and c.rx_node == None and c.link_option == 10) or (c.tx_node == who and parent is not None and c.rx_node == parent and c.link_option == 1) or (c.rx_node == who and c.tx_node == None and c.link_option == 9) or (c.rx_node == who and parent is not None and c.tx_node == parent and c.link_option == 2):
+				c.slotframe_id = remote_alias
+				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+			elif c.pending == True and (c.tx_node == who or c.rx_node == who):
+				c.pending = False
+				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+
+ 		return commands
+
+	def get_remote_cell(self, node, cell): # TODO: observe (make sense when distributed scheduling in place)
+		pass
+
+	def set_remote_cell(self, source, destination, slotframe, slot, channel):
+		assert isinstance(source, NodeID)
+		assert destination is None or isinstance(destination, NodeID)
+		assert isinstance(slotframe, Slotframe)
+		assert channel <= 16
+		assert slot < slotframe.slots
+		slotframe.cell_container
+		if not cell.pending:
+			self.commands.append(self.command('post', node, terms.uri['6TP_CL'], {'so':cell.slot, 'co':cell.channel, 'fd':cell.slotframe_id,'frame': slotframe.name, 'lo':cell.link_option, 'lt':cell.link_type}))
+
+	def get_remote_children(self, node, observe=False):
+		assert isinstance(node, NodeID)
+		self.commander(self.command('get' if not observe else 'observe', node, terms.uri['RPL_OL']))
+
+	def get_remote_statistics(self, node, statistics, observe=False):
+		pass
+
+	def disconnect_node(self, node):
+		pass
+
+	def popped(self, node):
+		logg.info(str(node) + ' popped up')
+
+
+
+class LazyScheduler(Reflector):
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer):
+		super(LazyScheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
 		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
@@ -290,7 +368,7 @@ class Scheduler(Reflector):
 		self.commands_waiting = []
 
 	def start(self):
-		super(Scheduler, self).start()
+		super(LazyScheduler, self).start()
 		f1 = Slotframe("Broadcast-Frame", 25)
 		f2 = Slotframe("Unicast-Frame", 21)
 		self.frames[f1.name] = f1
@@ -377,7 +455,7 @@ class Scheduler(Reflector):
 
 	def framed(self, who, local_name, remote_alias, old_payload):
 		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
-		self.frames[local_name].setAliasID(who, remote_alias)
+		self.frames[local_name].set_alias_id(who, remote_alias)
 		commands = []
 
 		parent = self.dodag.get_parent(who)

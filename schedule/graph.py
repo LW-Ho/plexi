@@ -179,6 +179,9 @@ class DoDAG(object):
 			return True
 		return False
 
+	def get_node_depth(self, node_id):
+		return nx.shortest_path(self.graph, node_id, self.root).__len__() #TODO rewrite based on the parent-child relationship
+
 	def flush_to_visualizer(self, visualize):
 		try:
 			self.visualizer = GephiClient('http://'+visualize, autoflush=True)
