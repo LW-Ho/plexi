@@ -24,6 +24,8 @@ class Slotframe(object):
 	def cell(self, **kwargs):
 		matching_cells = []
 		for i in self.cell_container:
+			if 'owner' in kwargs.keys() and kwargs['owner'] != i.owner:
+				continue
 			if 'slot' in kwargs.keys() and kwargs['slot'] != i.slot:
 				continue
 			if 'channel' in kwargs.keys() and kwargs['channel'] != i.channel:
@@ -75,8 +77,9 @@ class Slotframe(object):
 
 
 class Cell(object):
-	def __init__(self, so, co, tx, rx, fd, lt, lo):
+	def __init__(self, owner, so, co, tx, rx, fd, lt, lo):
 		self.cell_id = None
+		self.owner = owner
 		self.slotframe_id = fd
 		self.channel = co
 		self.tx_node = tx

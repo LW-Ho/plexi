@@ -38,6 +38,15 @@ class DoDAG(object):
 					return neighbor
 		return None
 
+	def get_children(self, parent_id):
+		if parent_id in self.graph.nodes():
+			children = []
+			for neighbor in self.graph.neighbors(parent_id):
+				if 'child' in self.graph.edge[parent_id][neighbor] and self.graph.edge[parent_id][neighbor]['child'] == neighbor:
+					children.append(neighbor)
+			return children
+		return None
+
 	def attach_node(self, node_id):
 		if node_id not in self.graph.nodes():
 			self.graph.add_node(node_id)

@@ -333,13 +333,56 @@ class Scheduler(Reflector):
 	def get_remote_cell(self, node, cell): # TODO: observe (make sense when distributed scheduling in place)
 		pass
 
-	def set_remote_cell(self, source, destination, slotframe, slot, channel):
-		assert isinstance(source, NodeID)
-		assert destination is None or isinstance(destination, NodeID)
+	def set_remote_link(self, slot, channel, source, destination, target, slotframe):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
-		slotframe.cell_container
+		assert isinstance(target, NodeID) and target in slotframe.fds
+		assert isinstance(source, NodeID)
+		assert destination is None or isinstance(destination, NodeID)
+
+		found_tx = None
+		found_rx = []
+		for c in slotframe.cell_container:
+			if c.slot == slot and c.channel == channel:
+				if destination is not None and c.tx_node == source and c.rx_node == destination:
+					if c.link_option == 1:
+						found_tx = c
+					elif c.link_option == 2:
+						found_rx.append(c)
+				elif destination is None:
+					parent = self.dodag.get_parent(source)
+					neighbors = [parent]+self.dodag.get_children(source) if parent else self.dodag.get_children(source)
+					if c.tx_node == source and c.rx_node is None and c.link_option == 9:
+						found_tx = c
+					elif c.tx_node == source and c.rx_node in neighbors and c.link_option == 10:
+						found_rx.append(c)
+
+		if destination is not None and found_tx is None and not found_rx:
+			found_tx = Cell(target, slot, channel, source, destination, None, 0, 1)
+			slotframe.cell_container.append(found_tx)
+			found_rx.append(Cell(target, slot, channel, source, destination, None, 0, 2))
+			slotframe.cell_container.append(found_rx)
+		elif destination is None:
+			if found_tx is None:
+				found_tx = Cell(target, slot, channel, source, None, None, 1, 9)           # create a broadcast cell
+				slotframe.cell_container.append(found_tx)                # adds the created cell to the broadcast_slotframe
+			if source == target:
+				parent = self.dodag.get_parent(source)
+				found = False
+				for neighbor in [parent]+self.dodag.get_children(source) if parent else self.dodag.get_children(source):
+					for cell in found_rx:
+						if cell.owner == target:
+							found = True
+							break
+					found_rx = Cell(slot, channel, None, self.dodag.get_parent(source), slotframe.fds[self.dodag.get_parent(source)], 1, 9)
+					slotframe.cell_container.append(found_rx)
+					for item in slotframe.cell_container:
+						if item.link_option != 7 and item.tx_node and item.tx_node == self.dodag.get_parent(source):
+							cb_nb2 = Cell(item.slot, 0, None, tx_node, None, 1, 9)
+					self.frames["Broadcast-Frame"].cell_container.append(cb_nb2)
+
+
 		if not cell.pending:
 			self.commands.append(self.command('post', node, terms.uri['6TP_CL'], {'so':cell.slot, 'co':cell.channel, 'fd':cell.slotframe_id,'frame': slotframe.name, 'lo':cell.link_option, 'lt':cell.link_type}))
 
@@ -544,33 +587,14 @@ class LazyScheduler(Reflector):
 		self.frames["Broadcast-Frame"].cell_container.append(cb_brd)                # adds the created cell to the broadcast_slotframe
 
 
-		# BroadCast Cell is being posted
-		#print cb.__dict__
-		#commands.append(self.command('post',tx_node ,terms.uri['6TP_CL'],{'so':cb_brd.slot, 'co':cb_brd.channel, 'fd':cb_brd.slotframe_id, 'lo':cb_brd.link_option, 'lt':cb_brd.link_type}))
-
-		#parent = self.dodag.get_parent(tx_node)
-
 		cb_nb = Cell(self.b_slot_counter, 0, None, self.dodag.get_parent(tx_node), sf_id, 1, 9)
 		self.frames["Broadcast-Frame"].cell_container.append(cb_nb)
 		for item in self.frames["Broadcast-Frame"].cell_container:
-			#print self.dodag.get_parent(tx_node), type(self.dodag.get_parent(tx_node))
-			#print item.tx_node, type(item.tx_node)
 			if item.link_option != 7 and item.tx_node and item.tx_node == self.dodag.get_parent(tx_node):
 				cb_nb2 = Cell(item.slot, 0, None, tx_node, None, 1, 9)
 				self.frames["Broadcast-Frame"].cell_container.append(cb_nb2)
-
-
-		#for nb in self.dodag.graph.neighbors(tx_node):
-		#	cb_nb = Cell(self.b_slot_counter, 0, None, nb, sf_id, 1, 9)
-		#	self.frames["Broadcast-Frame"].cell_container.append(cb_nb)
-		#	for item in self.frames["Broadcast-Frame"].cell_container:
-		#		if item.tx_node == nb:
-		#			cb_nb2 = Cell(item.slot, 0, None, tx_node, None, 1, 9)
-		#			self.frames["Broadcast-Frame"].cell_container.append(cb_nb2)
-
 		self.b_slot_counter = self.b_slot_counter + 1
 
-			#self.commands.append(self.command('post', nb, terms.uri['6TP_CL'], {'so':cb_nb.slot, 'co':cb_nb.channel, 'fd':cb_nb.slotframe_id, 'lo':cb_nb.link_option, 'lt':cb_nb.link_type}))
 
 	def probed(self, node_id, metric_id):
 		logg.info(str(node_id) + " installed statistics observer with id=" + str(metric_id))
