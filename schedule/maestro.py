@@ -92,7 +92,7 @@ class Reflector(object):
 			observed_children.append(NodeID(str(n)))
 
 		self._decache(tk)
-		dodag_child_list = []
+		dodag_child_list = [] #comment
 
 		for i in self.dodag.graph.neighbors(parent_id):
 			if 'child' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['child'] != parent_id and 'parent' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['parent'] == parent_id:
