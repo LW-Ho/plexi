@@ -18,6 +18,11 @@ class Slotframe(object):
 		c_minimal = Cell(0, 0, None, None, None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
 		self.cell_container.append(c_minimal)
 
+	def get_alias_id(self, node):
+		if node in self.fds:
+			return self.fds[node]
+		return None
+
 	def set_alias_id(self, node, id):
 		self.fds[node] = id
 

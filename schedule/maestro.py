@@ -337,7 +337,7 @@ class Scheduler(Reflector):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
-		assert isinstance(target, NodeID) and target in slotframe.fds
+		assert destination is None or isinstance(target, NodeID)
 		assert isinstance(source, NodeID)
 		assert destination is None or isinstance(destination, NodeID)
 
@@ -347,44 +347,32 @@ class Scheduler(Reflector):
 			if c.slot == slot and c.channel == channel:
 				if destination is not None and c.tx_node == source and c.rx_node == destination:
 					if c.link_option == 1:
-						found_tx = c
+						found_tx = c.owner
 					elif c.link_option == 2:
-						found_rx.append(c)
+						found_rx.append(c.owner)
 				elif destination is None:
 					parent = self.dodag.get_parent(source)
 					neighbors = [parent]+self.dodag.get_children(source) if parent else self.dodag.get_children(source)
 					if c.tx_node == source and c.rx_node is None and c.link_option == 9:
-						found_tx = c
+						found_tx = c.owner
 					elif c.tx_node == source and c.rx_node in neighbors and c.link_option == 10:
-						found_rx.append(c)
+						found_rx.append(c.owner)
 
-		if destination is not None and found_tx is None and not found_rx:
-			found_tx = Cell(target, slot, channel, source, destination, None, 0, 1)
-			slotframe.cell_container.append(found_tx)
-			found_rx.append(Cell(target, slot, channel, source, destination, None, 0, 2))
-			slotframe.cell_container.append(found_rx)
+		if destination is not None:
+			if not found_tx and (target is None or target == source):
+				slotframe.cell_container.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 0, 1))
+			if not found_tx and (target is None or target == destination):
+				slotframe.cell_container.append(Cell(destination, slot, channel, source, destination, slotframe.get_alias_id(destination), 0, 2))
 		elif destination is None:
-			if found_tx is None:
-				found_tx = Cell(target, slot, channel, source, None, None, 1, 9)           # create a broadcast cell
-				slotframe.cell_container.append(found_tx)                # adds the created cell to the broadcast_slotframe
-			if source == target:
-				parent = self.dodag.get_parent(source)
-				found = False
-				for neighbor in [parent]+self.dodag.get_children(source) if parent else self.dodag.get_children(source):
-					for cell in found_rx:
-						if cell.owner == target:
-							found = True
-							break
-					found_rx = Cell(slot, channel, None, self.dodag.get_parent(source), slotframe.fds[self.dodag.get_parent(source)], 1, 9)
-					slotframe.cell_container.append(found_rx)
-					for item in slotframe.cell_container:
-						if item.link_option != 7 and item.tx_node and item.tx_node == self.dodag.get_parent(source):
-							cb_nb2 = Cell(item.slot, 0, None, tx_node, None, 1, 9)
-					self.frames["Broadcast-Frame"].cell_container.append(cb_nb2)
-
-
-		if not cell.pending:
-			self.commands.append(self.command('post', node, terms.uri['6TP_CL'], {'so':cell.slot, 'co':cell.channel, 'fd':cell.slotframe_id,'frame': slotframe.name, 'lo':cell.link_option, 'lt':cell.link_type}))
+			if target is None or target == source:
+				if not found_tx:
+					slotframe.cell_container.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 1, 9))
+				neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
+				tmp = [item for item in neighbors if item not in found_rx]
+				for neighbor in tmp:
+					slotframe.cell_container.append(Cell(neighbor, slot, channel, source, destination, slotframe.get_alias_id(neighbor), 1, 10))
+			elif target and target!=source and target not in found_tx:
+				slotframe.cell_container.append(Cell(target, slot, channel, source, destination, slotframe.get_alias_id(target), 1, 10))
 
 	def get_remote_children(self, node, observe=False):
 		assert isinstance(node, NodeID)
