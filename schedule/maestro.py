@@ -258,6 +258,8 @@ class Reflector(object):
 				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), self.token, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
+			return self.token
+		return None
 
 	def popped(self, node):
 		raise NotImplementedError()
@@ -333,13 +335,16 @@ class Scheduler(Reflector):
 	def get_remote_cell(self, node, cell): # TODO: observe (make sense when distributed scheduling in place)
 		pass
 
-	def set_remote_link(self, slot, channel, source, destination, target, slotframe):
+	def set_remote_link(self, slot, channel, slotframe, source, destination, target=None):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
 		assert destination is None or isinstance(target, NodeID)
 		assert isinstance(source, NodeID)
 		assert destination is None or isinstance(destination, NodeID)
+
+		if target and target != source and target != destination:
+			return False
 
 		found_tx = None
 		found_rx = []
@@ -351,27 +356,26 @@ class Scheduler(Reflector):
 					elif c.link_option == 2:
 						found_rx.append(c.owner)
 				elif destination is None:
-					parent = self.dodag.get_parent(source)
-					neighbors = [parent]+self.dodag.get_children(source) if parent else self.dodag.get_children(source)
-					if c.tx_node == source and c.rx_node is None and c.link_option == 9:
-						found_tx = c.owner
-					elif c.tx_node == source and c.rx_node in neighbors and c.link_option == 10:
-						found_rx.append(c.owner)
+					if c.tx_node == source and c.rx_node is None:
+						if c.link_option == 9:
+							found_tx = c.owner
+						elif c.link_option == 10:
+							found_rx.append(c.owner)
 
 		if destination is not None:
 			if not found_tx and (target is None or target == source):
 				slotframe.cell_container.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 0, 1))
-			if not found_tx and (target is None or target == destination):
+			if destination not in found_rx and (target is None or target == destination):
 				slotframe.cell_container.append(Cell(destination, slot, channel, source, destination, slotframe.get_alias_id(destination), 0, 2))
 		elif destination is None:
+			neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
 			if target is None or target == source:
 				if not found_tx:
 					slotframe.cell_container.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 1, 9))
-				neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
 				tmp = [item for item in neighbors if item not in found_rx]
 				for neighbor in tmp:
 					slotframe.cell_container.append(Cell(neighbor, slot, channel, source, destination, slotframe.get_alias_id(neighbor), 1, 10))
-			elif target and target!=source and target not in found_tx:
+			elif target and target != source and target in neighbors and target not in found_rx:
 				slotframe.cell_container.append(Cell(target, slot, channel, source, destination, slotframe.get_alias_id(target), 1, 10))
 
 	def get_remote_children(self, node, observe=False):
