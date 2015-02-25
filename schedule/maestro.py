@@ -55,6 +55,8 @@ class Reflector(object):
 			if sent_msg['op'] != 'observe':
 				del self.cache[token]
 
+# defines the observer for the nodes in the network
+# this observer is being installed only to the boarder_router
 	def observe_rpl_nodes(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -75,6 +77,8 @@ class Reflector(object):
 					for comm in commands:
 						self.commander(comm)
 
+# defines the observer of the children of a parent_node
+# this observer is being installed to every node of the network
 	def observe_rpl_children(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -92,7 +96,7 @@ class Reflector(object):
 			observed_children.append(NodeID(str(n)))
 
 		self._decache(tk)
-		dodag_child_list = [] #comment
+		dodag_child_list = []
 
 		for i in self.dodag.graph.neighbors(parent_id):
 			if 'child' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['child'] != parent_id and 'parent' in self.dodag.graph[parent_id][i] and self.dodag.graph[parent_id][i]['parent'] == parent_id:
@@ -113,6 +117,7 @@ class Reflector(object):
 					for comm in commands:
 						self.commander(comm)
 
+# 
 	def receive_slotframe_id(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -283,28 +288,32 @@ class Reflector(object):
 class Scheduler(Reflector):
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer):
 		super(Scheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
-		self.slot_counter = 2
-		self.channel_counter = 0
-		self.b_slot_counter = 2
+		self.slot_counter = 2       #sets the initial value of timeslot counter for unicast cells
+		self.channel_counter = 0    #sets the initial valueof channel counter for unicast cells
+		self.b_slot_counter = 2     #sets the initial valueof timeslot counter for broadcast cells
 		self.pairs = []
 		self.commands_waiting = []
 
 	def start(self):
 		super(Scheduler, self).start()
-		f1 = Slotframe("Broadcast-Frame", 25)
-		f2 = Slotframe("Unicast-Frame", 21)
+		f1 = Slotframe("Broadcast-Frame", 25)   #defines the size of the BroadCast SlotFrame
+		f2 = Slotframe("Unicast-Frame", 21)     #defines the size of the UniCast SlotFrame
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
 		for k in self.frames.keys():
 			self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
-		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
-		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
+		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)           #creates a broadcast cell for the boarder_router at (1,0) cell
+		self.frames['Broadcast-Frame'].cell_container.append(cb_root)   #adds the cb_root cell to the cell container (where all the braodcast cells are being kept)
 		self.client.start()     # this has to be the last line of the start function ... ALWAYS
 
+#popped function notifies when a new node joins the network
+#by outputting "<new_node ID>  popped up"
 	def popped(self, node):
 		logg.info(str(node) + ' popped up')
 
+# inherited function handles the installation of the proper slotframes
+# to the pair of nodes of the established link
 	def inherited(self, child, parent, old_parent=None):
 		if old_parent:
 			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
@@ -313,18 +322,23 @@ class Scheduler(Reflector):
 
 		commands = []
 
+		#installation of child and statistics observers to the child_node
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
 		commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
+# installs the created slotframes to the child node
+# it is assumed that the parent has allready his slotframes installed
 		for k in self.frames.keys():
 			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
 
 		c_flag = False
 
+# checks if there is space for Broadcast Cells to the Broadcast SlotFrame
 		if self.b_slot_counter >= self.frames["Broadcast-Frame"].slots:
 					print("out of broadcast cells")
 					return False
 
+# makes sure that parent and child have the same slotframe ID for the same type of SlotFrame
 		if parent not in self.frames["Broadcast-Frame"].fds:
 			sf_id = None
 		else:
@@ -363,6 +377,7 @@ class Scheduler(Reflector):
 
 		return commands
 
+# handles the case of a LEAF_node disconnects from the network
 	def disconnected(self, node_id):
 		logg.info(str(node_id) + " was removed from the network")
 		commands = []
@@ -375,6 +390,7 @@ class Scheduler(Reflector):
 			del frame.fds[node_id]
 		return commands
 
+# handles the installation of the slotframes to a node
 	def framed(self, who, local_name, remote_alias, old_payload):
 		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
 		self.frames[local_name].setAliasID(who, remote_alias)
