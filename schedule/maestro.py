@@ -117,7 +117,7 @@ class Reflector(object):
 					for comm in commands:
 						self.commander(comm)
 
-# 
+# receives slotframe_id (send from node) as a result to a slotframe POST
 	def receive_slotframe_id(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -138,6 +138,7 @@ class Reflector(object):
 			for comm in commands:
 				self.commander(comm)
 
+#receives cell_id (send from node) as a result to a cell POST
 	def receive_cell_id(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -228,6 +229,7 @@ class Reflector(object):
 			for comm in commands:
 				self.commander(comm)
 
+# determines which function will be called regarding the used URI
 	def commander(self, comm):
 		if isinstance(comm, self.command):
 			self.token += 1
@@ -264,9 +266,13 @@ class Reflector(object):
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
 
+#popped function notifies when a new node joins the network
+#by outputting "<new_node ID>  popped up"
 	def popped(self, node):
 		raise NotImplementedError()
 
+# inherited function handles the installation of the proper slotframes
+# to the pair of nodes of the established link
 	def inherited(self, child, parent, old_parent=None):
 		raise NotImplementedError()
 
@@ -282,6 +288,7 @@ class Reflector(object):
 	def reported(self, node_id, endpoint, metric_values):
 		raise NotImplementedError()
 
+# handles the case of a node disconnects from the network
 	def disconnected(self, node_id):
 		raise NotImplementedError()
 
@@ -307,13 +314,9 @@ class Scheduler(Reflector):
 		self.frames['Broadcast-Frame'].cell_container.append(cb_root)   #adds the cb_root cell to the cell container (where all the braodcast cells are being kept)
 		self.client.start()     # this has to be the last line of the start function ... ALWAYS
 
-#popped function notifies when a new node joins the network
-#by outputting "<new_node ID>  popped up"
 	def popped(self, node):
 		logg.info(str(node) + ' popped up')
 
-# inherited function handles the installation of the proper slotframes
-# to the pair of nodes of the established link
 	def inherited(self, child, parent, old_parent=None):
 		if old_parent:
 			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
@@ -326,32 +329,34 @@ class Scheduler(Reflector):
 		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
 		commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
-# installs the created slotframes to the child node
-# it is assumed that the parent has allready his slotframes installed
+		# installation of the created slotframes to the child node
+		# it is assumed that the parent has allready his slotframes installed
 		for k in self.frames.keys():
 			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
 
 		c_flag = False
 
-# checks if there is space for Broadcast Cells to the Broadcast SlotFrame
+		# checks if there is space for Broadcast Cells to the Broadcast SlotFrame
 		if self.b_slot_counter >= self.frames["Broadcast-Frame"].slots:
 					print("out of broadcast cells")
 					return False
 
-# makes sure that parent and child have the same slotframe ID for the same type of SlotFrame
+		# makes sure that parent and child have the same slotframe ID
 		if parent not in self.frames["Broadcast-Frame"].fds:
 			sf_id = None
 		else:
 			sf_id = self.frames["Broadcast-Frame"].fds[parent]
 
-		self.schedule_broadcast(child, sf_id)
+		self.schedule_broadcast(child, sf_id)	#calls the function for creating the needed broadcast cells
 
+		# checks if there is space for Unicast Cells to the Unicast SlotFrame
 		while c_flag == False:
 			c_flag = self.check_unicast_conflict(child, parent)
 			if self.slot_counter >= self.frames["Unicast-Frame"].slots:
 				print("ERROR: We are out of slots!")
 				return False
 
+		# makes sure that parent and child have the same slotframe ID
 		if parent not in self.frames["Unicast-Frame"].fds:
 			sf_id = None
 		else:
@@ -371,13 +376,12 @@ class Scheduler(Reflector):
 		else:
 			sf_id = self.frames["Unicast-Frame"].fds[parent]
 
-		self.schedule_unicast(parent, child, sf_id)
+		self.schedule_unicast(parent, child, sf_id)		#calls the function for creating the needed unicast cells
 
 		self.pairs.append((parent,child))
 
 		return commands
 
-# handles the case of a LEAF_node disconnects from the network
 	def disconnected(self, node_id):
 		logg.info(str(node_id) + " was removed from the network")
 		commands = []
