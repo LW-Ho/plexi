@@ -48,3 +48,10 @@ class MilestoneQueue:
 			self.last_milestone = set()
 			return True
 		return False
+
+	def __len__(self):
+		c_items = 0
+		for i in self.items:
+			if not isinstance(i, set):
+				c_items += 1
+		return c_items

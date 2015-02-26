@@ -16,22 +16,28 @@ from schedule.slotframe import Slotframe, Cell
 from util import terms, exception
 from txthings import coap
 import logging
+from util import queue
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
 
+class Command(object):
+
+	token = 0
+	def __init__(self, op, to, uri, payload=None, callback=None):
+		self.id = Command.token
+		Command.token += 1
+		self.op = op
+		self.to = to
+		self.uri = uri
+		self.payload = payload
+		self.callback = callback
+
+	def __str__(self):
+		return str(id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
+
 
 class Reflector(object):
-	class command(object):
-		def __init__(self, op, to, uri, payload=None, callback=None):
-			self.op = op
-			self.to = to
-			self.uri = uri
-			self.payload = payload
-			self.callback = callback
-
-		def __str__(self):
-			return '' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
 
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
 		NodeID.prefix = prefix
@@ -45,9 +51,9 @@ class Reflector(object):
 		self.token_buffer = []
 
 	def start(self):
-		self.commander(self.command('observe', self.root_id, terms.uri['RPL_NL']))
-		self.commander(self.command('observe', self.root_id, terms.uri['RPL_OL']))
-		self.commander(self.command('post', self.root_id, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"}))
+		#self.commander(self.Command('observe', self.root_id, terms.uri['RPL_NL']))
+		self.commander(self.Command('observe', self.root_id, terms.uri['RPL_OL']))
+		#self.commander(self.Command('post', self.root_id, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"}))
 
 	def _decache(self, token):
 		if token:
@@ -224,11 +230,10 @@ class Reflector(object):
 				self.commander(comm)
 
 	def commander(self, comm):
-		if isinstance(comm, self.command):
-			self.token += 1
-			self.cache[self.token] = {'op': comm.op, 'to': comm.to, 'uri': comm.uri}
+		if isinstance(comm, self.Command):
+			self.cache[comm.id] = {'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
-				self.cache[self.token]['payload'] = comm.payload.copy()
+				self.cache[comm.id]['payload'] = comm.payload.copy()
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
 					if comm.uri == terms.uri['6TP_SF']:
 						comm.payload = {'ns': self.frames[comm.payload['frame']].slots}
@@ -251,14 +256,14 @@ class Reflector(object):
 					comm.callback = self.receive_cell_info
 			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
-				self.client.GET(comm.to, comm.uri, self.token, comm.callback)
+				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
 			elif comm.op == 'observe':
-				self.client.OBSERVE(comm.to, comm.uri, self.token, comm.callback)
+				self.client.OBSERVE(comm.to, comm.uri, comm.id, comm.callback)
 			elif comm.op == 'post':
-				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), self.token, comm.callback)
+				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
 			elif comm.op == 'delete':
-				self.client.DELETE(comm.to, comm.uri, self.token, comm.callback)
-			return self.token
+				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
+			return comm.id
 		return None
 
 	def popped(self, node):
@@ -300,7 +305,7 @@ class Scheduler(Reflector):
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
 		for k in self.frames.keys():
-			self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
+			self.commander(self.Command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
 		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
 		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
 		self.client.start()     # this has to be the last line of the start function ... ALWAYS
@@ -308,12 +313,16 @@ class Scheduler(Reflector):
 	def get_remote_frame(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
 		assert isinstance(slotframe, Slotframe)
-		pass # TODO self.commands.append(self.command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
+		pass # TODO self.commands.append(self.Command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
 
 	def set_remote_frame(self, node, slotframe):
 		assert isinstance(node, NodeID)
 		assert isinstance(slotframe, Slotframe)
-		self.commands.append(self.command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
+		q = queue.MilestoneQueue()
+		comm = self.Command('post', node, terms.uri['6TP_SF'], {'frame': slotframe})
+		q.push(comm.id, comm)
+		q.bank()
+		return q
 
 	def framed(self, who, local_name, remote_alias, old_payload):
 		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
@@ -325,10 +334,10 @@ class Scheduler(Reflector):
 		for c in self.frames[local_name].cell_container:
 			if (c.tx_node == who and c.rx_node == None and c.link_option == 10) or (c.tx_node == who and parent is not None and c.rx_node == parent and c.link_option == 1) or (c.rx_node == who and c.tx_node == None and c.link_option == 9) or (c.rx_node == who and parent is not None and c.tx_node == parent and c.link_option == 2):
 				c.slotframe_id = remote_alias
-				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+				commands.append(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
 			elif c.pending == True and (c.tx_node == who or c.rx_node == who):
 				c.pending = False
-				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+				commands.append(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
 
  		return commands
 
@@ -342,6 +351,8 @@ class Scheduler(Reflector):
 		assert destination is None or isinstance(target, NodeID)
 		assert isinstance(source, NodeID)
 		assert destination is None or isinstance(destination, NodeID)
+
+		q = queue.MilestoneQueue()
 
 		if target and target != source and target != destination:
 			return False
@@ -361,26 +372,43 @@ class Scheduler(Reflector):
 							found_tx = c.owner
 						elif c.link_option == 10:
 							found_rx.append(c.owner)
-
+		cells = []
 		if destination is not None:
+			depth_groups = {}
 			if not found_tx and (target is None or target == source):
-				slotframe.cell_container.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 0, 1))
+				cells.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 0, 1))
 			if destination not in found_rx and (target is None or target == destination):
-				slotframe.cell_container.append(Cell(destination, slot, channel, source, destination, slotframe.get_alias_id(destination), 0, 2))
+				cells.append(Cell(destination, slot, channel, source, destination, slotframe.get_alias_id(destination), 0, 2))
 		elif destination is None:
 			neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
 			if target is None or target == source:
 				if not found_tx:
-					slotframe.cell_container.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 1, 9))
+					cells.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 1, 9))
 				tmp = [item for item in neighbors if item not in found_rx]
 				for neighbor in tmp:
-					slotframe.cell_container.append(Cell(neighbor, slot, channel, source, destination, slotframe.get_alias_id(neighbor), 1, 10))
+					cells.append(Cell(neighbor, slot, channel, source, destination, slotframe.get_alias_id(neighbor), 1, 10))
 			elif target and target != source and target in neighbors and target not in found_rx:
-				slotframe.cell_container.append(Cell(target, slot, channel, source, destination, slotframe.get_alias_id(target), 1, 10))
+				cells.append(Cell(target, slot, channel, source, destination, slotframe.get_alias_id(target), 1, 10))
+
+		depth_groups = {}
+		for c in cells:
+			slotframe.cell_container.append(c)
+			comm = self.Command('post', c.owner, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': slotframe.name, 'lo':c.link_option, 'lt':c.link_type})
+			depth = self.dodag.get_node_depth(c.owner)
+			if depth not in depth_groups:
+				depth_groups[depth] = [comm]
+			else:
+				depth_groups[depth].append(comm)
+		for j in sorted(depth_groups.keys(), reverse=True):
+			for k in depth_groups[j]:
+				q.push(k.id, k)
+			q.bank()
+
+		return q
 
 	def get_remote_children(self, node, observe=False):
 		assert isinstance(node, NodeID)
-		self.commander(self.command('get' if not observe else 'observe', node, terms.uri['RPL_OL']))
+		self.commander(self.Command('get' if not observe else 'observe', node, terms.uri['RPL_OL']))
 
 	def get_remote_statistics(self, node, statistics, observe=False):
 		pass
@@ -410,7 +438,7 @@ class LazyScheduler(Reflector):
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
 		for k in self.frames.keys():
-			self.commander(self.command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
+			self.commander(self.Command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
 		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
 		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
 		self.client.start()     # this has to be the last line of the start function ... ALWAYS
@@ -426,11 +454,11 @@ class LazyScheduler(Reflector):
 
 		commands = []
 
-		commands.append(self.command('observe', child, terms.uri['RPL_OL']))
-		commands.append(self.command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
+		commands.append(self.Command('observe', child, terms.uri['RPL_OL']))
+		commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
 		for k in self.frames.keys():
-			commands.append(self.command('post', child, terms.uri['6TP_SF'], {'frame': k}))
+			commands.append(self.Command('post', child, terms.uri['6TP_SF'], {'frame': k}))
 
 		c_flag = False
 
@@ -484,7 +512,7 @@ class LazyScheduler(Reflector):
 			for cell in deleted_cells:
 				to = cell.tx_node if cell.link_option in [1, 10] else cell.rx_node
 				if to != node_id:
-					commands.append(self.command('delete', to, terms.uri['6TP_CL']+'/'+str(cell.cell_id)))
+					commands.append(self.Command('delete', to, terms.uri['6TP_CL']+'/'+str(cell.cell_id)))
 			del frame.fds[node_id]
 		return commands
 
@@ -498,11 +526,11 @@ class LazyScheduler(Reflector):
 		for c in self.frames[local_name].cell_container:
 			if (c.tx_node == who and c.rx_node == None and c.link_option == 10) or (c.tx_node == who and parent is not None and c.rx_node == parent and c.link_option == 1) or (c.rx_node == who and c.tx_node == None and c.link_option == 9) or (c.rx_node == who and parent is not None and c.tx_node == parent and c.link_option == 2):
 				c.slotframe_id = remote_alias
-				#print str(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
-				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+				#print str(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+				commands.append(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
 			elif c.pending == True and (c.tx_node == who or c.rx_node == who):
 				c.pending = False
-				commands.append(self.command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
+				commands.append(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
 
  		return commands
 
@@ -527,8 +555,8 @@ class LazyScheduler(Reflector):
 					elif item.slotframe_id is None and parent not in self.frames[frame_name].fds:
 						item.pending = True
 						continue
-					commands.append(self.command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
-					# print str(self.command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
+					commands.append(self.Command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
+					# print str(self.Command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
 
 		return commands
 
@@ -545,8 +573,8 @@ class LazyScheduler(Reflector):
 			print("ERROR: We are out of channels!")
 			return False
 
-		#self.commands.append(self.command('post',tx_node ,terms.uri['6TP_CL'],{'so':ct.slot, 'co':ct.channel, 'fd':ct.slotframe_id, 'lo':ct.link_option, 'lt':ct.link_type}))
-		#self.commands.append(self.command('post',rx_node ,terms.uri['6TP_CL'],{'so':cr.slot, 'co':cr.channel, 'fd':cr.slotframe_id, 'lo':cr.link_option, 'lt':cr.link_type}))
+		#self.commands.append(self.Command('post',tx_node ,terms.uri['6TP_CL'],{'so':ct.slot, 'co':ct.channel, 'fd':ct.slotframe_id, 'lo':ct.link_option, 'lt':ct.link_type}))
+		#self.commands.append(self.Command('post',rx_node ,terms.uri['6TP_CL'],{'so':cr.slot, 'co':cr.channel, 'fd':cr.slotframe_id, 'lo':cr.link_option, 'lt':cr.link_type}))
 
 	def check_unicast_conflict(self, child, parent):
 
@@ -593,7 +621,7 @@ class LazyScheduler(Reflector):
 		commands = []
 
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
-		commands.append(self.command('observe', node_id, id_appended_uri))
+		commands.append(self.Command('observe', node_id, id_appended_uri))
 
 		return commands
 

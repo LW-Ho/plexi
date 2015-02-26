@@ -102,7 +102,7 @@ class Cell(object):
 	def id(self, cd):
 		self.cell_id = cd
 
-	def getID(self):  #Maybe a function like this gets the CellId assigned by 6top? Can include the POST command and reply will be the ID.
+	def getID(self):  #Maybe a function like this gets the CellId assigned by 6top? Can include the POST Command and reply will be the ID.
 		pass
 
 	def getInfo(self, cell_id):
