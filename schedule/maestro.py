@@ -17,12 +17,12 @@ from util import terms, exception
 from txthings import coap
 import logging
 from util import queue
+from util.warn import deprecated
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
 
 class Command(object):
-
 	token = 0
 	def __init__(self, op, to, uri, payload=None, callback=None):
 		self.id = Command.token
@@ -42,13 +42,13 @@ class Reflector(object):
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
-		logg.info("LazyScheduler started with LBR=" + str(self.root_id))
+		logg.info("Scheduler started with LBR=" + str(self.root_id))
 		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
-		self.token = 0
 		self.cache = {}
-		self.token_buffer = []
+		self.sessions = {}
+		self.count_sessions = 0
 
 	def start(self):
 		#self.commander(self.Command('observe', self.root_id, terms.uri['RPL_NL']))
@@ -61,6 +61,7 @@ class Reflector(object):
 			if sent_msg['op'] != 'observe':
 				del self.cache[token]
 
+	@deprecated
 	def observe_rpl_nodes(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -88,14 +89,28 @@ class Reflector(object):
 		parent_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			session = self.sessions[self.cache[tk]["session"]]
+			session.achieved(self.cache[tk]["id"])
+			if len(session) > 0:
+				comm = session.pop()
+				while comm:
+					self.commander(comm, self.cache[tk]["session"])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
+		#TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
 		logg.debug("Observed children list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 
 		observed_children = []
 		for n in payload:
 			observed_children.append(NodeID(str(n)))
+
+		session = self.sessions[self.cache[tk]["session"]]
+		session.achieved(self.cache[tk]["id"])
+		if len(session) > 0:
+			comm = session.pop()
+			while comm:
+				self.commander(comm, self.cache[tk]["session"])
 
 		self._decache(tk)
 		dodag_child_list = []
@@ -106,18 +121,24 @@ class Reflector(object):
 		removed_nodes = [item for item in dodag_child_list if item not in observed_children]
 		for n in removed_nodes:
 			if self.dodag.detach_node(n):
-				commands = self.disconnected(n)
-				if commands:
-					for comm in commands:
-						self.commander(comm)
+				session = self.disconnected(n)
+				if len(session)>0:
+					self.count_sessions += 1
+					self.sessions[self.count_sessions] = session
+					comm = self.sessions[self.count_sessions].pop()
+					while comm:
+						self.commander(comm, self.count_sessions)
 
 		for k in observed_children:
 			old_parent = self.dodag.get_parent(k)
 			if self.dodag.attach_child(k, parent_id):
-				commands = self.inherited(k, parent_id, old_parent)
-				if commands:
-					for comm in commands:
-						self.commander(comm)
+				session = self.connected(k, parent_id, old_parent)
+				if len(session)>0:
+					self.count_sessions += 1
+					self.sessions[self.count_sessions] = session
+					comm = self.sessions[self.count_sessions].pop()
+					while comm:
+						self.commander(comm, self.count_sessions)
 
 	def receive_slotframe_id(self, response):
 		tk = self.client.token(response.token)
@@ -126,6 +147,12 @@ class Reflector(object):
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			session = self.sessions[self.cache[tk]["session"]]
+			session.achieved(self.cache[tk]["id"])
+			if len(session) > 0:
+				comm = session.pop()
+				while comm:
+					self.commander(comm, self.cache[tk]["session"])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
@@ -133,11 +160,22 @@ class Reflector(object):
 		frame_alias = payload['fd']
 		old_payload = self.cache[tk]['payload']
 		frame_name = old_payload['frame']
+
+		session = self.sessions[self.cache[tk]["session"]]
+		session.achieved(self.cache[tk]["id"])
+		if len(session) > 0:
+			comm = session.pop()
+			while comm:
+				self.commander(comm, self.cache[tk]["session"])
+
 		self._decache(tk)
-		commands = self.framed(node_id, frame_name, frame_alias, old_payload)
-		if commands:
-			for comm in commands:
-				self.commander(comm)
+		session = self.framed(node_id, frame_name, frame_alias, old_payload)
+		if len(session)>0:
+			self.count_sessions += 1
+			self.sessions[self.count_sessions] = session
+			comm = self.sessions[self.count_sessions].pop()
+			while comm:
+				self.commander(comm, self.count_sessions)
 
 	def receive_cell_id(self, response):
 		tk = self.client.token(response.token)
@@ -146,6 +184,12 @@ class Reflector(object):
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			session = self.sessions[self.cache[tk]["session"]]
+			session.achieved(self.cache[tk]["id"])
+			if len(session) > 0:
+				comm = session.pop()
+				while comm:
+					self.commander(comm, self.cache[tk]["session"])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
@@ -155,11 +199,22 @@ class Reflector(object):
 		frame_name = old_payload['frame']
 		so = old_payload['so']
 		co = old_payload['co']
+
+		session = self.sessions[self.cache[tk]["session"]]
+		session.achieved(self.cache[tk]["id"])
+		if len(session) > 0:
+			comm = session.pop()
+			while comm:
+				self.commander(comm, self.cache[tk]["session"])
+
 		self._decache(tk)
-		commands = self.celled(node_id, so, co, frame_name, cell_cd, old_payload)
-		if commands:
-			for comm in commands:
-				self.commander(comm)
+		session = self.celled(node_id, so, co, frame_name, cell_cd, old_payload)
+		if len(session)>0:
+			self.count_sessions += 1
+			self.sessions[self.count_sessions] = session
+			comm = self.sessions[self.count_sessions].pop()
+			while comm:
+				self.commander(comm, self.count_sessions)
 
 	def receive_cell_info(self, response):
 		tk = self.client.token(response.token)
@@ -229,9 +284,9 @@ class Reflector(object):
 			for comm in commands:
 				self.commander(comm)
 
-	def commander(self, comm):
+	def commander(self, comm, session):
 		if isinstance(comm, self.Command):
-			self.cache[comm.id] = {'op': comm.op, 'to': comm.to, 'uri': comm.uri}
+			self.cache[comm.id] = {'session': session, 'id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
 				self.cache[comm.id]['payload'] = comm.payload.copy()
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
@@ -263,13 +318,11 @@ class Reflector(object):
 				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
-			return comm.id
-		return None
 
 	def popped(self, node):
 		raise NotImplementedError()
 
-	def inherited(self, child, parent, old_parent=None):
+	def connected(self, child, parent, old_parent=None):
 		raise NotImplementedError()
 
 	def framed(self, who, local_name, remote_alias, old_payload):
@@ -374,7 +427,6 @@ class Scheduler(Reflector):
 							found_rx.append(c.owner)
 		cells = []
 		if destination is not None:
-			depth_groups = {}
 			if not found_tx and (target is None or target == source):
 				cells.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 0, 1))
 			if destination not in found_rx and (target is None or target == destination):
@@ -446,7 +498,7 @@ class LazyScheduler(Reflector):
 	def popped(self, node):
 		logg.info(str(node) + ' popped up')
 
-	def inherited(self, child, parent, old_parent=None):
+	def connected(self, child, parent, old_parent=None):
 		if old_parent:
 			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
 		else:
