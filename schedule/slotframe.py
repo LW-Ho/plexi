@@ -7,26 +7,24 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__license__ = "GPL"
 #__status__ = "Production"
 
-from resource import rpl
-
 class Slotframe(object):
 	def __init__(self, name, slots):
-		self.cell_container = []  # Will contain Cell objects assigned to this slotframe.
-		self.slots = slots
-		self.name = name
-		self.fds = {}   # will contain slotframe_ids in (key : value) format --> (node : sf_id)
-		c_minimal = Cell(0, 0, None, None, None, 0, 7)  # TODO: do all the slotframes have the same minimal cell? Wouldn't that bring more conflicts?
+		self.cell_container = []	# Cell container of this slotframe
+		self.slots = slots			# Size of this slotframe in number of slots
+		self.name = name			# Scheduler-assigned reference name of this slotframe
+		self.fds = {}   			# Node-assigned ids of this slotframe in (key : value) format --> (node : sf_id)
+		c_minimal = Cell(None, 0, 0, None, None, None, 0, 7)
 		self.cell_container.append(c_minimal)
 
 	def get_alias_id(self, node):
-		if node in self.fds:
+		if node in self.fds.keys():
 			return self.fds[node]
 		return None
 
 	def set_alias_id(self, node, id):
 		self.fds[node] = id
 
-	def cell(self, **kwargs):
+	def get_cells_similar_to(self, **kwargs):
 		matching_cells = []
 		for i in self.cell_container:
 			if 'owner' in kwargs.keys() and kwargs['owner'] != i.owner:
@@ -48,33 +46,18 @@ class Slotframe(object):
 			matching_cells.append(i)
 		return matching_cells
 
-	def allocate_to(self, node_id):
-		all_cells = []  #This will contain all the dictionaries with cell information.
-
+	def get_cells_of(self, node_id):
+		all_cells = []
 		for item in self.cell_container:
-
-			if item.tx_node == node_id or item.rx_node == node_id:
-				#cell_info = item.__dict__
+			if item.owner == node_id:
 				all_cells.append(item)
-
 		return all_cells
 
-	def delete_cell(self, node_id):
+	def delete_links_of(self, node_id):
 		deleted_cell_container = []
 		for item in self.cell_container:
-			if item.tx_node is None and item.rx_node is None:
-				continue
-			elif item.tx_node == node_id and item.rx_node is None:
-				for j in self.cell_container:
-					if j.tx_node is None and j.rx_node is None:
-						continue
-					if j.slot == item.slot and j.channel == item.channel and j.link_option == 9:
-						deleted_cell_container.append(j)  # add the deleted item to the repsective container
-				deleted_cell_container.append(item)  # add the deleted item to the repsective container
-			elif item.tx_node is None and item.rx_node == node_id and item.link_option == 9:
-				deleted_cell_container.append(item)  # add the deleted item to the repsective container
-			elif (item.tx_node == node_id or item.rx_node == node_id) and item.link_option in [1, 2]: # TODO: remove the rpl.NodeID part. Make the whole software work only with NodeID types
-				deleted_cell_container.append(item)  # add the deleted item to the repsective container
+			if item.owner == node_id or item.tx_node == node_id or item.rx_node == node_id:
+				deleted_cell_container.append(item)
 		for dltd in deleted_cell_container:
 			self.cell_container.remove(dltd)
 		return deleted_cell_container
@@ -82,17 +65,17 @@ class Slotframe(object):
 
 
 class Cell(object):
-	def __init__(self, owner, so, co, tx, rx, fd, lt, lo):
-		self.cell_id = None
-		self.owner = owner
-		self.slotframe_id = fd
-		self.channel = co
+	def __init__(self, node, so, co, tx, rx, fd, lt, lo):
+		self.cell_id = None		# Cel ID as set by the owner
+		self.owner = node		# The node to which this cell belongs to
+		self.slotframe_id = fd	# The local frame id (that of the owner), the cell belongs to
+		self.channel = co		# Channel offset
+		self.slot = so			# Slot offset
 		self.tx_node = tx
 		self.rx_node = rx
-		self.slot = so
 		self.link_type = lt
-		self.link_option = lo #For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
-		self.pending = False
+		self.link_option = lo 	# For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
+		self.pending = False # TODO: is it needed?
 
 	@property
 	def id(self):
@@ -102,12 +85,73 @@ class Cell(object):
 	def id(self, cd):
 		self.cell_id = cd
 
-	def getID(self):  #Maybe a function like this gets the CellId assigned by 6top? Can include the POST Command and reply will be the ID.
-		pass
+	@property
+	def owner(self):
+		return self.owner
 
-	def getInfo(self, cell_id):
-		# returns all info about the cell with given id.
-		pass
+	@owner.setter
+	def owner(self, node):
+		self.owner = node
 
-	def delete_cell(self, node_id):
-		pass
+	@property
+	def slotframe(self):
+		return self.slotframe_id
+
+	@owner.setter
+	def slotframe(self, frame):
+		self.slotframe_id = frame
+
+	@property
+	def channel(self):
+		return self.channel
+
+	@owner.setter
+	def channel(self, channel_offset):
+		self.channel = channel_offset
+
+	@property
+	def slot(self):
+		return self.slot
+
+	@owner.setter
+	def slot(self, slot_offset):
+		self.slot = slot_offset
+
+	@property
+	def tx(self):
+		return self.tx_node
+
+	@owner.setter
+	def tx(self, tx_node):
+		self.tx_node = tx_node
+
+	@property
+	def rx(self):
+		return self.rx_node
+
+	@owner.setter
+	def rx(self, rx_node):
+		self.rx_node = rx_node
+
+	@property
+	def type(self):
+		return self.link_type
+
+	@owner.setter
+	def type(self, lt):
+		self.link_type = lt
+
+	@property
+	def option(self):
+		return self.link_option
+
+	@owner.setter
+	def option(self, lo):
+		self.link_option = lo
+
+	def __str__(self):
+		ownership = self.owner+'/'+self.slotframe+'/'+self.id
+		coordinates = '['+self.slot+','+self.channel+']'
+		link = self.tx+'->'+(self.rx if self.rx else 'ALL')
+		properties = '{'+self.type+','+self.option+'}'
+		return ownership+':'+coordinates+':'+link+':'+properties

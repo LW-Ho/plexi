@@ -57,6 +57,7 @@ class Communicator(object):
 			requester = coap.Requester(protocol, request, observeCallback=None, block1Callback=None, block2Callback=None, observeCallbackArgs=None, block1CallbackArgs=None, block2CallbackArgs=None, observeCallbackKeywords=None, block1CallbackKeywords=None, block2CallbackKeywords=None)
 		requester.deferred.addCallback(callback)
 		self.tickets[requester.app_request.token] = token
+		self.start()
 
 	def GET(self, to_node, uri, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback)

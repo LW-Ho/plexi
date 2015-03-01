@@ -42,7 +42,7 @@ class DoDAG(object):
 		if parent_id in self.graph.nodes():
 			children = []
 			for neighbor in self.graph.neighbors(parent_id):
-				if 'child' in self.graph.edge[parent_id][neighbor] and self.graph.edge[parent_id][neighbor]['child'] == neighbor:
+				if 'child' in self.graph.edge[parent_id][neighbor] and self.graph.edge[parent_id][neighbor]['child'] == neighbor and 'parent' in self.dodag.graph[parent_id][neighbor] and self.dodag.graph[parent_id][neighbor]['parent'] == parent_id:
 					children.append(neighbor)
 			return children
 		return None
