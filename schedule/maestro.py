@@ -51,9 +51,12 @@ class Reflector(object):
 		self.count_sessions = 0
 
 	def start(self):
+		q = queue.MilestoneQueue()
 		#self.commander(self.Command('observe', self.root_id, terms.uri['RPL_NL']))
-		self.commander(self.Command('observe', self.root_id, terms.uri['RPL_OL']))
+		comm = Command('observe', self.root_id, terms.uri['RPL_OL'])
+		q.push(comm.id, comm)
 		#self.commander(self.Command('post', self.root_id, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"}))
+		self._create_session(q)
 
 	def _decache(self, token):
 		if token:
@@ -65,9 +68,10 @@ class Reflector(object):
 		if milestone_queue and len(milestone_queue) > 0:
 			self.count_sessions += 1
 			self.sessions[self.count_sessions] = milestone_queue
-			comm = self.sessions[self.count_sessions]._pop()
+			comm = self.sessions[self.count_sessions].pop()
 			while comm:
 				self.commander(comm, self.count_sessions)
+				comm = self.sessions[self.count_sessions].pop()
 
 	def _touch_session(self, command_token):
 		if command_token in self.cache and self.cache[command_token]["session"] in self.sessions:
@@ -245,7 +249,7 @@ class Reflector(object):
 				self.commander(comm)
 
 	def commander(self, comm, session):
-		if isinstance(comm, self.Command):
+		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
 				self.cache[comm.id]['payload'] = comm.payload.copy()
@@ -439,9 +443,9 @@ class Scheduler(Reflector):
 
 
 
-class LazyScheduler(Reflector):
+class TrivialScheduler(Scheduler):
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer):
-		super(LazyScheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
+		super(TrivialScheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
 		self.slot_counter = 2
 		self.channel_counter = 0
 		self.b_slot_counter = 2
@@ -449,17 +453,17 @@ class LazyScheduler(Reflector):
 		self.commands_waiting = []
 
 	def start(self):
-		super(LazyScheduler, self).start()
+		super(TrivialScheduler, self).start()
 		f1 = Slotframe("Broadcast-Frame", 25)
 		f2 = Slotframe("Unicast-Frame", 21)
 		self.frames[f1.name] = f1
 		self.frames[f2.name] = f2
 		self.rb_flag = 0
-		for k in self.frames.keys():
-			self.commander(self.Command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
+		#for k in self.frames.keys():
+		#	self.commander(self.Command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
 		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
 		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
-		self.client.start()     # this has to be the last line of the start function ... ALWAYS
+		#self.client.start()     # this has to be the last line of the start function ... ALWAYS
 
 	def _pop(self, node):
 		logg.info(str(node) + ' popped up')

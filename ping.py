@@ -2,7 +2,7 @@
 import getopt
 import sys
 
-from schedule.maestro import LazyScheduler
+from schedule.maestro import TrivialScheduler
 from endpoint.client import LazyCommunicator
 from resource.rpl import NodeID
 
@@ -64,7 +64,7 @@ def main(arg_str):
 		return 2
 
 	if not opts:
-		sch = LazyScheduler('RICHNET', 'aaaa::215:8d00:52:6986', 5684)
+		sch = TrivialScheduler('RICHNET', 'aaaa::215:8d00:52:6986', 5684)
 		sch.start()
 		return 0
 	else:
