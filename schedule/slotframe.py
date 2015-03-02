@@ -21,6 +21,7 @@ class Slotframe(object):
 	def setAliasID(self, node, id):
 		self.fds[node] = id
 
+	# **kwargs: key-word arguments
 	def cell(self, **kwargs):
 		matching_cells = []
 		for i in self.cell_container:

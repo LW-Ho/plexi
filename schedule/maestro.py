@@ -279,7 +279,7 @@ class Reflector(object):
 # handles the actions performed when a node receives his slotframes
 	def framed(self, who, local_name, remote_alias, old_payload):
 		raise NotImplementedError()
-
+# handles the actions performed when a node receives his cell/s
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
 		raise NotImplementedError()
 
@@ -406,6 +406,7 @@ class Scheduler(Reflector):
 
 # who: node who just got a cell
 # remote_cell_id: the cell_id produced from the node
+# slotoffs, channeloffs: slotoffset and channeloffset respectively
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame_name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		commands = []
@@ -415,11 +416,13 @@ class Scheduler(Reflector):
 		for item in self.frames[frame_name].cell_container:
 			if item.slot == slotoffs and item.channel == channeloffs:
 				if item.link_option == old_payload["lo"] and item.cell_id is None:
-					item.cell_id = remote_cell_id
+					item.cell_id = remote_cell_id       # adds the proper cell_id to the respective cells stored in the cell containers
+					# updates the locally kept DoDAG graph
 					if item.rx_node:
 						self.dodag.update_link(item.tx_node, item.rx_node, 'SLT', '++')
 					else:
 						self.dodag.update_node(item.tx_node, 'SLT', '++')
+				# post the respective unicast/broadcast cells of the child node to the parent node
 				elif item.cell_id is None and ((item.rx_node == parent and item.tx_node == None and item.link_option == 9) or (item.rx_node == parent and item.tx_node == who and item.link_option == 2) or (item.rx_node == who and item.tx_node == parent and item.link_option == 1)):
 					if item.slotframe_id is None and parent in self.frames[frame_name].fds:
 						item.slotframe_id = self.frames[frame_name].fds[parent]
