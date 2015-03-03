@@ -9,10 +9,10 @@ __copyright__ = "Copyright 2015, The RICH Project"
 
 from collections import deque
 
-class MilestoneQueue:
+class RendezvousQueue:
 	def __init__(self):
 		self.items = deque([])
-		self.last_milestone = set()
+		self.last_point = set()
 
 	def pop(self):
 		try:
@@ -27,10 +27,10 @@ class MilestoneQueue:
 			return None
 
 	def push(self, id, item):
-		if id in self.last_milestone:
+		if id in self.last_point:
 			return False
 		self.items.append(item)
-		self.last_milestone.add(id)
+		self.last_point.add(id)
 		return True
 
 	def achieved(self, id):
@@ -43,9 +43,9 @@ class MilestoneQueue:
 		return False
 
 	def bank(self):
-		if len(self.last_milestone) > 0:
-			self.items.append(self.last_milestone)
-			self.last_milestone = set()
+		if len(self.last_point) > 0:
+			self.items.append(self.last_point)
+			self.last_point = set()
 			return True
 		return False
 
@@ -55,3 +55,23 @@ class MilestoneQueue:
 			if not isinstance(i, set):
 				c_items += 1
 		return c_items
+
+	def ready(self):
+		return len(self.last_point) == 0
+
+	def unprocessed(self):
+		attendees = 0
+		for i in self.items:
+			if not isinstance(self.items[0], set):
+				attendees += 1
+			elif len(i) > attendees:
+				return False
+			else:
+				attendees = 0
+		return True
+
+	def append(self, other_queue):
+		if isinstance(other_queue, RendezvousQueue) and other_queue.ready() and other_queue.unprocessed():
+			self.items.append(other_queue)
+		else:
+			raise Exception('Impossible to append. Either not RendezvousQueue, or not ready or already processed')

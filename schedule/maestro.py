@@ -50,14 +50,6 @@ class Reflector(object):
 		self.sessions = {}
 		self.count_sessions = 0
 
-	def start(self):
-		q = queue.MilestoneQueue()
-		#self.commander(self.Command('observe', self.root_id, terms.uri['RPL_NL']))
-		comm = Command('observe', self.root_id, terms.uri['RPL_OL'])
-		q.push(comm.id, comm)
-		#self.commander(self.Command('post', self.root_id, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"}))
-		self._create_session(q)
-
 	def _decache(self, token):
 		if token:
 			sent_msg = self.cache[token]
@@ -70,7 +62,7 @@ class Reflector(object):
 			self.sessions[self.count_sessions] = milestone_queue
 			comm = self.sessions[self.count_sessions].pop()
 			while comm:
-				self.commander(comm, self.count_sessions)
+				self.send_command(comm, self.count_sessions)
 				comm = self.sessions[self.count_sessions].pop()
 
 	def _touch_session(self, command_token):
@@ -80,7 +72,7 @@ class Reflector(object):
 			if len(session) > 0:
 				comm = session._pop()
 				while comm:
-					self.commander(comm, self.cache[command_token]["session"])
+					self.send_command(comm, self.cache[command_token]["session"])
 			else:
 				del self.sessions[self.cache[command_token]["session"]]
 
@@ -103,7 +95,7 @@ class Reflector(object):
 				commands = self._pop(node)
 				if commands:
 					for comm in commands:
-						self.commander(comm)
+						self.send_command(comm)
 
 	def _observe_rpl_children(self, response):
 		tk = self.client.token(response.token)
@@ -211,7 +203,7 @@ class Reflector(object):
 		commands = self.probed(node_id, metric_id)
 		if commands:
 			for comm in commands:
-				self.commander(comm)
+				self.send_command(comm)
 
 	def _receive_statistics_metrics_value(self, response):
 		tk = self.client.token(response.token)
@@ -246,9 +238,13 @@ class Reflector(object):
 					commands = self.reported(node_id, endpoint, self.dodag.graph.edge[node_id][endpoint]['statistics'])
 		if commands:
 			for comm in commands:
-				self.commander(comm)
+				self.send_command(comm)
 
-	def commander(self, comm, session):
+	def send_commands(self, commands):
+		if isinstance(commands, queue.RendezvousQueue):
+			self._create_session(commands)
+
+	def send_command(self, comm, session):
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
@@ -293,7 +289,7 @@ class Reflector(object):
 		else:
 			logg.info(str(child) + ' wired to parent ' + str(parent))
 
-		q = queue.MilestoneQueue()
+		q = queue.RendezvousQueue()
 		rpl_ol = Command('observe', child, terms.uri['RPL_OL'])
 		q.push(rpl_ol.id, rpl_ol)
 		# TODO: commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
@@ -305,7 +301,7 @@ class Reflector(object):
 
 	def _disconnect(self, node_id):
 		logg.info(str(node_id) + " was removed from the network")
-		q = queue.MilestoneQueue()
+		q = queue.RendezvousQueue()
 		for (name, frame) in self.frames.items():
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
@@ -325,26 +321,29 @@ class Reflector(object):
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame_name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		return None
 
-	def popped(self, node):
+	def start(self):
 		raise NotImplementedError()
+
+	def popped(self, node):
+		pass
 
 	def connected(self, child, parent, old_parent=None):
-		raise NotImplementedError()
+		pass
 
 	def disconnected(self, node_id):
-		raise NotImplementedError()
+		pass
 
 	def framed(self, who, local_name, remote_alias, old_payload):
-		raise NotImplementedError()
+		pass
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
-		raise NotImplementedError()
+		pass
 
 	def probed(self, node_id, metric_id):
-		raise NotImplementedError()
+		pass
 
 	def reported(self, node_id, endpoint, metric_values):
-		raise NotImplementedError()
+		pass
 
 
 class Scheduler(Reflector):
@@ -354,12 +353,13 @@ class Scheduler(Reflector):
 		assert isinstance(slotframe, Slotframe)
 		pass # TODO self.commands.append(self.Command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
 
-	def set_remote_frame(self, node, slotframe):
+	def set_remote_frames(self, node, slotframes):
 		assert isinstance(node, NodeID)
-		assert isinstance(slotframe, Slotframe)
-		q = queue.MilestoneQueue()
-		comm = Command('post', node, terms.uri['6TP_SF'], {'frame': slotframe})
-		q.push(comm.id, comm)
+		assert isinstance(slotframes, Slotframe) #TODO or isinstance(slotframes, array)
+		q = queue.RendezvousQueue()
+		for item in [slotframes] if isinstance(slotframes, Slotframe) else slotframes:
+			comm = Command('post', node, terms.uri['6TP_SF'], {'frame': item})
+			q.push(comm.id, comm)
 		q.bank()
 		return q
 
@@ -374,7 +374,7 @@ class Scheduler(Reflector):
 		assert isinstance(source, NodeID)
 		assert destination is None or isinstance(destination, NodeID)
 
-		q = queue.MilestoneQueue()
+		q = queue.RendezvousQueue()
 
 		if target and target != source and target != destination:
 			return False
@@ -429,7 +429,7 @@ class Scheduler(Reflector):
 
 	def get_remote_children(self, node, observe=False):
 		assert isinstance(node, NodeID)
-		q = queue.MilestoneQueue()
+		q = queue.RendezvousQueue()
 		comm = Command('get' if not observe else 'observe', node, terms.uri['RPL_OL'])
 		q.push(comm.id, comm)
 		q.bank()
@@ -454,39 +454,34 @@ class TrivialScheduler(Scheduler):
 
 	def start(self):
 		super(TrivialScheduler, self).start()
+		#self.rb_flag = 0 TODO is that needed?
+
+		self.send_commands(self.get_remote_children(self.root_id, True))
+
 		f1 = Slotframe("Broadcast-Frame", 25)
-		f2 = Slotframe("Unicast-Frame", 21)
 		self.frames[f1.name] = f1
+		q = self.set_remote_frames(self.root_id, f1)
+		q.append(self.set_remote_link(1, 0, f1, self.root_id, None, self.root_id))
+		self.send_commands(q)
+
+		f2 = Slotframe("Unicast-Frame", 21)
 		self.frames[f2.name] = f2
-		self.rb_flag = 0
-		#for k in self.frames.keys():
-		#	self.commander(self.Command('post', self.root_id, terms.uri['6TP_SF'], {'frame': k}))
-		cb_root = Cell(1, 0, self.root_id, None, None, 1, 10)
-		self.frames['Broadcast-Frame'].cell_container.append(cb_root)
-		#self.client.start()     # this has to be the last line of the start function ... ALWAYS
+		self.send_commands(self.set_remote_frames(self.root_id, f2))
 
-	def _pop(self, node):
-		logg.info(str(node) + ' popped up')
+		#self.client.start()	TODO this has to be the last line of the start function ... ALWAYS
 
-	def _connect(self, child, parent, old_parent=None):
-		if old_parent:
-			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
-		else:
-			logg.info(str(child) + ' wired to parent ' + str(parent))
+	def connected(self, child, parent, old_parent=None):
+		self.send_commands(self.get_remote_children(child, True))
 
-		commands = []
+		#TODO commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
-		commands.append(self.Command('observe', child, terms.uri['RPL_OL']))
-		commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
-
-		for k in self.frames.keys():
-			commands.append(self.Command('post', child, terms.uri['6TP_SF'], {'frame': k}))
+		self.send_commands(self.set_remote_frames(self.root_id, self.frames.values()))
 
 		c_flag = False
 
 		if self.b_slot_counter >= self.frames["Broadcast-Frame"].slots:
-					print("out of broadcast cells")
-					return False
+			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot be scheduled")
+			return None
 
 		if parent not in self.frames["Broadcast-Frame"].fds:
 			sf_id = None
@@ -526,21 +521,7 @@ class TrivialScheduler(Scheduler):
 
 		return commands
 
-	def _disconnect(self, node_id):
-		logg.info(str(node_id) + " was removed from the network")
-		commands = []
-		for (name, frame) in self.frames.items():
-			deleted_cells = frame.delete_cell(node_id)
-			for cell in deleted_cells:
-				to = cell.tx_node if cell.link_option in [1, 10] else cell.rx_node
-				if to != node_id:
-					commands.append(self.Command('delete', to, terms.uri['6TP_CL']+'/'+str(cell.cell_id)))
-			del frame.fds[node_id]
-		return commands
-
 	def _frame(self, who, local_name, remote_alias, old_payload):
-		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
-		self.frames[local_name].set_alias_id(who, remote_alias)
 		commands = []
 
 		parent = self.dodag.get_parent(who)
