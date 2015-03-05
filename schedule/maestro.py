@@ -441,6 +441,37 @@ class Scheduler(Reflector):
 	def disconnect_node(self, node):
 		pass
 
+	def conflict(self, slot, tx, rx, slotframe):
+		assert slotframe in self.frames
+		for item in slotframe.cell_container:
+			if item.slot == slot:
+				if item.rx_node == tx or (item.rx_node is None and (item.tx_node == self.dodag.get_parent(tx) or item.tx_node in self.dodag.get_children(tx))):
+					return True
+				elif item.tx_node == tx:
+					depends = None
+				elif (item.rx_node is not None and item.rx_node == rx) or \
+						(item.rx_node is None and rx is not None and (item.tx_node == self.dodag.get_parent(rx) or item.tx_node in self.dodag.get_children(rx))) or \
+						(item.rx_node is not None and rx is None and (tx == self.dodag.get_parent(item.rx_node) or tx in self.dodag.get_children(item.rx_node))) or \
+						(rx is None and item.rx_node is None and
+								 not set(self.dodag.get_children(tx).append(self.dodag.get_parent(tx))).isdisjoint(
+									 set(self.dodag.get_children(item.tx_node).append(self.dodag.get_parent(item.tx_node)))
+								 )):
+					return True
+		return False
+
+	def interfere(self, slot, tx, rx, slotframe):
+		assert slotframe in self.frames
+		channels = []
+		for item in slotframe.cell_container:
+			if item.slot == slot and item.rx_node is not None and rx is not None and \
+				item.rx_node not in self.dodag.get_children(tx).append(self.dodag.get_parent(tx)) and \
+				rx not in self.dodag.get_children(item.tx_node).append(self.dodag.get_parent(item.tx_node)):
+				channels.append(item.channel)
+		return channels
+
+
+	def schedule(self, tx, rx, slotframe):
+		pass
 
 
 class TrivialScheduler(Scheduler):
@@ -471,153 +502,58 @@ class TrivialScheduler(Scheduler):
 		#self.client.start()	TODO this has to be the last line of the start function ... ALWAYS
 
 	def connected(self, child, parent, old_parent=None):
-		self.send_commands(self.get_remote_children(child, True))
+
+		commands = [self.get_remote_children(child, True)]
 
 		#TODO commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
-		self.send_commands(self.set_remote_frames(self.root_id, self.frames.values()))
-
-		c_flag = False
-
-		if self.b_slot_counter >= self.frames["Broadcast-Frame"].slots:
-			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot be scheduled")
-			return None
-
-		if parent not in self.frames["Broadcast-Frame"].fds:
-			sf_id = None
+		bcq = self.set_remote_frames(child, self.frames["Broadcast-Frame"])
+		for c in self.frames["Broadcast-Frame"].cell_container:
+			if c.tx_node == parent or c.tx_node in self.dodag.get_children(child):
+				bcq.append(self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx_node, None, child))
+		bso, bco = self.schedule(child, None, self.frames["Broadcast-Frame"])
+		if bso and bco:
+			bcq.append(self.set_remote_link(bso, bco, self.frames["Broadcast-Frame"], child, None))
 		else:
-			sf_id = self.frames["Broadcast-Frame"].fds[parent]
+			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot broadcast")
+		commands.append(bcq)
 
-		self.schedule_broadcast(child, sf_id)
-
-		while c_flag == False:
-			c_flag = self.check_unicast_conflict(child, parent)
-			if self.slot_counter >= self.frames["Unicast-Frame"].slots:
-				print("ERROR: We are out of slots!")
-				return False
-
-		if parent not in self.frames["Unicast-Frame"].fds:
-			sf_id = None
-		else:
-			sf_id = self.frames["Unicast-Frame"].fds[parent]
-
-		self.schedule_unicast(child, parent, sf_id)
-
-		c_flag = False
-		while c_flag == False:
-			c_flag = self.check_unicast_conflict(parent, child)
-			if self.slot_counter >= self.frames["Unicast-Frame"].slots:
-				print("ERROR: We are out of slots!")
-				return False
-
-		if parent not in self.frames["Unicast-Frame"].fds:
-			sf_id = None
-		else:
-			sf_id = self.frames["Unicast-Frame"].fds[parent]
-
-		self.schedule_unicast(parent, child, sf_id)
-
-		self.pairs.append((parent,child))
-
+		ucq = self.set_remote_frames(child, self.frames["Unicast-Frame"])
+		for neighbor in [parent]+self.dodag.get_children(child):
+			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
+			if uso and uco:
+				ucq.append(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
+			else:
+				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
+			if uso and uco:
+				ucq.append(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
+			else:
+				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot unicast to " + str(neighbor))
+		commands.append(ucq)
 		return commands
 
-	def _frame(self, who, local_name, remote_alias, old_payload):
-		commands = []
+	def schedule(self, tx, rx, slotframe):
+		max_slots = 0
+		for frame in self.frames:
+			if max_slots < frame.slots:
+				max_slots = frame.slots
+		so = None
+		co = None
+		for slot in range(1, max_slots):
+			skip = False
+			free_channels = set(range(16))
+			for frame in self.frames:
+				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
+				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
+					skip = True
+					break
+			if not skip:
+				so = slot
+				co = free_channels[0]
+				break
 
-		parent = self.dodag.get_parent(who)
-
-		for c in self.frames[local_name].cell_container:
-			if (c.tx_node == who and c.rx_node == None and c.link_option == 10) or (c.tx_node == who and parent is not None and c.rx_node == parent and c.link_option == 1) or (c.rx_node == who and c.tx_node == None and c.link_option == 9) or (c.rx_node == who and parent is not None and c.tx_node == parent and c.link_option == 2):
-				c.slotframe_id = remote_alias
-				#print str(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
-				commands.append(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
-			elif c.pending == True and (c.tx_node == who or c.rx_node == who):
-				c.pending = False
-				commands.append(self.Command('post', who, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': local_name, 'lo':c.link_option, 'lt':c.link_type}))
-
- 		return commands
-
-
-	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
-		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame_name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
-		commands = []
-
-		parent = self.dodag.get_parent(who)
-
-		for item in self.frames[frame_name].cell_container:
-			if item.slot == slotoffs and item.channel == channeloffs:
-				if item.link_option == old_payload["lo"] and item.cell_id is None:
-					item.cell_id = remote_cell_id
-					if item.rx_node:
-						self.dodag.update_link(item.tx_node, item.rx_node, 'SLT', '++')
-					else:
-						self.dodag.update_node(item.tx_node, 'SLT', '++')
-				elif item.cell_id is None and ((item.rx_node == parent and item.tx_node == None and item.link_option == 9) or (item.rx_node == parent and item.tx_node == who and item.link_option == 2) or (item.rx_node == who and item.tx_node == parent and item.link_option == 1)):
-					if item.slotframe_id is None and parent in self.frames[frame_name].fds:
-						item.slotframe_id = self.frames[frame_name].fds[parent]
-					elif item.slotframe_id is None and parent not in self.frames[frame_name].fds:
-						item.pending = True
-						continue
-					commands.append(self.Command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
-					# print str(self.Command('post', parent, terms.uri['6TP_CL'],{'so':item.slot, 'co':item.channel, 'fd':item.slotframe_id, 'frame': frame_name, 'lo': item.link_option, 'lt':item.link_type}))
-
-		return commands
-
-	def schedule_unicast(self, tx_node, rx_node, sf_id):
-
-		ct = Cell(self.slot_counter, self.channel_counter, tx_node, rx_node, None, 0,1)
-		cr = Cell(self.slot_counter, self.channel_counter, tx_node, rx_node, None, 0,2)
-
-		self.frames["Unicast-Frame"].cell_container.append(ct)
-		self.frames["Unicast-Frame"].cell_container.append(cr)
-
-		self.channel_counter = self.channel_counter + 1
-		if self.channel_counter == 17 :
-			print("ERROR: We are out of channels!")
-			return False
-
-		#self.commands.append(self.Command('post',tx_node ,terms.uri['6TP_CL'],{'so':ct.slot, 'co':ct.channel, 'fd':ct.slotframe_id, 'lo':ct.link_option, 'lt':ct.link_type}))
-		#self.commands.append(self.Command('post',rx_node ,terms.uri['6TP_CL'],{'so':cr.slot, 'co':cr.channel, 'fd':cr.slotframe_id, 'lo':cr.link_option, 'lt':cr.link_type}))
-
-	def check_unicast_conflict(self, child, parent):
-
-		for item in self.frames["Broadcast-Frame"].cell_container:
-			if item.slot == self.slot_counter:
-				self.slot_counter = self.slot_counter + 1
-				self.channel_counter = 0
-				return False
-
-		for item in self.frames["Unicast-Frame"].cell_container:        #Add something for no items in container cond. else it will give an error.
-			if (item.slot == self.slot_counter) and (item.tx_node == parent or item.rx_node == parent):
-				self.slot_counter = self.slot_counter + 1
-				self.channel_counter = 0
-				return False
-
-		return True
-
-	def schedule_broadcast(self, tx_node, sf_id):
-
-		for item in self.frames["Broadcast-Frame"].cell_container:
-			if item.slot == self.b_slot_counter: #larger slotframe might conflict with smaller one.
-				self.b_slot_counter = self.b_slot_counter + 1
-
-		for item in self.frames["Unicast-Frame"].cell_container:
-			if item.slot == self.b_slot_counter:
-				self.b_slot_counter = self.b_slot_counter + 1
-
-
-		cb_brd = Cell(self.b_slot_counter, 0, tx_node, None, None, 1, 10)           # create a broadcast cell
-		self.frames["Broadcast-Frame"].cell_container.append(cb_brd)                # adds the created cell to the broadcast_slotframe
-
-
-		cb_nb = Cell(self.b_slot_counter, 0, None, self.dodag.get_parent(tx_node), sf_id, 1, 9)
-		self.frames["Broadcast-Frame"].cell_container.append(cb_nb)
-		for item in self.frames["Broadcast-Frame"].cell_container:
-			if item.link_option != 7 and item.tx_node and item.tx_node == self.dodag.get_parent(tx_node):
-				cb_nb2 = Cell(item.slot, 0, None, tx_node, None, 1, 9)
-				self.frames["Broadcast-Frame"].cell_container.append(cb_nb2)
-		self.b_slot_counter = self.b_slot_counter + 1
-
+		return so,co
 
 	def probed(self, node_id, metric_id):
 		logg.info(str(node_id) + " installed statistics observer with id=" + str(metric_id))
