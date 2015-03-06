@@ -73,7 +73,7 @@ def main(arg_str):
 		usage()
 		return 2
 
-	sch = Scheduler('RICHNET', lbr, 5684, prefix, visualizer if visualizer else False)
+	sch = TrivialScheduler('RICHNET', lbr, 5684, prefix, visualizer if visualizer else False)
 	sch.start()
 	return 0
 

@@ -72,6 +72,25 @@ class RendezvousQueue:
 
 	def append(self, other_queue):
 		if isinstance(other_queue, RendezvousQueue) and other_queue.ready() and other_queue.unprocessed():
-			self.items.append(other_queue)
+			self.items.extend(other_queue.items)
 		else:
 			raise Exception('Impossible to append. Either not RendezvousQueue, or not ready or already processed')
+
+	def __str__(self):
+		tmp = ''
+		_counter = 0
+		for i in self.items:
+			if isinstance(i,set):
+				tmp += 'W -> [ '
+				for j in i:
+					tmp += str(j)+' '
+				tmp += ']\n'
+			else:
+				tmp += str(_counter)+' -> '+str(i)+'\n'
+				_counter += 1
+		if len(self.last_point)>0:
+			tmp += '( '
+			for j in self.last_point:
+				tmp += str(j)+' '
+			tmp += ')\n'
+		return tmp

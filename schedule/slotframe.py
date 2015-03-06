@@ -66,86 +66,86 @@ class Slotframe(object):
 
 class Cell(object):
 	def __init__(self, node, so, co, tx, rx, fd, lt, lo):
-		self.cell_id = None		# Cel ID as set by the owner
-		self.owner = node		# The node to which this cell belongs to
-		self.slotframe_id = fd	# The local frame id (that of the owner), the cell belongs to
-		self.channel = co		# Channel offset
-		self.slot = so			# Slot offset
-		self.tx_node = tx
-		self.rx_node = rx
-		self.link_type = lt
-		self.link_option = lo 	# For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
-		self.pending = False # TODO: is it needed?
+		self._cell_id = None		# Cel ID as set by the owner
+		self._owner = node		# The node to which this cell belongs to
+		self._slotframe_id = fd		# The local frame id (that of the owner), the cell belongs to
+		self._channel = co		# Channel offset
+		self._slot = so			# Slot offset
+		self._tx_node = tx
+		self._rx_node = rx
+		self._link_type = lt
+		self._link_option = lo 		# For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
+		#self.pending = False # TODO: is it needed?
 
 	@property
 	def id(self):
-		return self.cell_id
+		return self._cell_id
 
 	@id.setter
 	def id(self, cd):
-		self.cell_id = cd
+		self._cell_id = cd
 
 	@property
 	def owner(self):
-		return self.owner
+		return self._owner
 
 	@owner.setter
 	def owner(self, node):
-		self.owner = node
+		self._owner = node
 
 	@property
 	def slotframe(self):
-		return self.slotframe_id
+		return self._slotframe_id
 
-	@owner.setter
+	@slotframe.setter
 	def slotframe(self, frame):
-		self.slotframe_id = frame
+		self._slotframe_id = frame
 
 	@property
 	def channel(self):
-		return self.channel
+		return self._channel
 
-	@owner.setter
+	@channel.setter
 	def channel(self, channel_offset):
-		self.channel = channel_offset
+		self._channel = channel_offset
 
 	@property
 	def slot(self):
-		return self.slot
+		return self._slot
 
-	@owner.setter
+	@slot.setter
 	def slot(self, slot_offset):
-		self.slot = slot_offset
+		self._slot = slot_offset
 
 	@property
 	def tx(self):
-		return self.tx_node
+		return self._tx_node
 
-	@owner.setter
+	@tx.setter
 	def tx(self, tx_node):
-		self.tx_node = tx_node
+		self._tx_node = tx_node
 
 	@property
 	def rx(self):
-		return self.rx_node
+		return self._rx_node
 
-	@owner.setter
+	@rx.setter
 	def rx(self, rx_node):
-		self.rx_node = rx_node
+		self._rx_node = rx_node
 
 	@property
 	def type(self):
-		return self.link_type
+		return self._link_type
 
-	@owner.setter
+	@type.setter
 	def type(self, lt):
-		self.link_type = lt
+		self._link_type = lt
 
 	@property
 	def option(self):
-		return self.link_option
+		return self._link_option
 
-	@owner.setter
+	@option.setter
 	def option(self, lo):
 		self.link_option = lo
 

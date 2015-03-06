@@ -34,7 +34,7 @@ class Command(object):
 		self.callback = callback
 
 	def __str__(self):
-		return str(id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
+		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
 
 
 class Reflector(object):
@@ -63,6 +63,8 @@ class Reflector(object):
 			comm = self.sessions[self.count_sessions].pop()
 			while comm:
 				self.send_command(comm, self.count_sessions)
+				if len(self.sessions[self.count_sessions]) == 0:
+					break
 				comm = self.sessions[self.count_sessions].pop()
 
 	def _touch_session(self, command_token):
@@ -70,32 +72,14 @@ class Reflector(object):
 			session = self.sessions[self.cache[command_token]["session"]]
 			session.achieved(self.cache[command_token]["id"])
 			if len(session) > 0:
-				comm = session._pop()
+				comm = session.pop()
 				while comm:
 					self.send_command(comm, self.cache[command_token]["session"])
+					if len(session) == 0:
+						break
+					comm = session.pop()
 			else:
 				del self.sessions[self.cache[command_token]["session"]]
-
-	@deprecated
-	def _observe_rpl_nodes(self, response):
-		tk = self.client.token(response.token)
-		if tk not in self.cache:
-			return
-		sender = NodeID(response.remote[0], response.remote[1])
-		if response.code != coap.CONTENT:
-			tmp = str(sender) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-			self._decache(tk)
-			raise exception.UnsupportedCase(tmp)
-		logg.debug("Observed node list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
-		payload = json.loads(parser.clean_payload(response.payload))
-		self._decache(tk)
-		for n in payload:
-			node = NodeID(str(n))
-			if self.dodag.attach_node(node):
-				commands = self._pop(node)
-				if commands:
-					for comm in commands:
-						self.send_command(comm)
 
 	def _observe_rpl_children(self, response):
 		tk = self.client.token(response.token)
@@ -142,12 +126,12 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
-		frame_alias = payload['fd']
+		local_fd = payload['fd']
 		old_payload = self.cache[tk]['payload']
-		frame_name = old_payload['frame']
+		frame = old_payload['frame']
 		self._decache(tk)
-		self._create_session(self._frame(node_id, frame_name, frame_alias, old_payload))
-		self._create_session(self.framed(node_id, frame_name, frame_alias, old_payload))
+		self._create_session(self._frame(node_id, frame, local_fd, old_payload))
+		#self._create_session(self.framed(node_id, frame, local_fd, old_payload))
 
 	def _receive_cell_id(self, response):
 		tk = self.client.token(response.token)
@@ -163,12 +147,12 @@ class Reflector(object):
 		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
-		frame_name = old_payload['frame']
+		frame = old_payload['frame']
 		so = old_payload['so']
 		co = old_payload['co']
 
 		self._decache(tk)
-		self._create_session(self.celled(node_id, so, co, frame_name, cell_cd, old_payload))
+		self._create_session(self.celled(node_id, so, co, frame, cell_cd, old_payload))
 
 	def _receive_cell_info(self, response):
 		tk = self.client.token(response.token)
@@ -251,7 +235,7 @@ class Reflector(object):
 				self.cache[comm.id]['payload'] = comm.payload.copy()
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
 					if comm.uri == terms.uri['6TP_SF']:
-						comm.payload = {'ns': self.frames[comm.payload['frame']].slots}
+						comm.payload = {'ns': comm.payload['frame'].slots}
 					elif comm.uri == terms.uri['6TP_CL']:
 						del comm.payload['frame']
 			if not comm.callback:
@@ -278,6 +262,7 @@ class Reflector(object):
 				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
+			self.client.start()
 
 	def _pop(self, node):
 		logg.info(str(node) + ' popped up')
@@ -312,13 +297,13 @@ class Reflector(object):
 		q.bank()
 		return q
 
-	def _frame(self, who, local_name, remote_alias, old_payload):
-		logg.info(str(who) + " installed new " + local_name + " frame with id=" + str(remote_alias))
-		self.frames[local_name].set_alias_id(who, remote_alias)
+	def _frame(self, who, frame, remote_fd, old_payload):
+		logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
+		frame.set_alias_id(who, remote_fd)
 		return None
 
-	def _cell(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
-		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame_name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
+		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		return None
 
 	def start(self):
@@ -414,7 +399,7 @@ class Scheduler(Reflector):
 		depth_groups = {}
 		for c in cells:
 			slotframe.cell_container.append(c)
-			comm = Command('post', c.owner, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe_id,'frame': slotframe.name, 'lo':c.link_option, 'lt':c.link_type})
+			comm = Command('post', c.owner, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe,'frame': slotframe, 'lo':c.option, 'lt':c.type})
 			depth = self.dodag.get_node_depth(c.owner)
 			if depth not in depth_groups:
 				depth_groups[depth] = [comm]
@@ -484,8 +469,8 @@ class TrivialScheduler(Scheduler):
 		self.commands_waiting = []
 
 	def start(self):
-		super(TrivialScheduler, self).start()
-		#self.rb_flag = 0 TODO is that needed?
+		#super(TrivialScheduler, self).start()
+		#self.rb_flag = 0
 
 		self.send_commands(self.get_remote_children(self.root_id, True))
 
@@ -499,7 +484,6 @@ class TrivialScheduler(Scheduler):
 		self.frames[f2.name] = f2
 		self.send_commands(self.set_remote_frames(self.root_id, f2))
 
-		#self.client.start()	TODO this has to be the last line of the start function ... ALWAYS
 
 	def connected(self, child, parent, old_parent=None):
 
