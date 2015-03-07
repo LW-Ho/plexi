@@ -31,7 +31,7 @@ class Communicator(object):
 	def start(self):
 		try:
 			reactor.run()
-		except error.ReactorAlreadyRunning:
+		except Exception:
 			pass
 
 	def token(self, ticket):

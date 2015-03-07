@@ -55,6 +55,12 @@ class RendezvousQueue:
 			if not isinstance(i, set):
 				c_items += 1
 		return c_items
+	
+	def finished(self):
+		for i in self.items:
+			if not isinstance(i, set) or (isinstance(i, set) and len(i)>0):
+				return False
+		return True
 
 	def ready(self):
 		return len(self.last_point) == 0

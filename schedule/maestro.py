@@ -63,7 +63,7 @@ class Reflector(object):
 			comm = self.sessions[self.count_sessions].pop()
 			while comm:
 				self.send_command(comm, self.count_sessions)
-				if len(self.sessions[self.count_sessions]) == 0:
+				if self.count_sessions not in self.sessions or len(self.sessions[self.count_sessions]) == 0:
 					break
 				comm = self.sessions[self.count_sessions].pop()
 
@@ -71,7 +71,7 @@ class Reflector(object):
 		if command_token in self.cache and self.cache[command_token]["session"] in self.sessions:
 			session = self.sessions[self.cache[command_token]["session"]]
 			session.achieved(self.cache[command_token]["id"])
-			if len(session) > 0:
+			if not session.finished():
 				comm = session.pop()
 				while comm:
 					self.send_command(comm, self.cache[command_token]["session"])
@@ -93,13 +93,12 @@ class Reflector(object):
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		#TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
-		logg.debug("Observed children list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
+		logg.debug("Children list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 
 		observed_children = []
 		for n in payload:
 			observed_children.append(NodeID(str(n)))
-
 		self._decache(tk)
 		dodag_child_list = self.dodag.get_children(parent_id)
 
@@ -131,7 +130,7 @@ class Reflector(object):
 		frame = old_payload['frame']
 		self._decache(tk)
 		self._create_session(self._frame(node_id, frame, local_fd, old_payload))
-		#self._create_session(self.framed(node_id, frame, local_fd, old_payload))
+		self._create_session(self.framed(node_id, frame, local_fd, old_payload))
 
 	def _receive_cell_id(self, response):
 		tk = self.client.token(response.token)
@@ -143,7 +142,9 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
+# parser.clean_payload(response.payload)
+		print response
+		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + response.payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
@@ -262,7 +263,6 @@ class Reflector(object):
 				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
-			self.client.start()
 
 	def _pop(self, node):
 		logg.info(str(node) + ' popped up')
@@ -472,18 +472,18 @@ class TrivialScheduler(Scheduler):
 		#super(TrivialScheduler, self).start()
 		#self.rb_flag = 0
 
-		self.send_commands(self.get_remote_children(self.root_id, True))
-
+		self.send_commands(self.get_remote_children(self.root_id))
 		f1 = Slotframe("Broadcast-Frame", 25)
 		self.frames[f1.name] = f1
 		q = self.set_remote_frames(self.root_id, f1)
 		q.append(self.set_remote_link(1, 0, f1, self.root_id, None, self.root_id))
 		self.send_commands(q)
+#		print q
 
-		f2 = Slotframe("Unicast-Frame", 21)
-		self.frames[f2.name] = f2
-		self.send_commands(self.set_remote_frames(self.root_id, f2))
-
+#		f2 = Slotframe("Unicast-Frame", 21)
+#		self.frames[f2.name] = f2
+#		self.send_commands(self.set_remote_frames(self.root_id, f2))
+		self.client.start()
 
 	def connected(self, child, parent, old_parent=None):
 
