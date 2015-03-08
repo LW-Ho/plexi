@@ -7,34 +7,21 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__license__ = "GPL"
 #__status__ = "Production"
 
-from endpoint.client import Communicator, LazyCommunicator
-from schedule.graph import DoDAG
-from resource.rpl import NodeID
-from util import parser, logger
+from core.queue import Command
+
+from core.client import LazyCommunicator
+from core.graph import DoDAG
+from core.node import NodeID
+from util import parser
 import json
-from schedule.slotframe import Slotframe, Cell
+from core.slotframe import Slotframe, Cell
 from util import terms, exception
 from txthings import coap
 import logging
-from util import queue
-from util.warn import deprecated
+from core import queue
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
-
-class Command(object):
-	token = 0
-	def __init__(self, op, to, uri, payload=None, callback=None):
-		self.id = Command.token
-		Command.token += 1
-		self.op = op
-		self.to = to
-		self.uri = uri
-		self.payload = payload
-		self.callback = callback
-
-	def __str__(self):
-		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
 
 
 class Reflector(object):
@@ -62,7 +49,7 @@ class Reflector(object):
 			self.sessions[self.count_sessions] = milestone_queue
 			comm = self.sessions[self.count_sessions].pop()
 			while comm:
-				self.send_command(comm, self.count_sessions)
+				self._push_command(comm, self.count_sessions)
 				if self.count_sessions not in self.sessions or len(self.sessions[self.count_sessions]) == 0:
 					break
 				comm = self.sessions[self.count_sessions].pop()
@@ -74,7 +61,7 @@ class Reflector(object):
 			if not session.finished():
 				comm = session.pop()
 				while comm:
-					self.send_command(comm, session_id)
+					self._push_command(comm, session_id)
 					if len(session) == 0:
 						break
 					comm = session.pop()
@@ -190,7 +177,7 @@ class Reflector(object):
 		commands = self.probed(node_id, metric_id)
 		if commands:
 			for comm in commands:
-				self.send_command(comm)
+				self._push_command(comm)
 
 	def _receive_statistics_metrics_value(self, response):
 		tk = self.client.token(response.token)
@@ -225,13 +212,9 @@ class Reflector(object):
 					commands = self.reported(node_id, endpoint, self.dodag.graph.edge[node_id][endpoint]['statistics'])
 		if commands:
 			for comm in commands:
-				self.send_command(comm)
+				self._push_command(comm)
 
-	def send_commands(self, commands):
-		if isinstance(commands, queue.RendezvousQueue):
-			self._create_session(commands)
-
-	def send_command(self, comm, session):
+	def _push_command(self, comm, session):
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
@@ -309,8 +292,15 @@ class Reflector(object):
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		return None
 
+	def communicate(self, transaction):
+		if isinstance(transaction, queue.RendezvousQueue):
+			self._create_session(transaction)
+
 	def start(self):
-		raise NotImplementedError()
+		if not len(self.sessions) and not len(self.cache):
+			raise NotImplementedError("At least one command should be put in cache before starting the scheduler")
+		else:
+			self.client.start()
 
 	def popped(self, node):
 		pass
@@ -462,95 +452,3 @@ class Scheduler(Reflector):
 		pass
 
 
-class TrivialScheduler(Scheduler):
-	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer):
-		super(TrivialScheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
-		self.slot_counter = 2
-		self.channel_counter = 0
-		self.b_slot_counter = 2
-		self.pairs = []
-		self.commands_waiting = []
-
-	def start(self):
-		#super(TrivialScheduler, self).start()
-		#self.rb_flag = 0
-
-		self.send_commands(self.get_remote_children(self.root_id))
-		f1 = Slotframe("Broadcast-Frame", 25)
-		self.frames[f1.name] = f1
-		q = self.set_remote_frames(self.root_id, f1)
-		q.append(self.set_remote_link(1, 0, f1, self.root_id, None, self.root_id))
-		self.send_commands(q)
-#		print q
-
-#		f2 = Slotframe("Unicast-Frame", 21)
-#		self.frames[f2.name] = f2
-#		self.send_commands(self.set_remote_frames(self.root_id, f2))
-		self.client.start()
-
-	def connected(self, child, parent, old_parent=None):
-
-		commands = [self.get_remote_children(child, True)]
-
-		#TODO commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
-
-		bcq = self.set_remote_frames(child, self.frames["Broadcast-Frame"])
-		for c in self.frames["Broadcast-Frame"].cell_container:
-			if c.tx_node == parent or c.tx_node in self.dodag.get_children(child):
-				bcq.append(self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx_node, None, child))
-		bso, bco = self.schedule(child, None, self.frames["Broadcast-Frame"])
-		if bso and bco:
-			bcq.append(self.set_remote_link(bso, bco, self.frames["Broadcast-Frame"], child, None))
-		else:
-			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot broadcast")
-		commands.append(bcq)
-
-		ucq = self.set_remote_frames(child, self.frames["Unicast-Frame"])
-		for neighbor in [parent]+self.dodag.get_children(child):
-			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
-			if uso and uco:
-				ucq.append(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
-			else:
-				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
-			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
-			if uso and uco:
-				ucq.append(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
-			else:
-				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot unicast to " + str(neighbor))
-		commands.append(ucq)
-		return commands
-
-	def schedule(self, tx, rx, slotframe):
-		max_slots = 0
-		for frame in self.frames:
-			if max_slots < frame.slots:
-				max_slots = frame.slots
-		so = None
-		co = None
-		for slot in range(1, max_slots):
-			skip = False
-			free_channels = set(range(16))
-			for frame in self.frames:
-				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
-				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
-					skip = True
-					break
-			if not skip:
-				so = slot
-				co = free_channels[0]
-				break
-
-		return so,co
-
-	def probed(self, node_id, metric_id):
-		logg.info(str(node_id) + " installed statistics observer with id=" + str(metric_id))
-		commands = []
-
-		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
-		commands.append(self.Command('observe', node_id, id_appended_uri))
-
-		return commands
-
-	def reported(self, node_id, endpoint, statistics):
-		if node_id in statistics:
-			logg.info(str(node_id) + " for " + str(endpoint) + " reported >> " + str(statistics[node_id]))

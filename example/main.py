@@ -1,3 +1,13 @@
+__author__ = "George Exarchakos"
+__email__ = "g.exarchakos@tue.nl"
+__version__ = "0.0.1"
+__copyright__ = "Copyright 2015, The RICH Project"
+#__credits__ = ["XYZ"]
+#__maintainer__ = "XYZ"
+#__license__ = "GPL"
+#__status__ = "Production"
+
+
 #!/bin/python
 
 __author__ = "George Exarchakos"
@@ -10,10 +20,15 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__status__ = "Production"
 
 import getopt
-import sys
 
-from schedule.maestro import TrivialScheduler
-from schedule.maestro import Scheduler
+class UserInput:
+	def __init__(self, netname, lbr, port, prefix, visualizer):
+		self.network_name = netname
+		self.lbr = lbr
+		self.port = port,
+		self.prefix = prefix
+		self.visualizer = visualizer
+
 
 def usage():
 	print('Command:\trischer.py [-h][-b[-p][-v]]')
@@ -23,7 +38,7 @@ def usage():
 	print('\t-p,\t--prefix=\t\t4-character address prefix e.g. aaaa')
 	print('\t-v,\t--visualizer=\tIPv4:port address of the graph visualizer server')
 
-def main(arg_str):
+def get_user_input(arg_str):
 	lbr = None
 	visualizer = False
 	prefix = None
@@ -73,11 +88,4 @@ def main(arg_str):
 		usage()
 		return 2
 
-	sch = TrivialScheduler('RICHNET', lbr, 5684, prefix, visualizer if visualizer else False)
-	sch.start()
-	return 0
-
-
-if __name__ == '__main__':
-	x = main(None)
-	sys.exit(x)
+	return UserInput("RICHNET", lbr, 5684, prefix, visualizer if visualizer else False)

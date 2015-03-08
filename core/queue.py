@@ -9,6 +9,21 @@ __copyright__ = "Copyright 2015, The RICH Project"
 
 from collections import deque
 
+class Command(object):
+	token = 0
+	def __init__(self, op, to, uri, payload=None, callback=None):
+		self.id = Command.token
+		Command.token += 1
+		self.op = op
+		self.to = to
+		self.uri = uri
+		self.payload = payload
+		self.callback = callback
+
+	def __str__(self):
+		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
+
+
 class RendezvousQueue:
 	def __init__(self):
 		self.items = deque([])
