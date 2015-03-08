@@ -8,7 +8,7 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__status__ = "Production"
 
 import networkx as nx
-from gephier import GephiClient
+from util.gephier import GephiClient
 from util.warn import deprecated
 from util import terms
 from twisted.internet import reactor

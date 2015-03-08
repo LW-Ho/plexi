@@ -20,12 +20,13 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__status__ = "Production"
 
 import getopt
+import sys
 
 class UserInput:
 	def __init__(self, netname, lbr, port, prefix, visualizer):
 		self.network_name = netname
 		self.lbr = lbr
-		self.port = port,
+		self.port = port
 		self.prefix = prefix
 		self.visualizer = visualizer
 

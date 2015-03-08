@@ -1,9 +1,2 @@
 .idea/*
-schedule/D_maestro.py
-maestro_old_backup.py
-pseudo_scheduler
-pseudo_scheduler_b
-test_1.py
-test_2.py
-test_3.py
 *.pyc

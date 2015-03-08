@@ -15,7 +15,7 @@ from core.node import NodeID
 from util import parser
 import json
 from core.slotframe import Slotframe, Cell
-from util import terms, exception
+from util import terms, exception, logger
 from txthings import coap
 import logging
 from core import queue
@@ -449,6 +449,4 @@ class Scheduler(Reflector):
 
 
 	def schedule(self, tx, rx, slotframe):
-		pass
-
-
+		raise NotImplementedError()
