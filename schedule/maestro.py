@@ -67,26 +67,25 @@ class Reflector(object):
 					break
 				comm = self.sessions[self.count_sessions].pop()
 
-	def _touch_session(self, command_token):
-		if command_token in self.cache and self.cache[command_token]["session"] in self.sessions:
-			session = self.sessions[self.cache[command_token]["session"]]
-			session.achieved(self.cache[command_token]["id"])
+	def _touch_session(self, token, session_id):
+		if session_id in self.sessions:
+			session = self.sessions[session_id]
+			session.achieved(token)
 			if not session.finished():
 				comm = session.pop()
 				while comm:
-					self.send_command(comm, self.cache[command_token]["session"])
+					self.send_command(comm, session_id)
 					if len(session) == 0:
 						break
 					comm = session.pop()
 			else:
-				del self.sessions[self.cache[command_token]["session"]]
+				del self.sessions[session_id]
 
 	def _observe_rpl_children(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
-
-		self._touch_session(tk)
+		session_id = self.cache[tk]["session"]
 		parent_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
@@ -112,12 +111,13 @@ class Reflector(object):
 			if self.dodag.attach_child(k, parent_id):
 				self._create_session(self._connect(k, parent_id, old_parent))
 				self._create_session(self.connected(k, parent_id, old_parent))
+		self._touch_session(tk, session_id)
 
 	def _receive_slotframe_id(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
-		self._touch_session(tk)
+		session_id = self.cache[tk]["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
@@ -131,20 +131,19 @@ class Reflector(object):
 		self._decache(tk)
 		self._create_session(self._frame(node_id, frame, local_fd, old_payload))
 		self._create_session(self.framed(node_id, frame, local_fd, old_payload))
+		self._touch_session(tk, session_id)
 
 	def _receive_cell_id(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
-		self._touch_session(tk)
+		session_id = self.cache[tk]["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-# parser.clean_payload(response.payload)
-		print response
-		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + response.payload + " i.e. MID:" + str(response.mid))
+		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		payload = json.loads(parser.clean_payload(response.payload))
 		cell_cd = payload['cd']
 		old_payload = self.cache[tk]['payload']
@@ -153,13 +152,15 @@ class Reflector(object):
 		co = old_payload['co']
 
 		self._decache(tk)
+		self._create_session(self._cell(node_id, so, co, frame, cell_cd, old_payload))
 		self._create_session(self.celled(node_id, so, co, frame, cell_cd, old_payload))
+		self._touch_session(tk, session_id)
 
 	def _receive_cell_info(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
-		self._touch_session(tk)
+		session_id = self.cache[tk]["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if node_id not in self.dodag.graph.nodes():
 			self._decache(tk)
@@ -170,6 +171,7 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a cell get/delete with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
 		self._decache(tk)
+		self._touch_session(tk, session_id)
 
 
 	def _receive_statistics_metrics_id(self, response):
@@ -238,6 +240,7 @@ class Reflector(object):
 					if comm.uri == terms.uri['6TP_SF']:
 						comm.payload = {'ns': comm.payload['frame'].slots}
 					elif comm.uri == terms.uri['6TP_CL']:
+						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 						del comm.payload['frame']
 			if not comm.callback:
 				if comm.uri == terms.uri['RPL_NL']:
