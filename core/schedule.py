@@ -156,7 +156,7 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		logg.debug("Node " + str(response.remote[0]) + " replied on a cell get/delete with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
+		logg.debug("Node " + str(response.remote[0]) + " replied on a cell get/delete with " + parser.clean_payload(response.content) + " i.e. MID:" + str(response.mid))
 		self._decache(tk)
 		self._touch_session(tk, session_id)
 
@@ -170,8 +170,8 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		logg.debug("Node " + str(response.remote[0]) + " replied on statistics post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
-		payload = json.loads(parser.clean_payload(response.payload))
+		logg.debug("Node " + str(response.remote[0]) + " replied on statistics post with " + parser.clean_payload(response.content) + " i.e. MID:" + str(response.mid))
+		payload = json.loads(parser.clean_payload(response.content))
 		metric_id = payload[terms.keys['SM_ID']]
 		self._decache(tk)
 		commands = self.probed(node_id, metric_id)
@@ -191,10 +191,10 @@ class Reflector(object):
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		logg.debug("Observed statistics from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
+		logg.debug("Observed statistics from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.content) + " i.e. MID:" + str(response.mid))
 		payload = []
 		try:
-			payload = json.loads(parser.clean_payload(response.payload))
+			payload = json.loads(parser.clean_payload(response.content))
 		except Exception:
 			self._decache(tk)
 			return
@@ -217,14 +217,14 @@ class Reflector(object):
 	def _push_command(self, comm, session):
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
-			if comm.payload:
-				self.cache[comm.id]['payload'] = comm.payload.copy()
-				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
+			if comm.content:
+				self.cache[comm.id]['payload'] = comm.content.copy()
+				if isinstance(comm.content, dict) and 'frame' in comm.content:
 					if comm.uri == terms.uri['6TP_SF']:
-						comm.payload = {'ns': comm.payload['frame'].slots}
+						comm.content = {'ns': comm.content['frame'].slots}
 					elif comm.uri == terms.uri['6TP_CL']:
-						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
-						del comm.payload['frame']
+						comm.content['fd'] = comm.content['frame'].get_alias_id(comm.to)
+						del comm.content['frame']
 			if not comm.callback:
 				if comm.uri == terms.uri['RPL_NL']:
 					comm.callback = self._observe_rpl_nodes
@@ -240,13 +240,13 @@ class Reflector(object):
 					comm.callback = self._receive_statistics_metrics_value
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self._receive_cell_info
-			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
+			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.content))
 			if comm.op == 'get':
 				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
 			elif comm.op == 'observe':
 				self.client.OBSERVE(comm.to, comm.uri, comm.id, comm.callback)
 			elif comm.op == 'post':
-				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
+				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.content), comm.id, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
 
@@ -264,9 +264,6 @@ class Reflector(object):
 		rpl_ol = Command('observe', child, terms.uri['RPL_OL'])
 		q.push(rpl_ol.id, rpl_ol)
 		# TODO: commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
-		for k in self.frames.keys():
-			comm = Command('post', child, terms.uri['6TP_SF'], {'frame': k})
-			q.push(comm.id, comm)
 		q.bank()
 		return q
 
@@ -354,23 +351,23 @@ class Scheduler(Reflector):
 
 		q = queue.RendezvousQueue()
 
-		if target and target != source and target != destination:
+		if target and target != source and target not in self.dodag.get_children(source):
 			return False
 
 		found_tx = None
 		found_rx = []
 		for c in slotframe.cell_container:
 			if c.slot == slot and c.channel == channel:
-				if destination is not None and c.tx_node == source and c.rx_node == destination:
-					if c.link_option == 1:
+				if destination is not None and c.tx == source and c.rx == destination:
+					if c.option == 1:
 						found_tx = c.owner
-					elif c.link_option == 2:
+					elif c.option == 2:
 						found_rx.append(c.owner)
 				elif destination is None:
-					if c.tx_node == source and c.rx_node is None:
-						if c.link_option == 9:
+					if c.tx == source and c.rx is None:
+						if c.option == 9:
 							found_tx = c.owner
-						elif c.link_option == 10:
+						elif c.option == 10:
 							found_rx.append(c.owner)
 		cells = []
 		if destination is not None:
@@ -423,16 +420,16 @@ class Scheduler(Reflector):
 		assert slotframe in self.frames
 		for item in slotframe.cell_container:
 			if item.slot == slot:
-				if item.rx_node == tx or (item.rx_node is None and (item.tx_node == self.dodag.get_parent(tx) or item.tx_node in self.dodag.get_children(tx))):
+				if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))):
 					return True
-				elif item.tx_node == tx:
+				elif item.tx == tx:
 					depends = None
-				elif (item.rx_node is not None and item.rx_node == rx) or \
-						(item.rx_node is None and rx is not None and (item.tx_node == self.dodag.get_parent(rx) or item.tx_node in self.dodag.get_children(rx))) or \
-						(item.rx_node is not None and rx is None and (tx == self.dodag.get_parent(item.rx_node) or tx in self.dodag.get_children(item.rx_node))) or \
-						(rx is None and item.rx_node is None and
+				elif (item.rx is not None and item.rx == rx) or \
+						(item.rx is None and rx is not None and (item.tx == self.dodag.get_parent(rx) or item.tx in self.dodag.get_children(rx))) or \
+						(item.rx is not None and rx is None and (tx == self.dodag.get_parent(item.rx) or tx in self.dodag.get_children(item.rx))) or \
+						(rx is None and item.rx is None and
 								 not set(self.dodag.get_children(tx).append(self.dodag.get_parent(tx))).isdisjoint(
-									 set(self.dodag.get_children(item.tx_node).append(self.dodag.get_parent(item.tx_node)))
+									 set(self.dodag.get_children(item.tx).append(self.dodag.get_parent(item.tx)))
 								 )):
 					return True
 		return False

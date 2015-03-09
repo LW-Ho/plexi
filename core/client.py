@@ -72,7 +72,7 @@ class Communicator(object):
 		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback)
 
 	def test_callable(self, response):
-		print(str(self.token(response.token)) + ' = ' + response.remote[0] + ':' + str(response.remote[1]) + ' = ' + response.payload)
+		print(str(self.token(response.token)) + ' = ' + response.remote[0] + ':' + str(response.remote[1]) + ' = ' + response.content)
 
 
 class LazyCommunicator(Communicator):

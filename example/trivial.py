@@ -39,8 +39,9 @@ class TrivialScheduler(Scheduler):
 
 		bcq = self.set_remote_frames(child, self.frames["Broadcast-Frame"])
 		for c in self.frames["Broadcast-Frame"].cell_container:
-			if c.tx_node == parent or c.tx_node in self.dodag.get_children(child):
-				bcq.append(self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx_node, None, child))
+			if c.tx == parent or c.tx in self.dodag.get_children(child):
+				tmp_q = self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx, None, child)
+				bcq.append(tmp_q)
 		bso, bco = self.schedule(child, None, self.frames["Broadcast-Frame"])
 		if bso and bco:
 			bcq.append(self.set_remote_link(bso, bco, self.frames["Broadcast-Frame"], child, None))

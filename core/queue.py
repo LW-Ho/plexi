@@ -17,11 +17,21 @@ class Command(object):
 		self.op = op
 		self.to = to
 		self.uri = uri
-		self.payload = payload
+		self.content = payload
 		self.callback = callback
 
 	def __str__(self):
-		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.payload) + ' ' + str(self.callback)
+		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.callback)
+
+	@property
+	def payload(self):
+		return self.content
+
+	@payload.setter
+	def payload(self, load):
+		if load and "frame" in load and isinstance(load["frame"], str):
+			raise Exception("got you")
+		self.content = load
 
 
 class RendezvousQueue:
