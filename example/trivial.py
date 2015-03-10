@@ -39,6 +39,12 @@ class TrivialScheduler(Scheduler):
 
 		bcq = self.set_remote_frames(child, self.frames["Broadcast-Frame"])
 		for c in self.frames["Broadcast-Frame"].cell_container:
+			skip = False
+			for new_command in bcq:
+				if new_command.payload and c.slot == new_command.payload['so'] and c.channel == new_command.payload['co'] and c.option == new_command.payload['lo'] and c.owner == new_command.to and c.type == new_command.payload['lt']:
+					skip = True
+			if skip:
+				continue
 			if c.tx == parent or c.tx in self.dodag.get_children(child):
 				tmp_q = self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx, None, child)
 				bcq.append(tmp_q)
@@ -66,7 +72,7 @@ class TrivialScheduler(Scheduler):
 
 	def schedule(self, tx, rx, slotframe):
 		max_slots = 0
-		for frame in self.frames:
+		for frame in self.frames.values():
 			if max_slots < frame.slots:
 				max_slots = frame.slots
 		so = None
@@ -74,14 +80,14 @@ class TrivialScheduler(Scheduler):
 		for slot in range(1, max_slots):
 			skip = False
 			free_channels = set(range(16))
-			for frame in self.frames:
+			for frame in self.frames.values():
 				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
 				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
 					skip = True
 					break
 			if not skip:
 				so = slot
-				co = free_channels[0]
+				co = list(free_channels)[0]
 				break
 
 		return so,co

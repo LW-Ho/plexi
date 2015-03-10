@@ -57,7 +57,7 @@ class Reflector(object):
 	def _touch_session(self, token, session_id):
 		if session_id in self.sessions:
 			session = self.sessions[session_id]
-			session.achieved(token)
+			session.achieved(self.cache[token])
 			if not session.finished():
 				comm = session.pop()
 				while comm:
@@ -261,8 +261,7 @@ class Reflector(object):
 			logg.info(str(child) + ' wired to parent ' + str(parent))
 
 		q = queue.RendezvousQueue()
-		rpl_ol = Command('observe', child, terms.uri['RPL_OL'])
-		q.push(rpl_ol.id, rpl_ol)
+		q.push(Command('observe', child, terms.uri['RPL_OL']))
 		# TODO: commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 		q.bank()
 		return q
@@ -274,8 +273,7 @@ class Reflector(object):
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
 				if cell.owner != node_id:
-					comm = Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id))
-					q.push(comm.id, comm)
+					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
 			del frame.fds[node_id]
 		q.bank()
 		return q
@@ -333,8 +331,7 @@ class Scheduler(Reflector):
 		assert isinstance(slotframes, Slotframe) #TODO or isinstance(slotframes, array)
 		q = queue.RendezvousQueue()
 		for item in [slotframes] if isinstance(slotframes, Slotframe) else slotframes:
-			comm = Command('post', node, terms.uri['6TP_SF'], {'frame': item})
-			q.push(comm.id, comm)
+			q.push(Command('post', node, terms.uri['6TP_SF'], {'frame': item}))
 		q.bank()
 		return q
 
@@ -389,7 +386,7 @@ class Scheduler(Reflector):
 		depth_groups = {}
 		for c in cells:
 			slotframe.cell_container.append(c)
-			comm = Command('post', c.owner, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'fd':c.slotframe,'frame': slotframe, 'lo':c.option, 'lt':c.type})
+			comm = Command('post', c.owner, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'frame': slotframe, 'lo':c.option, 'lt':c.type})
 			depth = self.dodag.get_node_depth(c.owner)
 			if depth not in depth_groups:
 				depth_groups[depth] = [comm]
@@ -397,7 +394,7 @@ class Scheduler(Reflector):
 				depth_groups[depth].append(comm)
 		for j in sorted(depth_groups.keys(), reverse=True):
 			for k in depth_groups[j]:
-				q.push(k.id, k)
+				q.push(k)
 			q.bank()
 
 		return q
@@ -405,8 +402,7 @@ class Scheduler(Reflector):
 	def get_remote_children(self, node, observe=False):
 		assert isinstance(node, NodeID)
 		q = queue.RendezvousQueue()
-		comm = Command('get' if not observe else 'observe', node, terms.uri['RPL_OL'])
-		q.push(comm.id, comm)
+		q.push(Command('get' if not observe else 'observe', node, terms.uri['RPL_OL']))
 		q.bank()
 		return q
 
@@ -417,7 +413,7 @@ class Scheduler(Reflector):
 		pass
 
 	def conflict(self, slot, tx, rx, slotframe):
-		assert slotframe in self.frames
+		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
 		for item in slotframe.cell_container:
 			if item.slot == slot:
 				if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))):
@@ -435,12 +431,12 @@ class Scheduler(Reflector):
 		return False
 
 	def interfere(self, slot, tx, rx, slotframe):
-		assert slotframe in self.frames
+		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
 		channels = []
 		for item in slotframe.cell_container:
-			if item.slot == slot and item.rx_node is not None and rx is not None and \
-				item.rx_node not in self.dodag.get_children(tx).append(self.dodag.get_parent(tx)) and \
-				rx not in self.dodag.get_children(item.tx_node).append(self.dodag.get_parent(item.tx_node)):
+			if item.slot == slot and item.rx is not None and rx is not None and \
+				item.rx not in self.dodag.get_children(tx).append(self.dodag.get_parent(tx)) and \
+				rx not in self.dodag.get_children(item.tx).append(self.dodag.get_parent(item.tx)):
 				channels.append(item.channel)
 		return channels
 
