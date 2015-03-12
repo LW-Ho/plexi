@@ -23,7 +23,7 @@ class TrivialScheduler(Scheduler):
 		f1 = Slotframe("Broadcast-Frame", 25)
 		self.frames[f1.name] = f1
 		q = self.set_remote_frames(self.root_id, f1)
-		q.append(self.set_remote_link(1, 0, f1, self.root_id, None, self.root_id))
+		q.push(self.set_remote_link(1, 0, f1, self.root_id, None, self.root_id))
 		self.communicate(q)
 
 		f2 = Slotframe("Unicast-Frame", 21)
@@ -41,16 +41,15 @@ class TrivialScheduler(Scheduler):
 		for c in self.frames["Broadcast-Frame"].cell_container:
 			skip = False
 			for new_command in bcq:
-				if new_command.payload and c.slot == new_command.payload['so'] and c.channel == new_command.payload['co'] and c.option == new_command.payload['lo'] and c.owner == new_command.to and c.type == new_command.payload['lt']:
+				if new_command.uri == terms.uri['6TP_CL'] and c.slot == new_command.payload['so'] and c.channel == new_command.payload['co'] and c.option == new_command.payload['lo'] and c.owner == new_command.to and c.type == new_command.payload['lt']:
 					skip = True
 			if skip:
 				continue
 			if c.tx == parent or c.tx in self.dodag.get_children(child):
-				tmp_q = self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx, None, child)
-				bcq.append(tmp_q)
+				bcq.push(self.set_remote_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx, None, child))
 		bso, bco = self.schedule(child, None, self.frames["Broadcast-Frame"])
-		if bso and bco:
-			bcq.append(self.set_remote_link(bso, bco, self.frames["Broadcast-Frame"], child, None))
+		if bso is not None and bco is not None:
+			bcq.push(self.set_remote_link(bso, bco, self.frames["Broadcast-Frame"], child, None))
 		else:
 			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot broadcast")
 		commands.append(bcq)
@@ -58,13 +57,13 @@ class TrivialScheduler(Scheduler):
 		ucq = self.set_remote_frames(child, self.frames["Unicast-Frame"])
 		for neighbor in [parent]+self.dodag.get_children(child):
 			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
-			if uso and uco:
-				ucq.append(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
+			if uso is not None and uco is not None:
+				ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
 			else:
 				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
 			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
-			if uso and uco:
-				ucq.append(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
+			if uso is not None and uco is not None:
+				ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
 			else:
 				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot unicast to " + str(neighbor))
 		commands.append(ucq)

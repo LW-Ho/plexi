@@ -20,6 +20,9 @@ class Command(object):
 		self.content = payload
 		self.callback = callback
 
+	def __eq__(self, other):
+		return self.id == other.id
+
 	def __str__(self):
 		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.callback)
 
@@ -37,12 +40,12 @@ class Command(object):
 		return self.id == other.id
 
 
-class RendezvousQueue:
+class RendezvousQueue(object):
 	def __init__(self):
 		self.items = deque([])
 		self.last_point = set()
-		self.pointer = -1
-		self. _size = 0
+		self._pointer = -1
+		self._size = 0
 
 	def __iter__(self):
 		return self
@@ -50,10 +53,11 @@ class RendezvousQueue:
 	def next(self):
 		if len(self) == 0:
 			raise StopIteration
-		self.pointer += 1
-		if self.pointer >= self.__len__():
+		self._pointer += 1
+		if self._pointer >= self.__len__():
+			self._pointer = -1
 			raise StopIteration
-		return self.__getitem__(self.pointer)
+		return self.__getitem__(self._pointer)
 
 	def __getitem__(self, item):
 		if not isinstance(item, (int, long)):
@@ -72,13 +76,18 @@ class RendezvousQueue:
 			index += 1
 
 	def __setitem__(self, key, value):
-		pass
+		if key < 0:
+			key = self._size - key
+		if 0 <= key <= self._size:
+			self.items[key] = value
+		else:
+			raise IndexError('list assignment index out of range')
 
-	def __delitem__(self, key):
-		pass
+#	def __delitem__(self, key):
+#		pass
 
-	def __contains__(self, item):
-		pass
+#	def __contains__(self, item):
+#		pass
 
 	def pop(self):
 		try:
@@ -96,19 +105,39 @@ class RendezvousQueue:
 			return None
 
 	def push(self, item):
-		if item in self.last_point:
+		if isinstance(item, RendezvousQueue) and self.ready() and item.ready() and item.unprocessed():
+			self.items.extend(list(item.items))
+			self._size += len(item)
+		elif isinstance(item, RendezvousQueue) and self.ready() and not item.ready() and item.unprocessed():
+			self.items.extend(list(item.items))
+			self._size += len(item)
+			self.last_point = item.last_point
+		elif isinstance(item, RendezvousQueue) and not self.ready() and not item.ready() and item.unprocessed() and len(item.items) == len(item):
+			self.items.extend(list(item.items))
+			self._size += len(item)
+			self.last_point.union(item.last_point)
+		elif isinstance(item, RendezvousQueue):
+			raise Exception('Impossible to append')
+		elif isinstance(item, list):
+			for i in item:
+				self.push(i)
+		elif item in self.last_point:
 			return False
-		self.items.append(item)
-		self._size += 1
-		self.last_point.add(item)
+		else:
+			self.items.append(item)
+			self._size += 1
+			self.last_point.add(item)
+
 		return True
 
 	def achieved(self, item):
+		assert item is not None
 		for i in self.items:
 			if isinstance(i, set):
-				if item in i:
-					i.remove(item)
-					return True
+				for j in list(i):
+					if item == j:
+						i.remove(j)
+						return True
 				break
 		return False
 
@@ -123,10 +152,7 @@ class RendezvousQueue:
 		return self._size
 
 	def finished(self):
-		for i in self.items:
-			if not isinstance(i, set) or (isinstance(i, set) and len(i) > 0):
-				return False
-		return True
+		return self.__len__() == 0
 
 	def ready(self):
 		return len(self.last_point) == 0
@@ -142,27 +168,27 @@ class RendezvousQueue:
 				attendees = 0
 		return True
 
-	def append(self, other_queue):
-		if isinstance(other_queue, RendezvousQueue) and other_queue.ready() and other_queue.unprocessed():
-			self.items.extend(other_queue.items)
-		else:
-			raise Exception('Impossible to append. Either not RendezvousQueue, or not ready or already processed')
-
 	def __str__(self):
 		tmp = ''
 		_counter = 0
+		_idx = 0
 		for i in self.items:
-			if isinstance(i,set):
-				tmp += 'W -> [ '
-				for j in i:
-					tmp += str(j)+' '
-				tmp += ']\n'
+			if isinstance(i, set):
+				assembly = []
+				for j in reversed(range(_idx)):
+					if isinstance(self.items[j], set):
+						break
+					assembly.append(j-_idx+_counter)
+				tmp += str(sorted(assembly))+'\n'
 			else:
 				tmp += str(_counter)+' -> '+str(i)+'\n'
 				_counter += 1
-		if len(self.last_point)>0:
-			tmp += '( '
-			for j in self.last_point:
-				tmp += str(j)+' '
-			tmp += ')\n'
+			_idx += 1
+		if len(self.last_point) > 0:
+			assembly = []
+			for j in reversed(range(_idx)):
+				if isinstance(self.items[j], set):
+					break
+				assembly.append(j-_idx+_counter)
+			tmp += str(sorted(assembly))+'++\n'
 		return tmp

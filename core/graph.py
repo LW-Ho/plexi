@@ -31,6 +31,9 @@ class DoDAG(object):
 			self.flush_to_visualizer(self.visualize)
 		self.attach_node(root)
 
+	def get_neighbors(self, node):
+		return self.graph.neighbors(node)
+
 	def get_parent(self, child_id):
 		if child_id in self.graph.nodes():
 			for neighbor in self.graph.neighbors(child_id):

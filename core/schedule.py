@@ -38,10 +38,12 @@ class Reflector(object):
 		self.count_sessions = 0
 
 	def _decache(self, token):
-		if token:
-			sent_msg = self.cache[token]
-			if sent_msg['op'] != 'observe':
+		comm = None
+		if token is not None:
+			comm = self.cache[token]
+			if comm['op'] != 'observe':
 				del self.cache[token]
+		return comm
 
 	def _create_session(self, milestone_queue):
 		if milestone_queue and len(milestone_queue) > 0:
@@ -54,16 +56,14 @@ class Reflector(object):
 					break
 				comm = self.sessions[self.count_sessions].pop()
 
-	def _touch_session(self, token, session_id):
+	def _touch_session(self, achieved_comm, session_id):
 		if session_id in self.sessions:
 			session = self.sessions[session_id]
-			session.achieved(self.cache[token])
+			session.achieved(achieved_comm)
 			if not session.finished():
 				comm = session.pop()
 				while comm:
 					self._push_command(comm, session_id)
-					if len(session) == 0:
-						break
 					comm = session.pop()
 			else:
 				del self.sessions[session_id]
@@ -85,20 +85,20 @@ class Reflector(object):
 		observed_children = []
 		for n in payload:
 			observed_children.append(NodeID(str(n)))
-		self._decache(tk)
+		achieved_command = self._decache(tk)
 		dodag_child_list = self.dodag.get_children(parent_id)
 
 		removed_nodes = [item for item in dodag_child_list if item not in observed_children]
 		for n in removed_nodes:
 			if self.dodag.detach_node(n):
-				self._create_session(self._disconnect(n))
-				self._create_session(self.disconnected(n))
+				self.communicate(self._disconnect(n))
+				self.communicate(self.disconnected(n))
 		for k in observed_children:
 			old_parent = self.dodag.get_parent(k)
 			if self.dodag.attach_child(k, parent_id):
-				self._create_session(self._connect(k, parent_id, old_parent))
-				self._create_session(self.connected(k, parent_id, old_parent))
-		self._touch_session(tk, session_id)
+				self.communicate(self._connect(k, parent_id, old_parent))
+				self.communicate(self.connected(k, parent_id, old_parent))
+		self._touch_session(achieved_command, session_id)
 
 	def _receive_slotframe_id(self, response):
 		tk = self.client.token(response.token)
@@ -115,10 +115,10 @@ class Reflector(object):
 		local_fd = payload['fd']
 		old_payload = self.cache[tk]['payload']
 		frame = old_payload['frame']
-		self._decache(tk)
-		self._create_session(self._frame(node_id, frame, local_fd, old_payload))
-		self._create_session(self.framed(node_id, frame, local_fd, old_payload))
-		self._touch_session(tk, session_id)
+		achieved_command = self._decache(tk)
+		self.communicate(self._frame(node_id, frame, local_fd, old_payload))
+		self.communicate(self.framed(node_id, frame, local_fd, old_payload))
+		self._touch_session(achieved_command, session_id)
 
 	def _receive_cell_id(self, response):
 		tk = self.client.token(response.token)
@@ -138,10 +138,10 @@ class Reflector(object):
 		so = old_payload['so']
 		co = old_payload['co']
 
-		self._decache(tk)
-		self._create_session(self._cell(node_id, so, co, frame, cell_cd, old_payload))
-		self._create_session(self.celled(node_id, so, co, frame, cell_cd, old_payload))
-		self._touch_session(tk, session_id)
+		achieved_command = self._decache(tk)
+		self.communicate(self._cell(node_id, so, co, frame, cell_cd, old_payload))
+		self.communicate(self.celled(node_id, so, co, frame, cell_cd, old_payload))
+		self._touch_session(achieved_command, session_id)
 
 	def _receive_cell_info(self, response):
 		tk = self.client.token(response.token)
@@ -157,8 +157,8 @@ class Reflector(object):
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a cell get/delete with " + parser.clean_payload(response.content) + " i.e. MID:" + str(response.mid))
-		self._decache(tk)
-		self._touch_session(tk, session_id)
+		achieved_command = self._decache(tk)
+		self._touch_session(achieved_command, session_id)
 
 
 	def _receive_statistics_metrics_id(self, response):
@@ -290,6 +290,10 @@ class Reflector(object):
 	def communicate(self, transaction):
 		if isinstance(transaction, queue.RendezvousQueue):
 			self._create_session(transaction)
+		elif isinstance(transaction, list):
+			for i in transaction:
+				if isinstance(i, queue.RendezvousQueue):
+					self._create_session(i)
 
 	def start(self):
 		if not len(self.sessions) and not len(self.cache):
@@ -342,7 +346,6 @@ class Scheduler(Reflector):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
-		assert destination is None or isinstance(target, NodeID)
 		assert isinstance(source, NodeID)
 		assert destination is None or isinstance(destination, NodeID)
 
@@ -418,15 +421,10 @@ class Scheduler(Reflector):
 			if item.slot == slot:
 				if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))):
 					return True
-				elif item.tx == tx:
-					depends = None
 				elif (item.rx is not None and item.rx == rx) or \
-						(item.rx is None and rx is not None and (item.tx == self.dodag.get_parent(rx) or item.tx in self.dodag.get_children(rx))) or \
-						(item.rx is not None and rx is None and (tx == self.dodag.get_parent(item.rx) or tx in self.dodag.get_children(item.rx))) or \
-						(rx is None and item.rx is None and
-								 not set(self.dodag.get_children(tx).append(self.dodag.get_parent(tx))).isdisjoint(
-									 set(self.dodag.get_children(item.tx).append(self.dodag.get_parent(item.tx)))
-								 )):
+						(item.rx is None and rx is not None and item.tx in self.dodag.get_neighbors(rx)) or \
+						(item.rx is not None and rx is None and tx in self.dodag.get_neighbors(item.rx)) or \
+						(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))):
 					return True
 		return False
 
@@ -435,8 +433,8 @@ class Scheduler(Reflector):
 		channels = []
 		for item in slotframe.cell_container:
 			if item.slot == slot and item.rx is not None and rx is not None and \
-				item.rx not in self.dodag.get_children(tx).append(self.dodag.get_parent(tx)) and \
-				rx not in self.dodag.get_children(item.tx).append(self.dodag.get_parent(item.tx)):
+				item.rx not in self.dodag.get_neighbors(tx) and \
+				rx not in self.dodag.get_neighbors(item.tx):
 				channels.append(item.channel)
 		return channels
 
