@@ -157,76 +157,51 @@ class Reflector(object):
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		clean_payload = parser.clean_payload(response.payload)
-		logg.debug("Node " + str(response.remote[0]) + " replied on a cell get/delete with " + clean_payload + " i.e. MID:" + str(response.mid))
-		if command.uri.startswith(terms.uri['6TP_CL']):
+		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
-		old_payload = self.cache[tk]['command'].payload
-		frame = old_payload['frame']
-		cell = Cell(node_id, payload['so'], payload['co'], NodeID(payload['tx']), NodeID(payload['rx']), frame, payload['lt'], payload['lo'])
+		info = None
+		if command.uri == terms.uri['6TP_CL']:
+			info = payload
+		elif command.uri == terms.uri['6TP_SM']:
+			info = payload[terms.keys['SM_ID']]
 		cached_entry = self._decache(tk)
-		self.communicate(self._has(node_id, cell))
-		self.communicate(self.informed(node_id, cell))
+		self.communicate(self._probe(node_id, command.uri, info))
+		self.communicate(self.probed(node_id, command.uri, info))
 		self._touch_session(cached_entry['command'], session_id)
 
 
-	def _receive_statistics_metrics_id(self, response):
-		tk = self.client.token(response.token)
-		if tk not in self.cache:
-			return
-		node_id = NodeID(response.remote[0], response.remote[1])
-		if response.code != coap.CONTENT:
-			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-			self._decache(tk)
-			raise exception.UnsupportedCase(tmp)
-		logg.debug("Node " + str(response.remote[0]) + " replied on statistics post with " + parser.clean_payload(response.content) + " i.e. MID:" + str(response.mid))
-		payload = json.loads(parser.clean_payload(response.content))
-		metric_id = payload[terms.keys['SM_ID']]
-		self._decache(tk)
-		commands = self.probed(node_id, metric_id)
-		if commands:
-			for comm in commands:
-				self._push_command(comm)
+#			old_payload = self.cache[tk]['command'].payload
+#			frame = old_payload['frame']
+#			cell = Cell(node_id, payload['so'], payload['co'], NodeID(payload['tx']), NodeID(payload['rx']), frame, payload['lt'], payload['lo'])
 
-	def _receive_statistics_metrics_value(self, response):
+	def _receive_report(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
+		command = self.cache[tk]
+		session_id = command["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
-		if node_id not in self.dodag.graph.nodes():
-			self._decache(tk)
-			return
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		logg.debug("Observed statistics from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.content) + " i.e. MID:" + str(response.mid))
-		payload = []
-		try:
-			payload = json.loads(parser.clean_payload(response.content))
-		except Exception:
-			self._decache(tk)
-			return
-		self._decache(tk)
-		commands = []
-		for item in payload:
-			for (neighbor, statistics) in item.items():
-				endpoint = NodeID(neighbor)
-				if endpoint not in self.dodag.graph.nodes():
-					continue
-				for metrics in statistics:
-					for (key, value) in metrics.items():
-						self.dodag.update_link(node_id, endpoint, str(key), value)
-				if self.dodag.graph.has_edge(node_id, endpoint) and 'statistics' in self.dodag.graph.edge[node_id][endpoint]:
-					commands = self.reported(node_id, endpoint, self.dodag.graph.edge[node_id][endpoint]['statistics'])
-		if commands:
-			for comm in commands:
-				self._push_command(comm)
+		clean_payload = parser.clean_payload(response.payload)
+		logg.debug("Probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
+		payload = json.loads(clean_payload)
+		info = None
+		if command.uri.startswith(terms.uri['6TP_CL']):
+			info = payload
+		elif command.uri.startswith(terms.uri['6TP_SV']):
+			info = payload
+		cached_entry = self._decache(tk)
+		self.communicate(self._report(node_id, command.uri, info))
+		self.communicate(self.reported(node_id, command.uri, info))
+		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) } #id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
-				#self.cache[comm.id]['payload'] = comm.content.copy()
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
 					if comm.uri == terms.uri['6TP_SF']:
 						comm.payload = {'ns': comm.payload['frame'].slots}
@@ -241,13 +216,13 @@ class Reflector(object):
 				elif comm.uri == terms.uri['6TP_SF']:
 					comm.callback = self._receive_slotframe_id
 				elif comm.uri == terms.uri['6TP_CL']:
-					comm.callback = self._receive_cell_id
+					comm.callback = self._receive_probe
 				elif comm.uri == terms.uri['6TP_SM']:
-					comm.callback = self._receive_statistics_metrics_id
-				elif comm.uri.startswith(terms.uri['6TP_SV']+"/0"):
-					comm.callback = self._receive_statistics_metrics_value
+					comm.callback = self._receive_probe
+				elif comm.uri.startswith(terms.uri['6TP_SV']):
+					comm.callback = self._receive_report
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
-					comm.callback = self._receive_cell_info
+					comm.callback = self._receive_report
 			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
 				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
@@ -257,10 +232,6 @@ class Reflector(object):
 				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
-
-	def _pop(self, node):
-		logg.info(str(node) + ' popped up')
-		return None
 
 	def _connect(self, child, parent, old_parent=None):
 		if old_parent:
@@ -295,8 +266,12 @@ class Reflector(object):
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		return None
 
-	def _inform(self, who, info):
-		logg.info(str(who) + " informed of " + str(info))
+	def _probe(self, who, info):
+		logg.info('Probe at ' + str(who) + " returned " + str(info))
+		return None
+
+	def _report(self, who, info):
+		logg.info('Probe at ' + str(who) + " reported " + str(info))
 		return None
 
 	def communicate(self, assembly):
@@ -312,9 +287,6 @@ class Reflector(object):
 			raise NotImplementedError("At least one command should be put in cache before starting the scheduler")
 		else:
 			self.client.start()
-
-	def popped(self, node):
-		pass
 
 	def connected(self, child, parent, old_parent=None):
 		pass
@@ -340,7 +312,7 @@ class Scheduler(Reflector):
 	def get_remote_frame(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
 		assert isinstance(slotframe, Slotframe)
-		pass # TODO self.commands.append(self.Command('post', node, terms.uri['6TP_SF'], {'frame': slotframe}))
+		raise exception.UnsupportedCase('GET command for slotframes is not supported')
 
 	def set_remote_frames(self, node, slotframes):
 		assert isinstance(node, NodeID)
@@ -351,8 +323,18 @@ class Scheduler(Reflector):
 		q.block()
 		return q
 
-	def get_remote_cell(self, node, cell): # TODO: observe (make sense when distributed scheduling in place)
-		pass
+	def get_remote_cell(self, node, cell=None):
+		q = interface.BlockQueue()
+		if cell is None:
+			q.push(Command('get', node, terms.uri['6TP_CL']))
+		elif isinstance(cell, (int, long)):
+			q.push(Command('get', node, terms.uri['6TP_CL']+'/'+str(cell)))
+		elif isinstance(cell, Cell) and cell.id:
+			q.push(Command('get', node, terms.uri['6TP_CL']+'/'+str(cell.id)))
+		else:
+			return None
+		q.block()
+		return q
 
 	def set_remote_link(self, slot, channel, slotframe, source, destination, target=None):
 		assert isinstance(slotframe, Slotframe)
@@ -421,8 +403,14 @@ class Scheduler(Reflector):
 		q.block()
 		return q
 
-	def get_remote_statistics(self, node, statistics, observe=False):
-		pass
+	def get_remote_statistics(self, node, statistics=0, observe=False):
+		q = interface.BlockQueue()
+		if isinstance(statistics, (int, long)):
+			q.push(Command('get' if not observe else 'observe', node, terms.uri['6TP_SV']+'/'+str(statistics)))
+		else:
+			return None
+		q.block()
+		return q
 
 	def disconnect_node(self, node):
 		pass
@@ -453,5 +441,3 @@ class Scheduler(Reflector):
 
 	def schedule(self, tx, rx, slotframe):
 		raise NotImplementedError()
-
-	def

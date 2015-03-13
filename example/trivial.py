@@ -92,9 +92,8 @@ class TrivialScheduler(Scheduler):
 		return so,co
 
 	def probed(self, node_id, metric_id):
-		logg.info(str(node_id) + " installed statistics observer with id=" + str(metric_id))
 		commands = []
-
+		q = Block
 		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
 		commands.append(self.Command('observe', node_id, id_appended_uri))
 
