@@ -8,6 +8,7 @@ __copyright__ = "Copyright 2015, The RICH Project"
 #__status__ = "Production"
 
 from collections import deque
+import copy
 
 class Command(object):
 	token = 0
@@ -22,6 +23,11 @@ class Command(object):
 
 	def __eq__(self, other):
 		return self.id == other.id
+
+	def __copy__(self):
+		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), self.callback)
+		comm.id = self.id
+		return comm
 
 	def __str__(self):
 		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.callback)
@@ -40,7 +46,7 @@ class Command(object):
 		return self.id == other.id
 
 
-class RendezvousQueue(object):
+class BlockQueue(object):
 	def __init__(self):
 		self.items = deque([])
 		self.last_point = set()
@@ -105,18 +111,18 @@ class RendezvousQueue(object):
 			return None
 
 	def push(self, item):
-		if isinstance(item, RendezvousQueue) and self.ready() and item.ready() and item.unprocessed():
+		if isinstance(item, BlockQueue) and self.ready() and item.ready() and item.unprocessed():
 			self.items.extend(list(item.items))
 			self._size += len(item)
-		elif isinstance(item, RendezvousQueue) and self.ready() and not item.ready() and item.unprocessed():
+		elif isinstance(item, BlockQueue) and self.ready() and not item.ready() and item.unprocessed():
 			self.items.extend(list(item.items))
 			self._size += len(item)
 			self.last_point = item.last_point
-		elif isinstance(item, RendezvousQueue) and not self.ready() and not item.ready() and item.unprocessed() and len(item.items) == len(item):
+		elif isinstance(item, BlockQueue) and not self.ready() and not item.ready() and item.unprocessed() and len(item.items) == len(item):
 			self.items.extend(list(item.items))
 			self._size += len(item)
 			self.last_point.union(item.last_point)
-		elif isinstance(item, RendezvousQueue):
+		elif isinstance(item, BlockQueue):
 			raise Exception('Impossible to append')
 		elif isinstance(item, list):
 			for i in item:
@@ -130,8 +136,7 @@ class RendezvousQueue(object):
 
 		return True
 
-	def achieved(self, item):
-		assert item is not None
+	def unblock(self, item):
 		for i in self.items:
 			if isinstance(i, set):
 				for j in list(i):
@@ -141,7 +146,7 @@ class RendezvousQueue(object):
 				break
 		return False
 
-	def bank(self):
+	def block(self):
 		if len(self.last_point) > 0:
 			self.items.append(self.last_point)
 			self.last_point = set()

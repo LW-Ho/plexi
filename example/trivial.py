@@ -33,7 +33,7 @@ class TrivialScheduler(Scheduler):
 
 	def connected(self, child, parent, old_parent=None):
 
-		commands = [self.get_remote_children(child, True)]
+		commands = []
 
 		#TODO commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 

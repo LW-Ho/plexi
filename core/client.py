@@ -45,7 +45,6 @@ class Communicator(object):
 		#request.opt.content_format = coap.media_types_rev['application/json']
 		protocol = coap.Coap(resource.Endpoint(None))
 		ver = netaddr.IPAddress(to_node.ip).version
-		#print(to_node.ip)
 		if ver == 6:
 			reactor.listenUDP(0, protocol, interface='::')
 		else:
