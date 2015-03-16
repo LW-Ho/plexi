@@ -149,37 +149,32 @@ class Reflector(object):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
-		command = self.cache[tk]
-		session_id = command["session"]
+		cache_entry = self.cache[tk]
+		session_id = cache_entry["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
-			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(command)
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(cache_entry)
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		clean_payload = parser.clean_payload(response.payload)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		info = None
-		if command.uri == terms.uri['6TP_CL']:
+		if cache_entry['command'].uri == terms.uri['6TP_CL']:
 			info = payload
-		elif command.uri == terms.uri['6TP_SM']:
+		elif cache_entry['command'].uri == terms.uri['6TP_SM']:
 			info = payload[terms.keys['SM_ID']]
 		cached_entry = self._decache(tk)
-		self.communicate(self._probe(node_id, command.uri, info))
-		self.communicate(self.probed(node_id, command.uri, info))
+		self.communicate(self._probe(node_id, cache_entry['command'].uri, info))
+		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
 		self._touch_session(cached_entry['command'], session_id)
-
-
-#			old_payload = self.cache[tk]['command'].payload
-#			frame = old_payload['frame']
-#			cell = Cell(node_id, payload['so'], payload['co'], NodeID(payload['tx']), NodeID(payload['rx']), frame, payload['lt'], payload['lo'])
 
 	def _receive_report(self, response):
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
-		command = self.cache[tk]
-		session_id = command["session"]
+		cache_entry = self.cache[tk]
+		session_id = cache_entry["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
@@ -189,13 +184,13 @@ class Reflector(object):
 		logg.debug("Probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		info = None
-		if command.uri.startswith(terms.uri['6TP_CL']):
+		if cache_entry['command'].uri.startswith(terms.uri['6TP_CL']):
 			info = payload
-		elif command.uri.startswith(terms.uri['6TP_SV']):
+		elif cache_entry['command'].uri.startswith(terms.uri['6TP_SV']):
 			info = payload
 		cached_entry = self._decache(tk)
-		self.communicate(self._report(node_id, command.uri, info))
-		self.communicate(self.reported(node_id, command.uri, info))
+		self.communicate(self._report(node_id, cache_entry['command'].uri, info))
+		self.communicate(self.reported(node_id, cache_entry['command'].uri, info))
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
@@ -215,6 +210,8 @@ class Reflector(object):
 					comm.callback = self._observe_rpl_children
 				elif comm.uri == terms.uri['6TP_SF']:
 					comm.callback = self._receive_slotframe_id
+				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
+					comm.callback = self._receive_cell_id
 				elif comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_probe
 				elif comm.uri == terms.uri['6TP_SM']:
@@ -266,12 +263,12 @@ class Reflector(object):
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		return None
 
-	def _probe(self, who, info):
-		logg.info('Probe at ' + str(who) + " returned " + str(info))
+	def _probe(self, who, resource, info):
+		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))
 		return None
 
-	def _report(self, who, info):
-		logg.info('Probe at ' + str(who) + " reported " + str(info))
+	def _report(self, who, resource, info):
+		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		return None
 
 	def communicate(self, assembly):
@@ -281,12 +278,6 @@ class Reflector(object):
 			for i in assembly:
 				if isinstance(i, interface.BlockQueue):
 					self._create_session(i)
-
-	def start(self):
-		if not len(self.sessions) and not len(self.cache):
-			raise NotImplementedError("At least one command should be put in cache before starting the scheduler")
-		else:
-			self.client.start()
 
 	def connected(self, child, parent, old_parent=None):
 		pass
@@ -300,14 +291,18 @@ class Reflector(object):
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
 		pass
 
-	def probed(self, node_id, metric_id):
+	def probed(self, node, resource, value):
 		pass
 
-	def reported(self, node_id, endpoint, metric_values):
+	def reported(self, node, resource, value):
 		pass
 
 
 class Scheduler(Reflector):
+
+	def start(self):
+		self.communicate(self.get_remote_children(self.root_id, True))
+		self.client.start()
 
 	def get_remote_frame(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
@@ -412,6 +407,12 @@ class Scheduler(Reflector):
 		q.block()
 		return q
 
+	def set_remote_statistics(self, node, definition):
+		q = interface.BlockQueue()
+		q.push(Command('post', node, terms.uri['6TP_SM'], definition))
+		q.block()
+		return q
+
 	def disconnect_node(self, node):
 		pass
 
@@ -437,7 +438,6 @@ class Scheduler(Reflector):
 				rx not in self.dodag.get_neighbors(item.tx):
 				channels.append(item.channel)
 		return channels
-
 
 	def schedule(self, tx, rx, slotframe):
 		raise NotImplementedError()

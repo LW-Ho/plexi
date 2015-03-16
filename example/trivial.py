@@ -10,6 +10,7 @@ __copyright__ = "Copyright 2015, The RICH Project"
 from example import main
 from core.schedule import Scheduler, logg
 from core.slotframe import Slotframe
+from core.interface import BlockQueue, Command
 from util import terms
 import sys
 
@@ -19,7 +20,6 @@ class TrivialScheduler(Scheduler):
 		super(TrivialScheduler, self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
 
 	def start(self):
-		self.communicate(self.get_remote_children(self.root_id))
 		f1 = Slotframe("Broadcast-Frame", 25)
 		self.frames[f1.name] = f1
 		q = self.set_remote_frames(self.root_id, f1)
@@ -29,13 +29,14 @@ class TrivialScheduler(Scheduler):
 		f2 = Slotframe("Unicast-Frame", 21)
 		self.frames[f2.name] = f2
 		self.communicate(self.set_remote_frames(self.root_id, f2))
+
+		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\"]"}))
+
 		super(TrivialScheduler, self).start()
 
 	def connected(self, child, parent, old_parent=None):
 
 		commands = []
-
-		#TODO commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
 
 		bcq = self.set_remote_frames(child, self.frames["Broadcast-Frame"])
 		for c in self.frames["Broadcast-Frame"].cell_container:
@@ -91,17 +92,11 @@ class TrivialScheduler(Scheduler):
 
 		return so,co
 
-	def probed(self, node_id, metric_id):
-		commands = []
-		q = Block
-		id_appended_uri = terms.uri['6TP_SV'] + "/" + str(metric_id)
-		commands.append(self.Command('observe', node_id, id_appended_uri))
-
-		return commands
-
-	def reported(self, node_id, endpoint, statistics):
-		if node_id in statistics:
-			logg.info(str(node_id) + " for " + str(endpoint) + " reported >> " + str(statistics[node_id]))
+	def probed(self, node, resource, value):
+		q = BlockQueue()
+		q.push(Command('observe', node, terms.uri['6TP_SV'] + "/" + str(value)))
+		q.block()
+		return q
 
 
 if __name__ == '__main__':
