@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>example.main &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">RiSCHER 0.4 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for example.main</h1><div class="highlight"><pre>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;George Exarchakos&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;g.exarchakos@tue.nl&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&quot;0.0.1&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s">&quot;Copyright 2015, The RICH Project&quot;</span>
+<span class="c">#__credits__ = [&quot;XYZ&quot;]</span>
+<span class="c">#__maintainer__ = &quot;XYZ&quot;</span>
+<span class="c">#__license__ = &quot;GPL&quot;</span>
+<span class="c">#__status__ = &quot;Production&quot;</span>
+
+
+<span class="c">#!/bin/python</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;George Exarchakos&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;g.exarchakos@tue.nl&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&quot;0.0.1&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s">&quot;Copyright 2014, The RICH Project&quot;</span>
+<span class="c">#__credits__ = [&quot;XYZ&quot;]</span>
+<span class="c">#__maintainer__ = &quot;XYZ&quot;</span>
+<span class="c">#__license__ = &quot;GPL&quot;</span>
+<span class="c">#__status__ = &quot;Production&quot;</span>
+
+<span class="kn">import</span> <span class="nn">getopt</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<div class="viewcode-block" id="UserInput"><a class="viewcode-back" href="../../example.html#example.main.UserInput">[docs]</a><span class="k">class</span> <span class="nc">UserInput</span><span class="p">:</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">netname</span><span class="p">,</span> <span class="n">lbr</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">visualizer</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">network_name</span> <span class="o">=</span> <span class="n">netname</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lbr</span> <span class="o">=</span> <span class="n">lbr</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">visualizer</span> <span class="o">=</span> <span class="n">visualizer</span>
+
+</div>
+<div class="viewcode-block" id="usage"><a class="viewcode-back" href="../../example.html#example.main.usage">[docs]</a><span class="k">def</span> <span class="nf">usage</span><span class="p">():</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;Command:</span><span class="se">\t</span><span class="s">rischer.py [-h][-b[-p][-v]]&#39;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;Options:&#39;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-h,</span><span class="se">\t</span><span class="s">--help</span><span class="se">\t\t\t</span><span class="s">this usage message&#39;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-b,</span><span class="se">\t</span><span class="s">--LBR=</span><span class="se">\t\t\t</span><span class="s">IPv6 address of Low-Power and Lossy Network Border Router e.g. 215:8d00:52:68c7 or aaaa::215:8d00:52:68c7 (port:5684 assumed)&#39;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-p,</span><span class="se">\t</span><span class="s">--prefix=</span><span class="se">\t\t</span><span class="s">4-character address prefix e.g. aaaa&#39;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-v,</span><span class="se">\t</span><span class="s">--visualizer=</span><span class="se">\t</span><span class="s">IPv4:port address of the graph visualizer server&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="get_user_input"><a class="viewcode-back" href="../../example.html#example.main.get_user_input">[docs]</a><span class="k">def</span> <span class="nf">get_user_input</span><span class="p">(</span><span class="n">arg_str</span><span class="p">):</span>
+	<span class="n">lbr</span> <span class="o">=</span> <span class="bp">None</span>
+	<span class="n">visualizer</span> <span class="o">=</span> <span class="bp">False</span>
+	<span class="n">prefix</span> <span class="o">=</span> <span class="bp">None</span>
+
+	<span class="k">try</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">arg_str</span><span class="p">:</span>
+			<span class="n">opts</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">getopt</span><span class="o">.</span><span class="n">getopt</span><span class="p">(</span><span class="n">arg_str</span><span class="p">,</span> <span class="s">&quot;hb:v:p:&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;help&quot;</span><span class="p">,</span> <span class="s">&quot;LBR=&quot;</span><span class="p">,</span> <span class="s">&quot;visualizer=&quot;</span><span class="p">,</span> <span class="s">&quot;prefix=&quot;</span><span class="p">])</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">opts</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">getopt</span><span class="o">.</span><span class="n">getopt</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="s">&quot;hb:v:p:&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;help&quot;</span><span class="p">,</span> <span class="s">&quot;LBR=&quot;</span><span class="p">,</span> <span class="s">&quot;visualizer=&quot;</span><span class="p">,</span> <span class="s">&quot;prefix=&quot;</span><span class="p">])</span>
+	<span class="k">except</span> <span class="n">getopt</span><span class="o">.</span><span class="n">GetoptError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+		<span class="k">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+		<span class="n">usage</span><span class="p">()</span>
+		<span class="k">return</span> <span class="mi">2</span>
+
+	<span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">opts</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">o</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;-b&quot;</span><span class="p">,</span> <span class="s">&quot;--LBR&quot;</span><span class="p">):</span>
+			<span class="n">lbr</span> <span class="o">=</span> <span class="n">a</span>
+			<span class="n">parts</span> <span class="o">=</span> <span class="n">lbr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="o">==</span><span class="mi">6</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">a</span><span class="p">:</span>
+					<span class="k">print</span><span class="p">(</span><span class="s">&quot;Cannot use -p option when the LBR address has a prefix already&quot;</span><span class="p">)</span>
+					<span class="n">usage</span><span class="p">()</span>
+					<span class="k">return</span> <span class="mi">2</span>
+				<span class="n">prefix</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="k">elif</span> <span class="n">o</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;-v&quot;</span><span class="p">,</span> <span class="s">&quot;--visualizer&quot;</span><span class="p">):</span>
+			<span class="n">visualizer</span> <span class="o">=</span> <span class="n">a</span>
+		<span class="k">elif</span> <span class="n">o</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;-p&quot;</span><span class="p">,</span> <span class="s">&quot;--prefix&quot;</span><span class="p">):</span>
+			<span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">prefix</span> <span class="o">!=</span> <span class="n">a</span><span class="p">:</span>
+				<span class="k">print</span><span class="p">(</span><span class="s">&quot;Cannot use -p option when the LBR address has a prefix already&quot;</span><span class="p">)</span>
+				<span class="n">usage</span><span class="p">()</span>
+				<span class="k">return</span> <span class="mi">2</span>
+			<span class="n">prefix</span> <span class="o">=</span> <span class="n">a</span>
+		<span class="k">elif</span> <span class="n">o</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;-h&quot;</span><span class="p">,</span> <span class="s">&quot;--help&quot;</span><span class="p">):</span>
+			<span class="n">usage</span><span class="p">()</span>
+			<span class="k">return</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">usage</span><span class="p">()</span>
+			<span class="k">return</span> <span class="mi">2</span>
+
+	<span class="k">if</span> <span class="n">lbr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;Border router IPv6 must be specified&quot;</span><span class="p">)</span>
+		<span class="n">usage</span><span class="p">()</span>
+		<span class="k">return</span> <span class="mi">2</span>
+
+	<span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;LBR address is missing a prefix. Specify the address as e.g. aaaa::215:8d00:52:68c7 or use the -p option&quot;</span><span class="p">)</span>
+		<span class="n">usage</span><span class="p">()</span>
+		<span class="k">return</span> <span class="mi">2</span>
+
+	<span class="k">return</span> <span class="n">UserInput</span><span class="p">(</span><span class="s">&quot;RICHNET&quot;</span><span class="p">,</span> <span class="n">lbr</span><span class="p">,</span> <span class="mi">5684</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">visualizer</span> <span class="k">if</span> <span class="n">visualizer</span> <span class="k">else</span> <span class="bp">False</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

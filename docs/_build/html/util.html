@@ -1,0 +1,260 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>util package &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">RiSCHER 0.4 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="util-package">
+<h1>util package<a class="headerlink" href="#util-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-util.exception">
+<span id="util-exception-module"></span><h2>util.exception module<a class="headerlink" href="#module-util.exception" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="util.exception.FormatError">
+<em class="property">exception </em><code class="descclassname">util.exception.</code><code class="descname">FormatError</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/exception.html#FormatError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.exception.FormatError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="util.exception.RequestError">
+<em class="property">exception </em><code class="descclassname">util.exception.</code><code class="descname">RequestError</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/exception.html#RequestError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.exception.RequestError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="util.exception.UnsupportedCase">
+<em class="property">exception </em><code class="descclassname">util.exception.</code><code class="descname">UnsupportedCase</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/exception.html#UnsupportedCase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.exception.UnsupportedCase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-util.gephier">
+<span id="util-gephier-module"></span><h2>util.gephier module<a class="headerlink" href="#module-util.gephier" title="Permalink to this headline">¶</a></h2>
+<p>Allow a Python script to communicate with Gephi using the Gephi Graph Streaming protocol and plugin.</p>
+<dl class="class">
+<dt id="util.gephier.GephiClient">
+<em class="property">class </em><code class="descclassname">util.gephier.</code><code class="descname">GephiClient</code><span class="sig-paren">(</span><em>url='http://127.0.0.1:8080/workspace0'</em>, <em>autoflush=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#GephiClient"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.GephiClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#util.gephier.JSONClient" title="util.gephier.JSONClient"><code class="xref py py-class docutils literal"><span class="pre">util.gephier.JSONClient</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="util.gephier.GephiFileHandler">
+<em class="property">class </em><code class="descclassname">util.gephier.</code><code class="descname">GephiFileHandler</code><span class="sig-paren">(</span><em>out</em>, <em>**params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#GephiFileHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.GephiFileHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#util.gephier.JSONClient" title="util.gephier.JSONClient"><code class="xref py py-class docutils literal"><span class="pre">util.gephier.JSONClient</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="util.gephier.JSONClient">
+<em class="property">class </em><code class="descclassname">util.gephier.</code><code class="descname">JSONClient</code><span class="sig-paren">(</span><em>autoflush=False</em>, <em>enable_timestamps=False</em>, <em>process_event_hook=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="util.gephier.JSONClient.add_edge">
+<code class="descname">add_edge</code><span class="sig-paren">(</span><em>id</em>, <em>source</em>, <em>target</em>, <em>directed=True</em>, <em>**attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.add_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.add_edge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.add_node">
+<code class="descname">add_node</code><span class="sig-paren">(</span><em>id</em>, <em>flush=True</em>, <em>**attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.add_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.add_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.change_edge">
+<code class="descname">change_edge</code><span class="sig-paren">(</span><em>id</em>, <em>flush=True</em>, <em>**attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.change_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.change_edge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.change_node">
+<code class="descname">change_node</code><span class="sig-paren">(</span><em>id</em>, <em>flush=True</em>, <em>**attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.change_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.change_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.clean">
+<code class="descname">clean</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.clean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.clean" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.delete_edge">
+<code class="descname">delete_edge</code><span class="sig-paren">(</span><em>id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.delete_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.delete_edge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.delete_node">
+<code class="descname">delete_node</code><span class="sig-paren">(</span><em>id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.delete_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.delete_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="util.gephier.JSONClient.flush">
+<code class="descname">flush</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/gephier.html#JSONClient.flush"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.gephier.JSONClient.flush" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-util.logger">
+<span id="util-logger-module"></span><h2>util.logger module<a class="headerlink" href="#module-util.logger" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="util.logger.NullHandler">
+<em class="property">class </em><code class="descclassname">util.logger.</code><code class="descname">NullHandler</code><span class="sig-paren">(</span><em>level=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/logger.html#NullHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.logger.NullHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">logging.Handler</span></code></p>
+<dl class="method">
+<dt id="util.logger.NullHandler.emit">
+<code class="descname">emit</code><span class="sig-paren">(</span><em>record</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/logger.html#NullHandler.emit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.logger.NullHandler.emit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-util.parser">
+<span id="util-parser-module"></span><h2>util.parser module<a class="headerlink" href="#module-util.parser" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="util.parser.clean_payload">
+<code class="descclassname">util.parser.</code><code class="descname">clean_payload</code><span class="sig-paren">(</span><em>content</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/parser.html#clean_payload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.parser.clean_payload" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="util.parser.construct_payload">
+<code class="descclassname">util.parser.</code><code class="descname">construct_payload</code><span class="sig-paren">(</span><em>content</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/parser.html#construct_payload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.parser.construct_payload" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="util.parser.query_to_dictionary">
+<code class="descclassname">util.parser.</code><code class="descname">query_to_dictionary</code><span class="sig-paren">(</span><em>query</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/parser.html#query_to_dictionary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.parser.query_to_dictionary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-util.terms">
+<span id="util-terms-module"></span><h2>util.terms module<a class="headerlink" href="#module-util.terms" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-util.tools">
+<span id="util-tools-module"></span><h2>util.tools module<a class="headerlink" href="#module-util.tools" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="util.tools.nuke">
+<code class="descclassname">util.tools.</code><code class="descname">nuke</code><span class="sig-paren">(</span><em>dodag</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/tools.html#nuke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.tools.nuke" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-util.warn">
+<span id="util-warn-module"></span><h2>util.warn module<a class="headerlink" href="#module-util.warn" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="util.warn.deprecated">
+<code class="descclassname">util.warn.</code><code class="descname">deprecated</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/util/warn.html#deprecated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#util.warn.deprecated" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a decorator which can be used to mark functions
+as deprecated. It will result in a warning being emmitted
+when the function is used.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-util">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-util" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">util package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-util.exception">util.exception module</a></li>
+<li><a class="reference internal" href="#module-util.gephier">util.gephier module</a></li>
+<li><a class="reference internal" href="#module-util.logger">util.logger module</a></li>
+<li><a class="reference internal" href="#module-util.parser">util.parser module</a></li>
+<li><a class="reference internal" href="#module-util.terms">util.terms module</a></li>
+<li><a class="reference internal" href="#module-util.tools">util.tools module</a></li>
+<li><a class="reference internal" href="#module-util.warn">util.warn module</a></li>
+<li><a class="reference internal" href="#module-util">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/util.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+      |
+      <a href="_sources/util.txt"
+          rel="nofollow">Page source</a></li>
+    </div>
+
+    
+
+    
+  </body>
+</html>

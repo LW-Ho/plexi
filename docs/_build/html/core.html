@@ -1,0 +1,537 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>core package &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">RiSCHER 0.4 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="core-package">
+<h1>core package<a class="headerlink" href="#core-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-core.client">
+<span id="core-client-module"></span><h2>core.client module<a class="headerlink" href="#module-core.client" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="core.client.Communicator">
+<em class="property">class </em><code class="descclassname">core.client.</code><code class="descname">Communicator</code><a class="reference internal" href="_modules/core/client.html#Communicator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="core.client.Communicator.DELETE">
+<code class="descname">DELETE</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.DELETE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.DELETE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.GET">
+<code class="descname">GET</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.GET"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.GET" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.OBSERVE">
+<code class="descname">OBSERVE</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.OBSERVE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.OBSERVE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.POST">
+<code class="descname">POST</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>payload</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.POST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.POST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.request">
+<code class="descname">request</code><span class="sig-paren">(</span><em>to_node</em>, <em>operation</em>, <em>uri</em>, <em>token</em>, <em>callback</em>, <em>payload=''</em>, <em>kwargs=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.test_callable">
+<code class="descname">test_callable</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.test_callable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.test_callable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.Communicator.token">
+<code class="descname">token</code><span class="sig-paren">(</span><em>ticket</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#Communicator.token"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.Communicator.token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="core.client.LazyCommunicator">
+<em class="property">class </em><code class="descclassname">core.client.</code><code class="descname">LazyCommunicator</code><span class="sig-paren">(</span><em>delay</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#LazyCommunicator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.LazyCommunicator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#core.client.Communicator" title="core.client.Communicator"><code class="xref py py-class docutils literal"><span class="pre">core.client.Communicator</span></code></a></p>
+<dl class="method">
+<dt id="core.client.LazyCommunicator.DELETE">
+<code class="descname">DELETE</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#LazyCommunicator.DELETE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.LazyCommunicator.DELETE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.LazyCommunicator.GET">
+<code class="descname">GET</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#LazyCommunicator.GET"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.LazyCommunicator.GET" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.LazyCommunicator.OBSERVE">
+<code class="descname">OBSERVE</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#LazyCommunicator.OBSERVE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.LazyCommunicator.OBSERVE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.client.LazyCommunicator.POST">
+<code class="descname">POST</code><span class="sig-paren">(</span><em>to_node</em>, <em>uri</em>, <em>payload</em>, <em>token</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/client.html#LazyCommunicator.POST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.client.LazyCommunicator.POST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-core.graph">
+<span id="core-graph-module"></span><h2>core.graph module<a class="headerlink" href="#module-core.graph" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="core.graph.DoDAG">
+<em class="property">class </em><code class="descclassname">core.graph.</code><code class="descname">DoDAG</code><span class="sig-paren">(</span><em>name</em>, <em>root</em>, <em>visualize=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="core.graph.DoDAG.attach_child">
+<code class="descname">attach_child</code><span class="sig-paren">(</span><em>child_id</em>, <em>parent_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.attach_child"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.attach_child" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.attach_node">
+<code class="descname">attach_node</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.attach_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.attach_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.detach_node">
+<code class="descname">detach_node</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.detach_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.detach_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.flush_to_visualizer">
+<code class="descname">flush_to_visualizer</code><span class="sig-paren">(</span><em>visualize</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.flush_to_visualizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.flush_to_visualizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.get_children">
+<code class="descname">get_children</code><span class="sig-paren">(</span><em>parent_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.get_children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.get_children" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.get_neighbors">
+<code class="descname">get_neighbors</code><span class="sig-paren">(</span><em>node</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.get_neighbors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.get_neighbors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.get_node_depth">
+<code class="descname">get_node_depth</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.get_node_depth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.get_node_depth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.get_parent">
+<code class="descname">get_parent</code><span class="sig-paren">(</span><em>child_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.get_parent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.get_parent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.update_link">
+<code class="descname">update_link</code><span class="sig-paren">(</span><em>node</em>, <em>endpoint</em>, <em>metric</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.update_link"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.update_link" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.update_node">
+<code class="descname">update_node</code><span class="sig-paren">(</span><em>node_id</em>, <em>metric</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.update_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.update_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-core.interface">
+<span id="core-interface-module"></span><h2>core.interface module<a class="headerlink" href="#module-core.interface" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="core.interface.BlockQueue">
+<em class="property">class </em><code class="descclassname">core.interface.</code><code class="descname">BlockQueue</code><a class="reference internal" href="_modules/core/interface.html#BlockQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="core.interface.BlockQueue.block">
+<code class="descname">block</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.finished">
+<code class="descname">finished</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.finished"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.finished" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.next">
+<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.pop">
+<code class="descname">pop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.pop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.pop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.push">
+<code class="descname">push</code><span class="sig-paren">(</span><em>item</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.push"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.push" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.ready">
+<code class="descname">ready</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.ready"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.ready" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.unblock">
+<code class="descname">unblock</code><span class="sig-paren">(</span><em>item</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.unblock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.unblock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.interface.BlockQueue.unprocessed">
+<code class="descname">unprocessed</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#BlockQueue.unprocessed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.BlockQueue.unprocessed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="core.interface.Command">
+<em class="property">class </em><code class="descclassname">core.interface.</code><code class="descname">Command</code><span class="sig-paren">(</span><em>op</em>, <em>to</em>, <em>uri</em>, <em>payload=None</em>, <em>callback=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/interface.html#Command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.interface.Command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="attribute">
+<dt id="core.interface.Command.payload">
+<code class="descname">payload</code><a class="headerlink" href="#core.interface.Command.payload" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.interface.Command.token">
+<code class="descname">token</code><em class="property"> = 0</em><a class="headerlink" href="#core.interface.Command.token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-core.node">
+<span id="core-node-module"></span><h2>core.node module<a class="headerlink" href="#module-core.node" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="core.node.NodeID">
+<em class="property">class </em><code class="descclassname">core.node.</code><code class="descname">NodeID</code><span class="sig-paren">(</span><em>ip='0:0:0:0'</em>, <em>port=5684</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/node.html#NodeID"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.node.NodeID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="attribute">
+<dt id="core.node.NodeID.prefix">
+<code class="descname">prefix</code><em class="property"> = 'aaaa'</em><a class="headerlink" href="#core.node.NodeID.prefix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.node.NodeID.stripdown">
+<code class="descname">stripdown</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/node.html#NodeID.stripdown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.node.NodeID.stripdown" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-core.schedule">
+<span id="core-schedule-module"></span><h2>core.schedule module<a class="headerlink" href="#module-core.schedule" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="core.schedule.Reflector">
+<em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Reflector</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Handle all the communication with the RICH network.</p>
+<dl class="method">
+<dt id="core.schedule.Reflector.celled">
+<code class="descname">celled</code><span class="sig-paren">(</span><em>who</em>, <em>slotoffs</em>, <em>channeloffs</em>, <em>frame_name</em>, <em>remote_cell_id</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.celled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.celled" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.communicate">
+<code class="descname">communicate</code><span class="sig-paren">(</span><em>assembly</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.communicate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.communicate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle all the communication with the RICH network.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.connected">
+<code class="descname">connected</code><span class="sig-paren">(</span><em>child</em>, <em>parent</em>, <em>old_parent=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.connected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.connected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.disconnected">
+<code class="descname">disconnected</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.disconnected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.disconnected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.framed">
+<code class="descname">framed</code><span class="sig-paren">(</span><em>who</em>, <em>local_name</em>, <em>remote_alias</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.framed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.framed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.probed">
+<code class="descname">probed</code><span class="sig-paren">(</span><em>node</em>, <em>resource</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.probed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.probed" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.reported">
+<code class="descname">reported</code><span class="sig-paren">(</span><em>node</em>, <em>resource</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.reported"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.reported" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="core.schedule.Scheduler">
+<em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Scheduler</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="index.html#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">core.schedule.Reflector</span></code></a></p>
+<dl class="method">
+<dt id="core.schedule.Scheduler.conflict">
+<code class="descname">conflict</code><span class="sig-paren">(</span><em>slot</em>, <em>tx</em>, <em>rx</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.conflict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.conflict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.disconnect_node">
+<code class="descname">disconnect_node</code><span class="sig-paren">(</span><em>node</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.disconnect_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.disconnect_node" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.get_remote_cell">
+<code class="descname">get_remote_cell</code><span class="sig-paren">(</span><em>node</em>, <em>cell=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.get_remote_cell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.get_remote_cell" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.get_remote_children">
+<code class="descname">get_remote_children</code><span class="sig-paren">(</span><em>node</em>, <em>observe=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.get_remote_children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.get_remote_children" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.get_remote_frame">
+<code class="descname">get_remote_frame</code><span class="sig-paren">(</span><em>node</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.get_remote_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.get_remote_frame" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.get_remote_statistics">
+<code class="descname">get_remote_statistics</code><span class="sig-paren">(</span><em>node</em>, <em>statistics=0</em>, <em>observe=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.get_remote_statistics"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.get_remote_statistics" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.interfere">
+<code class="descname">interfere</code><span class="sig-paren">(</span><em>slot</em>, <em>tx</em>, <em>rx</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.interfere"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.interfere" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.schedule">
+<code class="descname">schedule</code><span class="sig-paren">(</span><em>tx</em>, <em>rx</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.schedule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.schedule" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.set_remote_frames">
+<code class="descname">set_remote_frames</code><span class="sig-paren">(</span><em>node</em>, <em>slotframes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.set_remote_frames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.set_remote_frames" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.set_remote_link">
+<code class="descname">set_remote_link</code><span class="sig-paren">(</span><em>slot</em>, <em>channel</em>, <em>slotframe</em>, <em>source</em>, <em>destination</em>, <em>target=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.set_remote_link"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.set_remote_link" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.set_remote_statistics">
+<code class="descname">set_remote_statistics</code><span class="sig-paren">(</span><em>node</em>, <em>definition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.set_remote_statistics"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.set_remote_statistics" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Scheduler.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-core.slotframe">
+<span id="core-slotframe-module"></span><h2>core.slotframe module<a class="headerlink" href="#module-core.slotframe" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="core.slotframe.Cell">
+<em class="property">class </em><code class="descclassname">core.slotframe.</code><code class="descname">Cell</code><span class="sig-paren">(</span><em>node</em>, <em>so</em>, <em>co</em>, <em>tx</em>, <em>rx</em>, <em>fd</em>, <em>lt</em>, <em>lo</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Cell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Cell" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="attribute">
+<dt id="core.slotframe.Cell.channel">
+<code class="descname">channel</code><a class="headerlink" href="#core.slotframe.Cell.channel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.id">
+<code class="descname">id</code><a class="headerlink" href="#core.slotframe.Cell.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.option">
+<code class="descname">option</code><a class="headerlink" href="#core.slotframe.Cell.option" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.owner">
+<code class="descname">owner</code><a class="headerlink" href="#core.slotframe.Cell.owner" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.rx">
+<code class="descname">rx</code><a class="headerlink" href="#core.slotframe.Cell.rx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.slot">
+<code class="descname">slot</code><a class="headerlink" href="#core.slotframe.Cell.slot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.slotframe">
+<code class="descname">slotframe</code><a class="headerlink" href="#core.slotframe.Cell.slotframe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.tx">
+<code class="descname">tx</code><a class="headerlink" href="#core.slotframe.Cell.tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="core.slotframe.Cell.type">
+<code class="descname">type</code><a class="headerlink" href="#core.slotframe.Cell.type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="core.slotframe.Slotframe">
+<em class="property">class </em><code class="descclassname">core.slotframe.</code><code class="descname">Slotframe</code><span class="sig-paren">(</span><em>name</em>, <em>slots</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="core.slotframe.Slotframe.delete_links_of">
+<code class="descname">delete_links_of</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.delete_links_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.delete_links_of" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.slotframe.Slotframe.get_alias_id">
+<code class="descname">get_alias_id</code><span class="sig-paren">(</span><em>node</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.get_alias_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.get_alias_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.slotframe.Slotframe.get_cells_of">
+<code class="descname">get_cells_of</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.get_cells_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.get_cells_of" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.slotframe.Slotframe.get_cells_similar_to">
+<code class="descname">get_cells_similar_to</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.get_cells_similar_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.get_cells_similar_to" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.slotframe.Slotframe.set_alias_id">
+<code class="descname">set_alias_id</code><span class="sig-paren">(</span><em>node</em>, <em>id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.set_alias_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.set_alias_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-core">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">core package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-core.client">core.client module</a></li>
+<li><a class="reference internal" href="#module-core.graph">core.graph module</a></li>
+<li><a class="reference internal" href="#module-core.interface">core.interface module</a></li>
+<li><a class="reference internal" href="#module-core.node">core.node module</a></li>
+<li><a class="reference internal" href="#module-core.schedule">core.schedule module</a></li>
+<li><a class="reference internal" href="#module-core.slotframe">core.slotframe module</a></li>
+<li><a class="reference internal" href="#module-core">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/core.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+      |
+      <a href="_sources/core.txt"
+          rel="nofollow">Page source</a></li>
+    </div>
+
+    
+
+    
+  </body>
+</html>
