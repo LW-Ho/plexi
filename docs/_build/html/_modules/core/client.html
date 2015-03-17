@@ -1,0 +1,209 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>core.client &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">RiSCHER 0.4 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for core.client</h1><div class="highlight"><pre>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;George Exarchakos&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&quot;0.0.9&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;g.exarchakos@tue.nl&quot;</span>
+<span class="n">__credits__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;XYZ&quot;</span><span class="p">]</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s">&quot;Copyright 2014, The RICH Project&quot;</span>
+<span class="c">#__maintainer__ = &quot;XYZ&quot;</span>
+<span class="c">#__license__ = &quot;GPL&quot;</span>
+<span class="c">#__status__ = &quot;Production&quot;</span>
+
+<span class="c">#from coapthon2 import defines</span>
+<span class="c">#from coapthon2.client.coap_protocol import CoAP</span>
+<span class="kn">from</span> <span class="nn">util.exception</span> <span class="kn">import</span> <span class="n">FormatError</span><span class="p">,</span> <span class="n">RequestError</span>
+<span class="kn">from</span> <span class="nn">util.warn</span> <span class="kn">import</span> <span class="n">deprecated</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">error</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">reactor</span>
+<span class="kn">import</span> <span class="nn">netaddr</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">txthings.coap</span> <span class="kn">as</span> <span class="nn">coap</span>
+<span class="kn">import</span> <span class="nn">txthings.resource</span> <span class="kn">as</span> <span class="nn">resource</span>
+
+<span class="n">coap</span><span class="o">.</span><span class="n">ACK_TIMEOUT</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">coap</span><span class="o">.</span><span class="n">DEFAULT_BLOCK_SIZE_EXP</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c"># Block size 128</span>
+<span class="sd">&quot;&quot;&quot;Default size exponent for blockwise transfers.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="Communicator"><a class="viewcode-back" href="../../core.html#core.client.Communicator">[docs]</a><span class="k">class</span> <span class="nc">Communicator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tickets</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="Communicator.start"><a class="viewcode-back" href="../../core.html#core.client.Communicator.start">[docs]</a>	<span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+		<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+			<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Communicator.token"><a class="viewcode-back" href="../../core.html#core.client.Communicator.token">[docs]</a>	<span class="k">def</span> <span class="nf">token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticket</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">ticket</span><span class="p">]</span> <span class="k">if</span> <span class="n">ticket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span> <span class="k">else</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="Communicator.request"><a class="viewcode-back" href="../../core.html#core.client.Communicator.request">[docs]</a>	<span class="k">def</span> <span class="nf">request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">operation</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="n">request</span> <span class="o">=</span> <span class="n">coap</span><span class="o">.</span><span class="n">Message</span><span class="p">(</span><span class="n">mtype</span><span class="o">=</span><span class="n">coap</span><span class="o">.</span><span class="n">CON</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="n">operation</span> <span class="k">if</span> <span class="n">operation</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">OBSERVE</span> <span class="k">else</span> <span class="n">coap</span><span class="o">.</span><span class="n">GET</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+		<span class="n">request</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">uri_path</span> <span class="o">=</span> <span class="n">uri</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+		<span class="n">request</span><span class="o">.</span><span class="n">remote</span> <span class="o">=</span> <span class="p">(</span><span class="n">to_node</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span> <span class="n">to_node</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+		<span class="c">#request.opt.accept = coap.media_types_rev[&#39;application/json&#39;]</span>
+		<span class="c">#request.opt.content_format = coap.media_types_rev[&#39;application/json&#39;]</span>
+		<span class="n">protocol</span> <span class="o">=</span> <span class="n">coap</span><span class="o">.</span><span class="n">Coap</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">Endpoint</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
+		<span class="n">ver</span> <span class="o">=</span> <span class="n">netaddr</span><span class="o">.</span><span class="n">IPAddress</span><span class="p">(</span><span class="n">to_node</span><span class="o">.</span><span class="n">ip</span><span class="p">)</span><span class="o">.</span><span class="n">version</span>
+		<span class="k">if</span> <span class="n">ver</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">listenUDP</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="s">&#39;::&#39;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">listenUDP</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">protocol</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">operation</span> <span class="o">==</span> <span class="n">coap</span><span class="o">.</span><span class="n">OBSERVE</span><span class="p">:</span>
+			<span class="n">request</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">observe</span> <span class="o">=</span> <span class="mi">1</span> <span class="c">#TODO:Changed, not compliant to the documents</span>
+			<span class="n">requester</span> <span class="o">=</span> <span class="n">coap</span><span class="o">.</span><span class="n">Requester</span><span class="p">(</span><span class="n">protocol</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">observeCallback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">block1Callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block2Callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">observeCallbackArgs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block1CallbackArgs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block2CallbackArgs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">observeCallbackKeywords</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block1CallbackKeywords</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block2CallbackKeywords</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">requester</span> <span class="o">=</span> <span class="n">coap</span><span class="o">.</span><span class="n">Requester</span><span class="p">(</span><span class="n">protocol</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">observeCallback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block1Callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block2Callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">observeCallbackArgs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block1CallbackArgs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block2CallbackArgs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">observeCallbackKeywords</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block1CallbackKeywords</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">block2CallbackKeywords</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+		<span class="n">requester</span><span class="o">.</span><span class="n">deferred</span><span class="o">.</span><span class="n">addCallback</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">requester</span><span class="o">.</span><span class="n">app_request</span><span class="o">.</span><span class="n">token</span><span class="p">]</span> <span class="o">=</span> <span class="n">token</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Communicator.GET"><a class="viewcode-back" href="../../core.html#core.client.Communicator.GET">[docs]</a>	<span class="k">def</span> <span class="nf">GET</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">GET</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Communicator.OBSERVE"><a class="viewcode-back" href="../../core.html#core.client.Communicator.OBSERVE">[docs]</a>	<span class="k">def</span> <span class="nf">OBSERVE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">OBSERVE</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Communicator.POST"><a class="viewcode-back" href="../../core.html#core.client.Communicator.POST">[docs]</a>	<span class="k">def</span> <span class="nf">POST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">POST</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Communicator.DELETE"><a class="viewcode-back" href="../../core.html#core.client.Communicator.DELETE">[docs]</a>	<span class="k">def</span> <span class="nf">DELETE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">GET</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Communicator.test_callable"><a class="viewcode-back" href="../../core.html#core.client.Communicator.test_callable">[docs]</a>	<span class="k">def</span> <span class="nf">test_callable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="k">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">))</span> <span class="o">+</span> <span class="s">&#39; = &#39;</span> <span class="o">+</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="s">&#39; = &#39;</span> <span class="o">+</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="LazyCommunicator"><a class="viewcode-back" href="../../core.html#core.client.LazyCommunicator">[docs]</a><span class="k">class</span> <span class="nc">LazyCommunicator</span><span class="p">(</span><span class="n">Communicator</span><span class="p">):</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">LazyCommunicator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">=</span> <span class="n">delay</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+<div class="viewcode-block" id="LazyCommunicator.GET"><a class="viewcode-back" href="../../core.html#core.client.LazyCommunicator.GET">[docs]</a>	<span class="k">def</span> <span class="nf">GET</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">tmp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+		<span class="k">if</span> <span class="n">tmp</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">GET</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="o">-</span><span class="n">tmp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">GET</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LazyCommunicator.OBSERVE"><a class="viewcode-back" href="../../core.html#core.client.LazyCommunicator.OBSERVE">[docs]</a>	<span class="k">def</span> <span class="nf">OBSERVE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">tmp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+		<span class="k">if</span> <span class="n">tmp</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">OBSERVE</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="o">-</span><span class="n">tmp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">OBSERVE</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LazyCommunicator.POST"><a class="viewcode-back" href="../../core.html#core.client.LazyCommunicator.POST">[docs]</a>	<span class="k">def</span> <span class="nf">POST</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">tmp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+		<span class="k">if</span> <span class="n">tmp</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">POST</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="o">-</span><span class="n">tmp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">POST</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LazyCommunicator.DELETE"><a class="viewcode-back" href="../../core.html#core.client.LazyCommunicator.DELETE">[docs]</a>	<span class="k">def</span> <span class="nf">DELETE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+		<span class="n">tmp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+		<span class="k">if</span> <span class="n">tmp</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callWhenRunning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+			<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="o">-</span><span class="n">tmp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">to_node</span><span class="p">,</span> <span class="n">coap</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
