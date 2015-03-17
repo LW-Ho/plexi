@@ -152,6 +152,7 @@ class Reflector(object):
 
 		:param response: the response returned by a node after a GET rpl/c request
 		:type response: :class:`txthings.coap.Message`
+		:raises: UnsupportedCase
 		"""
 
 		# Extract the token of the given response from the Communicator
@@ -208,7 +209,7 @@ class Reflector(object):
 				self.communicate(self._connect(k, parent_id, old_parent))
 				self.communicate(self.connected(k, parent_id, old_parent))
 		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
-		# from the session registry
+		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _receive_slotframe_id(self, response):
@@ -222,6 +223,7 @@ class Reflector(object):
 
 		:param response: the response returned by a node after a POST 6t/6/sf request
 		:type response: :class:`txthings.coap.Message`
+		:raises: UnsupportedCase
 		"""
 
 		tk = self.client.token(response.token)
@@ -231,14 +233,21 @@ class Reflector(object):
 		node_id = NodeID(response.remote[0], response.remote[1])
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-			self._decache(tk)
+			cached_entry = self._decache(tk)
+			self._touch_session(cached_entry['command'], session_id)
 			raise exception.UnsupportedCase(tmp)
-		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
-		payload = json.loads(parser.clean_payload(response.payload))
+		clean_payload = parser.clean_payload(response.payload)
+		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + clean_payload + " i.e. MID:" + str(response.mid))
+		payload = json.loads(clean_payload)
+
+		# Extract from response the remote ID of the installed frame
 		local_fd = payload['fd']
+		# Extract from cache the Slotframe object the fetched ID should belong to
 		old_payload = self.cache[tk]['command'].payload
 		frame = old_payload['frame']
+		# Find, remove and return the cache entry of the command that triggered this response
 		cached_entry = self._decache(tk)
+
 		self.communicate(self._frame(node_id, frame, local_fd, old_payload))
 		self.communicate(self.framed(node_id, frame, local_fd, old_payload))
 		self._touch_session(cached_entry['command'], session_id)
