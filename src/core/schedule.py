@@ -27,10 +27,46 @@ logg.setLevel(logging.DEBUG)
 
 class Reflector(object):
 	"""
-	Handle all the communication with the RICH network.
+	Handle all the communication with the RICH network in a concurrent way.
+
+	Implements a callback-model to send operations to network nodes and trigger the appropriate callback upon replies.
+	Maintains the proper sequence of messages to be sent to each node separately. For instance, it makes sure a cell is not
+	POSTed at a node before that node has returned the id of the frame the cell belongs to; instead, the message is cached.
+
+	Every communication between the :class:`Reflector` and a node in the network is split in sessions. Each session is independent
+	from any other session and runs in parallel to others. That allows concurrent communication between the scheduler and
+	any node. The parallel sessions the :class:`Reflector` is engaged with, can be with the same or different nodes.
+
+	Each session defines a sequence of blocks of commands destined to various nodes. Commands in the same block can be transmitted
+	simultaneously. All commands of a block need to have replied before the next block is executed. Users of :class:`Reflector`
+	should define those sessions with their blocks externally.
+
+	Besides the user-defined sessions, this class maintains the RPL DoDAG by installing a children observer to every node
+	of the network.
+
+	The class provides a callback system for the following operations and resources:
+
+	- GET & OBSERVE on RPL children of a node: the returned list of children is compared against current RPL DoDAG to determing (dis)connected nodes
+	- POST a new slotframe: sets a frame of specific size (num. of slots) to a node. A callback is triggered upon received slotframe ID
+	- GET, POST & DELETE a cell: installs/deletes a new cell to a node. A callback is triggered upon received cell ID.
+	- GET, OBSERVE & POST a statistics resource: defines a new statistics resource with POST and can read its value with GET or OBSERVE. A call back is triggered upon receive resource ID or value.
+	- GET, OBSERVE, POST & DELETE any user-defined resource
 	"""
 
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
+		"""
+		Configure :class:`Reflector` with a network name and the EUI64 address and port of the border router. Initialize
+		the DoDAG tree with a single node, the border router.
+
+		:param net_name: a name for the network this scheduler handles
+		:type net_name: str
+		:param lbr_ip: EUI64 address of the border router
+		:type lbr_ip: str
+		:param lbr_port: the CoAP port of the border router e.g. 5684
+		:type lbr_port: int
+		:param prefix: network prefix prepended to the EUI64 address e.g. aaaa
+		:type prefix:str
+		"""
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
 		logg.info("Scheduler started with LBR=" + str(self.root_id))
@@ -42,6 +78,15 @@ class Reflector(object):
 		self.count_sessions = 0
 
 	def _decache(self, token):
+		"""
+		Remove and return the cache entry (= a command) with the given token (= id)
+
+		:param token: the token/id of the command to be detected and removed
+		:type token: int
+		:return: the command with the specified token
+		:rtype: Command, or None if not found
+		"""
+
 		entry = None
 		if token is not None:
 			entry = self.cache[token]
@@ -50,21 +95,46 @@ class Reflector(object):
 		return entry
 
 	def _create_session(self, assembly):
+		"""
+		Creates and initiates a session given a BlockQueue. The session is registered to this object and all the commands
+		of its first block are sent to their destinations.
+
+		:param assembly: a stack of blocks of commands to be sent to the network nodes
+		:type assembly: BlockQueue
+		"""
+
 		if assembly and len(assembly) > 0:
 			self.count_sessions += 1
+			# Register the BlockQueue to the list of sessions
 			self.sessions[self.count_sessions] = assembly
+			# Iterate over the commands of the first block of the new session
 			comm = self.sessions[self.count_sessions].pop()
 			while comm:
+				# Transmit each command
 				self._push_command(comm, self.count_sessions)
 				if self.count_sessions not in self.sessions or len(self.sessions[self.count_sessions]) == 0:
-					break
+					break # TODO: a bit confused of the use of this if statement... will check
 				comm = self.sessions[self.count_sessions].pop()
 
 	def _touch_session(self, achieved_comm, session_id):
+		"""
+		Remove a given command from a session. Send subsequent block of commands if the given command was the last pending
+		command of the current block of the session.
+
+		:param achieved_comm: command that needs to be deleted from the session
+		:type achieved_comm: Command
+		:param session_id: identifier of the session from which the commands needs to be deleted
+		:type session_id: int
+		"""
+
 		if session_id in self.sessions:
+			# Get the BlockQueue corresponding to the session_id
 			session = self.sessions[session_id]
+			# Unblock the achieved_comm from the current block of session. Open up the next block if current is finished
 			session.unblock(achieved_comm)
+			# if more commands are in the session, transmit them to their destinations
 			if not session.finished():
+				# Note that pop returns None if the current block has still pending replies of commands
 				comm = session.pop()
 				while comm:
 					self._push_command(comm, session_id)
@@ -73,38 +143,87 @@ class Reflector(object):
 				del self.sessions[session_id]
 
 	def _observe_rpl_children(self, response):
+		"""
+		Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new
+		or departed nodes. Accordingly adjusts the local copy of the DoDAG.
+
+		If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring
+		nodes. If a node is added, a children list observer is installed.
+
+		:param response: the response returned by a node after a GET rpl/c request
+		:type response: :class:`txthings.coap.Message`
+		"""
+
+		# Extract the token of the given response from the Communicator
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
+		# Extract the session ID to which the command that triggered the response belongs
 		session_id = self.cache[tk]["session"]
+		# Build a NodeID out of the responder's IP and port. The responder is the parent of a potentially new/departed child
 		parent_id = NodeID(response.remote[0], response.remote[1])
+		# Handle replies that indicate unsuccessful processing of the GET rpl/c command
 		if response.code != coap.CONTENT:
 			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-			self._decache(tk)
+			# TODO: CoAP errors not properly handled yet
+			# Make sure the command is deleted from the cache and the appropriate session
+			cached_entry = self._decache(tk)
+			self._touch_session(cached_entry['command'], session_id)
 			raise exception.UnsupportedCase(tmp)
 		#TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
-		logg.debug("Children list from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload) + " i.e. MID:" + str(response.mid))
-		payload = json.loads(parser.clean_payload(response.payload))
+		# Trim payload from non-string characters
+		clean_payload = parser.clean_payload(response.payload)
+		logg.debug("Children list from " + str(response.remote[0]) + " >> " + clean_payload + " i.e. MID:" + str(response.mid))
+		# Convert the payload to a JSON object
+		payload = json.loads(clean_payload)
+		# TODO: CBOR support required
 
+		# Build a list of fetched children from the payload
 		observed_children = []
 		for n in payload:
 			observed_children.append(NodeID(str(n)))
+		# Find, remove and return the cache entry of the command that triggered this response
 		cached_entry = self._decache(tk)
 		dodag_child_list = self.dodag.get_children(parent_id)
 
+		# Detect the children that were deleted, those that are in the local DoDAG but are not in the fetched children list
 		removed_nodes = [item for item in dodag_child_list if item not in observed_children]
+		# Iterate over all deleted children and detach them from the local DoDAG.
+		# If detachment successful,
+		#  build a session (BlockQueue) to remove the related cells from affected neighbors
+		#  let user-defined function add a new session if needed
+		#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
 		for n in removed_nodes:
 			if self.dodag.detach_node(n):
 				self.communicate(self._disconnect(n))
 				self.communicate(self.disconnected(n))
+
+		# Iterate over all fetched children and try to attach them to the local DoDAG
+		# If attachment successful,
+		#  build and send a BlockQueue session to install a children list observer to the new node
+		#  let user-defined function add a new session if needed
 		for k in observed_children:
 			old_parent = self.dodag.get_parent(k)
 			if self.dodag.attach_child(k, parent_id):
 				self.communicate(self._connect(k, parent_id, old_parent))
 				self.communicate(self.connected(k, parent_id, old_parent))
+		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
+		# from the session registry
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _receive_slotframe_id(self, response):
+		"""
+		Callback for slotframe resource. Triggered upon reception of a reply on the POST 6t/6/sf command. Records the slotframe
+		identifier returned by the responder.
+
+		The responder returns its local ID generated by 6top once the new frame was set with the POST 6t/6/sf command.
+		As each node may return a different ID for the same slotframe, the returned ID is recorded so that future requests
+		with references to that frame are possible.
+
+		:param response: the response returned by a node after a POST 6t/6/sf request
+		:type response: :class:`txthings.coap.Message`
+		"""
+
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
@@ -163,10 +282,10 @@ class Reflector(object):
 		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		info = None
-		if cache_entry['command'].uri == terms.uri['6TP_CL']:
-			info = payload
-		elif cache_entry['command'].uri == terms.uri['6TP_SM']:
+		if cache_entry['command'].uri == terms.uri['6TP_SM']:
 			info = payload[terms.keys['SM_ID']]
+		else:
+			info = payload
 		cached_entry = self._decache(tk)
 		self.communicate(self._probe(node_id, cache_entry['command'].uri, info))
 		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
@@ -222,6 +341,8 @@ class Reflector(object):
 				elif comm.uri.startswith(terms.uri['6TP_SV']):
 					comm.callback = self._receive_report
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
+					comm.callback = self._receive_report
+				else:
 					comm.callback = self._receive_report
 			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':

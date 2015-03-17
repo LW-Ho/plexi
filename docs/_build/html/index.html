@@ -58,7 +58,26 @@
 <span class="target" id="module-core.schedule"></span><dl class="class">
 <dt id="core.schedule.Reflector">
 <em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Reflector</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Handle all the communication with the RICH network.</p>
+<dd><p>Handle all the communication with the RICH network in a concurrent way.</p>
+<p>Implements a callback-model to send operations to network nodes and trigger the appropriate callback upon replies.
+Maintains the proper sequence of messages to be sent to each node separately. For instance, it makes sure a cell is not
+POSTed at a node before that node has returned the id of the frame the cell belongs to; instead, the message is cached.</p>
+<p>Every communication between the <a class="reference internal" href="#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">Reflector</span></code></a> and a node in the network is split in sessions. Each session is independent
+from any other session and runs in parallel to others. That allows concurrent communication between the scheduler and
+any node. The parallel sessions the <a class="reference internal" href="#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">Reflector</span></code></a> is engaged with, can be with the same or different nodes.</p>
+<p>Each session defines a sequence of blocks of commands destined to various nodes. Commands in the same block can be transmitted
+simultaneously. All commands of a block need to have replied before the next block is executed. Users of <a class="reference internal" href="#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">Reflector</span></code></a>
+should define those sessions with their blocks externally.</p>
+<p>Besides the user-defined sessions, this class maintains the RPL DoDAG by installing a children observer to every node
+of the network.</p>
+<p>The class provides a callback system for the following operations and resources:</p>
+<ul class="simple">
+<li>GET &amp; OBSERVE on RPL children of a node: the returned list of children is compared against current RPL DoDAG to determing (dis)connected nodes</li>
+<li>POST a new slotframe: sets a frame of specific size (num. of slots) to a node. A callback is triggered upon received slotframe ID</li>
+<li>GET, POST &amp; DELETE a cell: installs/deletes a new cell to a node. A callback is triggered upon received cell ID.</li>
+<li>GET, OBSERVE &amp; POST a statistics resource: defines a new statistics resource with POST and can read its value with GET or OBSERVE. A call back is triggered upon receive resource ID or value.</li>
+<li>GET, OBSERVE, POST &amp; DELETE any user-defined resource</li>
+</ul>
 <dl class="method">
 <dt id="core.schedule.Reflector.communicate">
 <code class="descname">communicate</code><span class="sig-paren">(</span><em>assembly</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.communicate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.communicate" title="Permalink to this definition">¶</a></dt>

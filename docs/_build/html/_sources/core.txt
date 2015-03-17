@@ -43,6 +43,7 @@ core.schedule module
     :members:
     :undoc-members:
     :show-inheritance:
+    :private-members:
 
 core.slotframe module
 ---------------------

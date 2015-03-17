@@ -277,7 +277,150 @@
 <dt id="core.schedule.Reflector">
 <em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Reflector</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>Handle all the communication with the RICH network.</p>
+<p>Handle all the communication with the RICH network in a concurrent way.</p>
+<p>Implements a callback-model to send operations to network nodes and trigger the appropriate callback upon replies.
+Maintains the proper sequence of messages to be sent to each node separately. For instance, it makes sure a cell is not
+POSTed at a node before that node has returned the id of the frame the cell belongs to; instead, the message is cached.</p>
+<p>Every communication between the <a class="reference internal" href="index.html#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">Reflector</span></code></a> and a node in the network is split in sessions. Each session is independent
+from any other session and runs in parallel to others. That allows concurrent communication between the scheduler and
+any node. The parallel sessions the <a class="reference internal" href="index.html#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">Reflector</span></code></a> is engaged with, can be with the same or different nodes.</p>
+<p>Each session defines a sequence of blocks of commands destined to various nodes. Commands in the same block can be transmitted
+simultaneously. All commands of a block need to have replied before the next block is executed. Users of <a class="reference internal" href="index.html#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">Reflector</span></code></a>
+should define those sessions with their blocks externally.</p>
+<p>Besides the user-defined sessions, this class maintains the RPL DoDAG by installing a children observer to every node
+of the network.</p>
+<p>The class provides a callback system for the following operations and resources:</p>
+<ul class="simple">
+<li>GET &amp; OBSERVE on RPL children of a node: the returned list of children is compared against current RPL DoDAG to determing (dis)connected nodes</li>
+<li>POST a new slotframe: sets a frame of specific size (num. of slots) to a node. A callback is triggered upon received slotframe ID</li>
+<li>GET, POST &amp; DELETE a cell: installs/deletes a new cell to a node. A callback is triggered upon received cell ID.</li>
+<li>GET, OBSERVE &amp; POST a statistics resource: defines a new statistics resource with POST and can read its value with GET or OBSERVE. A call back is triggered upon receive resource ID or value.</li>
+<li>GET, OBSERVE, POST &amp; DELETE any user-defined resource</li>
+</ul>
+<dl class="method">
+<dt id="core.schedule.Reflector._cell">
+<code class="descname">_cell</code><span class="sig-paren">(</span><em>who</em>, <em>slotoffs</em>, <em>channeloffs</em>, <em>frame</em>, <em>remote_cell_id</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._cell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._cell" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._connect">
+<code class="descname">_connect</code><span class="sig-paren">(</span><em>child</em>, <em>parent</em>, <em>old_parent=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._connect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._create_session">
+<code class="descname">_create_session</code><span class="sig-paren">(</span><em>assembly</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._create_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and initiates a session given a BlockQueue. The session is registered to this object and all the commands
+of its first block are sent to their destinations.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>assembly</strong> (<a class="reference internal" href="#core.interface.BlockQueue" title="core.interface.BlockQueue"><em>BlockQueue</em></a>) &#8211; a stack of blocks of commands to be sent to the network nodes</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._decache">
+<code class="descname">_decache</code><span class="sig-paren">(</span><em>token</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._decache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._decache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove and return the cache entry (= a command) with the given token (= id)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>token</strong> (<em>int</em>) &#8211; the token/id of the command to be detected and removed</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">the command with the specified token</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Command, or None if not found</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._disconnect">
+<code class="descname">_disconnect</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._disconnect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._disconnect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._frame">
+<code class="descname">_frame</code><span class="sig-paren">(</span><em>who</em>, <em>frame</em>, <em>remote_fd</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._frame" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._observe_rpl_children">
+<code class="descname">_observe_rpl_children</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._observe_rpl_children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._observe_rpl_children" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new
+or departed nodes. Accordingly adjusts the local copy of the DoDAG.</p>
+<p>If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring
+nodes. If a node is added, a children list observer is installed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>response</strong> (<code class="xref py py-class docutils literal"><span class="pre">txthings.coap.Message</span></code>) &#8211; the response returned by a node after a GET rpl/c request</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._probe">
+<code class="descname">_probe</code><span class="sig-paren">(</span><em>who</em>, <em>resource</em>, <em>info</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._probe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._probe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._push_command">
+<code class="descname">_push_command</code><span class="sig-paren">(</span><em>comm</em>, <em>session</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._push_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._push_command" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._receive_cell_id">
+<code class="descname">_receive_cell_id</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_cell_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_cell_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._receive_probe">
+<code class="descname">_receive_probe</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_probe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_probe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._receive_report">
+<code class="descname">_receive_report</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_report"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_report" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._receive_slotframe_id">
+<code class="descname">_receive_slotframe_id</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_slotframe_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_slotframe_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._report">
+<code class="descname">_report</code><span class="sig-paren">(</span><em>who</em>, <em>resource</em>, <em>info</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._report"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._report" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._touch_session">
+<code class="descname">_touch_session</code><span class="sig-paren">(</span><em>achieved_comm</em>, <em>session_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._touch_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._touch_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a given command from a session. Send subsequent block of commands if the given command was the last pending
+command of the current block of the session.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>achieved_comm</strong> (<a class="reference internal" href="#core.interface.Command" title="core.interface.Command"><em>Command</em></a>) &#8211; command that needs to be deleted from the session</li>
+<li><strong>session_id</strong> (<em>int</em>) &#8211; identifier of the session from which the commands needs to be deleted</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="core.schedule.Reflector.celled">
 <code class="descname">celled</code><span class="sig-paren">(</span><em>who</em>, <em>slotoffs</em>, <em>channeloffs</em>, <em>frame_name</em>, <em>remote_cell_id</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.celled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.celled" title="Permalink to this definition">¶</a></dt>
