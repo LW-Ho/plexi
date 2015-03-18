@@ -1,0 +1,649 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>core.schedule &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">RiSCHER 0.4 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for core.schedule</h1><div class="highlight"><pre>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&quot;0.0.27&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s">&quot;Copyright 2014, The RICH Project&quot;</span>
+<span class="c">#__credits__ = [&quot;XYZ&quot;]</span>
+<span class="c">#__maintainer__ = &quot;XYZ&quot;</span>
+<span class="c">#__license__ = &quot;GPL&quot;</span>
+<span class="c">#__status__ = &quot;Production&quot;</span>
+
+<span class="kn">from</span> <span class="nn">core.interface</span> <span class="kn">import</span> <span class="n">Command</span>
+
+<span class="kn">from</span> <span class="nn">core.client</span> <span class="kn">import</span> <span class="n">LazyCommunicator</span>
+<span class="kn">from</span> <span class="nn">core.graph</span> <span class="kn">import</span> <span class="n">DoDAG</span>
+<span class="kn">from</span> <span class="nn">core.node</span> <span class="kn">import</span> <span class="n">NodeID</span>
+<span class="kn">from</span> <span class="nn">util</span> <span class="kn">import</span> <span class="n">parser</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">core.slotframe</span> <span class="kn">import</span> <span class="n">Slotframe</span><span class="p">,</span> <span class="n">Cell</span>
+<span class="kn">from</span> <span class="nn">util</span> <span class="kn">import</span> <span class="n">terms</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">logger</span>
+<span class="kn">from</span> <span class="nn">txthings</span> <span class="kn">import</span> <span class="n">coap</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">core</span> <span class="kn">import</span> <span class="n">interface</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="n">logg</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;RiSCHER&#39;</span><span class="p">)</span>
+<span class="n">logg</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Reflector"><a class="viewcode-back" href="../../index.html#core.schedule.Reflector">[docs]</a><span class="k">class</span> <span class="nc">Reflector</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Handle all the communication with the RICH network in a concurrent way.</span>
+
+<span class="sd">	Implements a callback-model to send operations to network nodes and trigger the appropriate callback upon replies.</span>
+<span class="sd">	Maintains the proper sequence of messages to be sent to each node separately. For instance, it makes sure a cell is not</span>
+<span class="sd">	POSTed at a node before that node has returned the id of the frame the cell belongs to; instead, the message is cached.</span>
+
+<span class="sd">	Every communication between the :class:`Reflector` and a node in the network is split in sessions. Each session is independent</span>
+<span class="sd">	from any other session and runs in parallel to others. That allows concurrent communication between the scheduler and</span>
+<span class="sd">	any node. The parallel sessions the :class:`Reflector` is engaged with, can be with the same or different nodes.</span>
+
+<span class="sd">	Each session defines a sequence of blocks of commands destined to various nodes. Commands in the same block can be transmitted</span>
+<span class="sd">	simultaneously. All commands of a block need to have replied before the next block is executed. Users of :class:`Reflector`</span>
+<span class="sd">	should define those sessions with their blocks externally.</span>
+
+<span class="sd">	Besides the user-defined sessions, this class maintains the RPL DoDAG by installing a children observer to every node</span>
+<span class="sd">	of the network.</span>
+
+<span class="sd">	The class provides a callback system for the following operations and resources:</span>
+
+<span class="sd">	- GET &amp; OBSERVE on RPL children of a node: the returned list of children is compared against current RPL DoDAG to determing (dis)connected nodes</span>
+<span class="sd">	- POST a new slotframe: sets a frame of specific size (num. of slots) to a node. A callback is triggered upon received slotframe ID</span>
+<span class="sd">	- GET, POST &amp; DELETE a cell: installs/deletes a new cell to a node. A callback is triggered upon received cell ID.</span>
+<span class="sd">	- GET, OBSERVE &amp; POST a statistics resource: defines a new statistics resource with POST and can read its value with GET or OBSERVE. A call back is triggered upon receive resource ID or value.</span>
+<span class="sd">	- GET, OBSERVE, POST &amp; DELETE any user-defined resource</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">net_name</span><span class="p">,</span> <span class="n">lbr_ip</span><span class="p">,</span> <span class="n">lbr_port</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">visualizer</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Configure :class:`Reflector` with a network name and the EUI64 address and port of the border router. Initialize</span>
+<span class="sd">		the DoDAG tree with a single node, the border router.</span>
+
+<span class="sd">		:param net_name: a name for the network this scheduler handles</span>
+<span class="sd">		:type net_name: str</span>
+<span class="sd">		:param lbr_ip: EUI64 address of the border router</span>
+<span class="sd">		:type lbr_ip: str</span>
+<span class="sd">		:param lbr_port: the CoAP port of the border router e.g. 5684</span>
+<span class="sd">		:type lbr_port: int</span>
+<span class="sd">		:param prefix: network prefix prepended to the EUI64 address e.g. aaaa</span>
+<span class="sd">		:type prefix:str</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">NodeID</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">root_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">lbr_ip</span><span class="p">,</span> <span class="n">lbr_port</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Scheduler started with LBR=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root_id</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">LazyCommunicator</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dodag</span> <span class="o">=</span> <span class="n">DoDAG</span><span class="p">(</span><span class="n">net_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_id</span><span class="p">,</span> <span class="n">visualizer</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">frames</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sessions</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="Reflector._decache"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._decache">[docs]</a>	<span class="k">def</span> <span class="nf">_decache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Remove and return the cache entry (= a command) with the given token (= id)</span>
+
+<span class="sd">		:param token: the token/id of the command to be detected and removed</span>
+<span class="sd">		:type token: int</span>
+<span class="sd">		:return: the command with the specified token</span>
+<span class="sd">		:rtype: Command, or None if not found</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="n">entry</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">token</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">op</span> <span class="o">!=</span> <span class="s">&#39;observe&#39;</span><span class="p">:</span>
+				<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">token</span><span class="p">]</span>
+		<span class="k">return</span> <span class="n">entry</span>
+</div>
+<div class="viewcode-block" id="Reflector._create_session"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._create_session">[docs]</a>	<span class="k">def</span> <span class="nf">_create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">assembly</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Creates and initiates a session given a BlockQueue. The session is registered to this object and all the commands</span>
+<span class="sd">		of its first block are sent to their destinations.</span>
+
+<span class="sd">		:param assembly: a stack of blocks of commands to be sent to the network nodes</span>
+<span class="sd">		:type assembly: BlockQueue</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">if</span> <span class="n">assembly</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">assembly</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span> <span class="o">+=</span> <span class="mi">1</span>
+			<span class="c"># Register the BlockQueue to the list of sessions</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span><span class="p">]</span> <span class="o">=</span> <span class="n">assembly</span>
+			<span class="c"># Iterate over the commands of the first block of the new session</span>
+			<span class="n">comm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+			<span class="k">while</span> <span class="n">comm</span><span class="p">:</span>
+				<span class="c"># Transmit each command</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_push_command</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span><span class="p">)</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+					<span class="k">break</span> <span class="c"># TODO: a bit confused of the use of this if statement... will check</span>
+				<span class="n">comm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Reflector._touch_session"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._touch_session">[docs]</a>	<span class="k">def</span> <span class="nf">_touch_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">achieved_comm</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Remove a given command from a session. Send subsequent block of commands if the given command was the last pending</span>
+<span class="sd">		command of the current block of the session.</span>
+
+<span class="sd">		:param achieved_comm: command that needs to be deleted from the session</span>
+<span class="sd">		:type achieved_comm: Command</span>
+<span class="sd">		:param session_id: identifier of the session from which the commands needs to be deleted</span>
+<span class="sd">		:type session_id: int</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">if</span> <span class="n">session_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">:</span>
+			<span class="c"># Get the BlockQueue corresponding to the session_id</span>
+			<span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span>
+			<span class="c"># Unblock the achieved_comm from the current block of session. Open up the next block if current is finished</span>
+			<span class="n">session</span><span class="o">.</span><span class="n">unblock</span><span class="p">(</span><span class="n">achieved_comm</span><span class="p">)</span>
+			<span class="c"># if more commands are in the session, transmit them to their destinations</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">session</span><span class="o">.</span><span class="n">finished</span><span class="p">():</span>
+				<span class="c"># Note that pop returns None if the current block has still pending replies of commands</span>
+				<span class="n">comm</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+				<span class="k">while</span> <span class="n">comm</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_push_command</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">session_id</span><span class="p">)</span>
+					<span class="n">comm</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Reflector._observe_rpl_children"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._observe_rpl_children">[docs]</a>	<span class="k">def</span> <span class="nf">_observe_rpl_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new</span>
+<span class="sd">		or departed nodes. Accordingly adjusts the local copy of the DoDAG.</span>
+
+<span class="sd">		If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring</span>
+<span class="sd">		nodes. If a node is added, a children list observer is installed.</span>
+
+<span class="sd">		:param response: the response returned by a node after a GET rpl/c request</span>
+<span class="sd">		:type response: :class:`txthings.coap.Message`</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c"># Extract the token of the given response from the Communicator</span>
+		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="c"># Extract the session ID to which the command that triggered the response belongs</span>
+		<span class="n">session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
+		<span class="c"># Build a NodeID out of the responder&#39;s IP and port. The responder is the parent of a potentially new/departed child</span>
+		<span class="n">parent_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="c"># Handle replies that indicate unsuccessful processing of the GET rpl/c command</span>
+		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">])</span>
+			<span class="c"># TODO: CoAP errors not properly handled yet</span>
+			<span class="c"># Make sure the command is deleted from the cache and the appropriate session</span>
+			<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+		<span class="c">#TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt</span>
+		<span class="c"># Trim payload from non-string characters</span>
+		<span class="n">clean_payload</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Children list from &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; &gt;&gt; &quot;</span> <span class="o">+</span> <span class="n">clean_payload</span> <span class="o">+</span> <span class="s">&quot; i.e. MID:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">mid</span><span class="p">))</span>
+		<span class="c"># Convert the payload to a JSON object</span>
+		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">clean_payload</span><span class="p">)</span>
+		<span class="c"># TODO: CBOR support required</span>
+
+		<span class="c"># Build a list of fetched children from the payload</span>
+		<span class="n">observed_children</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
+			<span class="n">observed_children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NodeID</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)))</span>
+		<span class="c"># Find, remove and return the cache entry of the command that triggered this response</span>
+		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="n">dodag_child_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">parent_id</span><span class="p">)</span>
+
+		<span class="c"># Detect the children that were deleted, those that are in the local DoDAG but are not in the fetched children list</span>
+		<span class="n">removed_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">dodag_child_list</span> <span class="k">if</span> <span class="n">item</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">observed_children</span><span class="p">]</span>
+		<span class="c"># Iterate over all deleted children and detach them from the local DoDAG.</span>
+		<span class="c"># If detachment successful,</span>
+		<span class="c">#  build a session (BlockQueue) to remove the related cells from affected neighbors</span>
+		<span class="c">#  let user-defined function add a new session if needed</span>
+		<span class="c">#  TODO: what if the user would like to have a block queue only after the related cells are deleted?</span>
+		<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">removed_nodes</span><span class="p">:</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">detach_node</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_disconnect</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disconnected</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+
+		<span class="c"># Iterate over all fetched children and try to attach them to the local DoDAG</span>
+		<span class="c"># If attachment successful,</span>
+		<span class="c">#  build and send a BlockQueue session to install a children list observer to the new node</span>
+		<span class="c">#  let user-defined function add a new session if needed</span>
+		<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">observed_children</span><span class="p">:</span>
+			<span class="n">old_parent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">attach_child</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">))</span>
+		<span class="c"># Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed</span>
+		<span class="c"># from the session registry</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._receive_slotframe_id"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._receive_slotframe_id">[docs]</a>	<span class="k">def</span> <span class="nf">_receive_slotframe_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="n">session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
+		<span class="n">node_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">])</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Node &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; replied on a slotframe post with &quot;</span> <span class="o">+</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; i.e. MID:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">mid</span><span class="p">))</span>
+		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">))</span>
+		<span class="n">local_fd</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s">&#39;fd&#39;</span><span class="p">]</span>
+		<span class="n">old_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">payload</span>
+		<span class="n">frame</span> <span class="o">=</span> <span class="n">old_payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span>
+		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_frame</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">local_fd</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">framed</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">local_fd</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._receive_cell_id"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._receive_cell_id">[docs]</a>	<span class="k">def</span> <span class="nf">_receive_cell_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="n">session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
+		<span class="n">node_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">])</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+		<span class="n">clean_payload</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Node &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; replied on a cell post with &quot;</span> <span class="o">+</span> <span class="n">clean_payload</span> <span class="o">+</span> <span class="s">&quot; i.e. MID:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">mid</span><span class="p">))</span>
+		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">clean_payload</span><span class="p">)</span>
+		<span class="n">cell_cd</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s">&#39;cd&#39;</span><span class="p">]</span>
+		<span class="n">old_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">payload</span>
+		<span class="n">frame</span> <span class="o">=</span> <span class="n">old_payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span>
+		<span class="n">so</span> <span class="o">=</span> <span class="n">old_payload</span><span class="p">[</span><span class="s">&#39;so&#39;</span><span class="p">]</span>
+		<span class="n">co</span> <span class="o">=</span> <span class="n">old_payload</span><span class="p">[</span><span class="s">&#39;co&#39;</span><span class="p">]</span>
+
+		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cell</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">co</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">cell_cd</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">celled</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">co</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">cell_cd</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._receive_probe"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._receive_probe">[docs]</a>	<span class="k">def</span> <span class="nf">_receive_probe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="n">cache_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">]</span>
+		<span class="n">session_id</span> <span class="o">=</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
+		<span class="n">node_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">cache_entry</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+		<span class="n">clean_payload</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Node &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; replied on a probe with &quot;</span> <span class="o">+</span> <span class="n">clean_payload</span> <span class="o">+</span> <span class="s">&quot; i.e. MID:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">mid</span><span class="p">))</span>
+		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">clean_payload</span><span class="p">)</span>
+		<span class="n">info</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SM&#39;</span><span class="p">]:</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="n">terms</span><span class="o">.</span><span class="n">keys</span><span class="p">[</span><span class="s">&#39;SM_ID&#39;</span><span class="p">]]</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="n">payload</span>
+		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_probe</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">info</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">probed</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">info</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._receive_report"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._receive_report">[docs]</a>	<span class="k">def</span> <span class="nf">_receive_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="n">cache_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">]</span>
+		<span class="n">session_id</span> <span class="o">=</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
+		<span class="n">node_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">])</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+		<span class="n">clean_payload</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Probe on &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; reported &quot;</span> <span class="o">+</span> <span class="n">clean_payload</span> <span class="o">+</span> <span class="s">&quot; i.e. MID:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">mid</span><span class="p">))</span>
+		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">clean_payload</span><span class="p">)</span>
+		<span class="n">info</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="k">if</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]):</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="n">payload</span>
+		<span class="k">elif</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SV&#39;</span><span class="p">]):</span>
+			<span class="n">info</span> <span class="o">=</span> <span class="n">payload</span>
+		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_report</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">info</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reported</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">cache_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">info</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._push_command"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._push_command">[docs]</a>	<span class="k">def</span> <span class="nf">_push_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">Command</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;session&#39;</span><span class="p">:</span> <span class="n">session</span><span class="p">,</span> <span class="s">&#39;command&#39;</span><span class="p">:</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span> <span class="p">}</span> <span class="c">#id&#39;: comm.id, &#39;op&#39;: comm.op, &#39;to&#39;: comm.to, &#39;uri&#39;: comm.uri}</span>
+			<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">:</span>
+				<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s">&#39;frame&#39;</span> <span class="ow">in</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SF&#39;</span><span class="p">]:</span>
+						<span class="n">comm</span><span class="o">.</span><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;ns&#39;</span><span class="p">:</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">slots</span><span class="p">}</span>
+					<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]:</span>
+						<span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;fd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">)</span>
+						<span class="k">del</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_NL&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observe_rpl_nodes</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_OL&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observe_rpl_children</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SF&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_slotframe_id</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">==</span> <span class="s">&#39;post&#39;</span> <span class="ow">and</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_cell_id</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_probe</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SM&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_probe</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SV&#39;</span><span class="p">]):</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_report</span>
+				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]):</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_report</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_report</span>
+			<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Sending to &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; &gt;&gt; &quot;</span> <span class="o">+</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">+</span> <span class="s">&quot; -- &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">))</span>
+			<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">==</span> <span class="s">&#39;get&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">GET</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">==</span> <span class="s">&#39;observe&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">OBSERVE</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">==</span> <span class="s">&#39;post&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">POST</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">parser</span><span class="o">.</span><span class="n">construct_payload</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">),</span> <span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">==</span> <span class="s">&#39;delete&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">DELETE</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._connect"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._connect">[docs]</a>	<span class="k">def</span> <span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">old_parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">old_parent</span><span class="p">:</span>
+			<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">child</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; rewired to &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; from &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">old_parent</span><span class="p">))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">child</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; wired to parent &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent</span><span class="p">))</span>
+
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;observe&#39;</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_OL&#39;</span><span class="p">]))</span>
+		<span class="c"># TODO: commands.append(self.Command(&#39;post&#39;, child, terms.uri[&#39;6TP_SM&#39;], {&quot;mt&quot;:&quot;[\&quot;PRR\&quot;,\&quot;RSSI\&quot;]&quot;})) # First step of statistics installation.</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Reflector._disconnect"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._disconnect">[docs]</a>	<span class="k">def</span> <span class="nf">_disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; was removed from the network&quot;</span><span class="p">)</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+			<span class="n">deleted_cells</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">delete_links_of</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
+			<span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">deleted_cells</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">cell</span><span class="o">.</span><span class="n">owner</span> <span class="o">!=</span> <span class="n">node_id</span><span class="p">:</span>
+					<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;delete&#39;</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;/&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">id</span><span class="p">)))</span>
+			<span class="k">del</span> <span class="n">frame</span><span class="o">.</span><span class="n">fds</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Reflector._frame"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._frame">[docs]</a>	<span class="k">def</span> <span class="nf">_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">remote_fd</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">):</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">who</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; installed new &quot;</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; frame with id=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">remote_fd</span><span class="p">))</span>
+		<span class="n">frame</span><span class="o">.</span><span class="n">set_alias_id</span><span class="p">(</span><span class="n">who</span><span class="p">,</span> <span class="n">remote_fd</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="Reflector._cell"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._cell">[docs]</a>	<span class="k">def</span> <span class="nf">_cell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">slotoffs</span><span class="p">,</span> <span class="n">channeloffs</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">remote_cell_id</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">):</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">who</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; installed new cell (id=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">remote_cell_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;) in frame &quot;</span> <span class="o">+</span> <span class="n">frame</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; at slotoffset=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">slotoffs</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; and channel offset=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">channeloffs</span><span class="p">))</span>
+		<span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="Reflector._probe"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._probe">[docs]</a>	<span class="k">def</span> <span class="nf">_probe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">info</span><span class="p">):</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Probe at &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">who</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; on &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">info</span><span class="p">))</span>
+		<span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="Reflector._report"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._report">[docs]</a>	<span class="k">def</span> <span class="nf">_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">info</span><span class="p">):</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Probe at &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">who</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; on &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; reported &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">info</span><span class="p">))</span>
+		<span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="Reflector.communicate"><a class="viewcode-back" href="../../index.html#core.schedule.Reflector.communicate">[docs]</a>	<span class="k">def</span> <span class="nf">communicate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">assembly</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Handle all the communication with the RICH network.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_create_session</span><span class="p">(</span><span class="n">assembly</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+			<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">assembly</span><span class="p">:</span>
+				<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">):</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_create_session</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector.connected"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.connected">[docs]</a>	<span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">old_parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Reflector.disconnected"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.disconnected">[docs]</a>	<span class="k">def</span> <span class="nf">disconnected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Reflector.framed"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.framed">[docs]</a>	<span class="k">def</span> <span class="nf">framed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">local_name</span><span class="p">,</span> <span class="n">remote_alias</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Reflector.celled"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.celled">[docs]</a>	<span class="k">def</span> <span class="nf">celled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">slotoffs</span><span class="p">,</span> <span class="n">channeloffs</span><span class="p">,</span> <span class="n">frame_name</span><span class="p">,</span> <span class="n">remote_cell_id</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Reflector.probed"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.probed">[docs]</a>	<span class="k">def</span> <span class="nf">probed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Reflector.reported"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.reported">[docs]</a>	<span class="k">def</span> <span class="nf">reported</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+		<span class="k">pass</span>
+
+</div></div>
+<div class="viewcode-block" id="Scheduler"><a class="viewcode-back" href="../../index.html#core.schedule.Scheduler">[docs]</a><span class="k">class</span> <span class="nc">Scheduler</span><span class="p">(</span><span class="n">Reflector</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Scheduler.start"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.start">[docs]</a>	<span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_remote_children</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root_id</span><span class="p">,</span> <span class="bp">True</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Scheduler.get_remote_frame"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.get_remote_frame">[docs]</a>	<span class="k">def</span> <span class="nf">get_remote_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">slotframe</span><span class="p">):</span>  <span class="c"># TODO: observe (makes sense when distributed scheduling in place)</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">NodeID</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slotframe</span><span class="p">,</span> <span class="n">Slotframe</span><span class="p">)</span>
+		<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="s">&#39;GET command for slotframes is not supported&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Scheduler.set_remote_frames"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.set_remote_frames">[docs]</a>	<span class="k">def</span> <span class="nf">set_remote_frames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">slotframes</span><span class="p">):</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">NodeID</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slotframes</span><span class="p">,</span> <span class="n">Slotframe</span><span class="p">)</span> <span class="c">#TODO or isinstance(slotframes, array)</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="p">[</span><span class="n">slotframes</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slotframes</span><span class="p">,</span> <span class="n">Slotframe</span><span class="p">)</span> <span class="k">else</span> <span class="n">slotframes</span><span class="p">:</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;post&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SF&#39;</span><span class="p">],</span> <span class="p">{</span><span class="s">&#39;frame&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">}))</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Scheduler.get_remote_cell"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.get_remote_cell">[docs]</a>	<span class="k">def</span> <span class="nf">get_remote_cell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">cell</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;get&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]))</span>
+		<span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">long</span><span class="p">)):</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;get&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;/&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">cell</span><span class="p">)))</span>
+		<span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">Cell</span><span class="p">)</span> <span class="ow">and</span> <span class="n">cell</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;get&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;/&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">id</span><span class="p">)))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Scheduler.set_remote_link"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.set_remote_link">[docs]</a>	<span class="k">def</span> <span class="nf">set_remote_link</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">slotframe</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slotframe</span><span class="p">,</span> <span class="n">Slotframe</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="n">channel</span> <span class="o">&lt;=</span> <span class="mi">16</span>
+		<span class="k">assert</span> <span class="n">slot</span> <span class="o">&lt;</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">slots</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">NodeID</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="n">destination</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="n">NodeID</span><span class="p">)</span>
+
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="n">target</span> <span class="ow">and</span> <span class="n">target</span> <span class="o">!=</span> <span class="n">source</span> <span class="ow">and</span> <span class="n">target</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">source</span><span class="p">):</span>
+			<span class="k">return</span> <span class="bp">False</span>
+
+		<span class="n">found_tx</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="n">found_rx</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">cell_container</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">slot</span> <span class="o">==</span> <span class="n">slot</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">channel</span> <span class="o">==</span> <span class="n">channel</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">destination</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">tx</span> <span class="o">==</span> <span class="n">source</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">rx</span> <span class="o">==</span> <span class="n">destination</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">option</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+						<span class="n">found_tx</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">owner</span>
+					<span class="k">elif</span> <span class="n">c</span><span class="o">.</span><span class="n">option</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+						<span class="n">found_rx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">owner</span><span class="p">)</span>
+				<span class="k">elif</span> <span class="n">destination</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">tx</span> <span class="o">==</span> <span class="n">source</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+						<span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">option</span> <span class="o">==</span> <span class="mi">9</span><span class="p">:</span>
+							<span class="n">found_tx</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">owner</span>
+						<span class="k">elif</span> <span class="n">c</span><span class="o">.</span><span class="n">option</span> <span class="o">==</span> <span class="mi">10</span><span class="p">:</span>
+							<span class="n">found_rx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">owner</span><span class="p">)</span>
+		<span class="n">cells</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">if</span> <span class="n">destination</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">found_tx</span> <span class="ow">and</span> <span class="p">(</span><span class="n">target</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">target</span> <span class="o">==</span> <span class="n">source</span><span class="p">):</span>
+				<span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+			<span class="k">if</span> <span class="n">destination</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">found_rx</span> <span class="ow">and</span> <span class="p">(</span><span class="n">target</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">target</span> <span class="o">==</span> <span class="n">destination</span><span class="p">):</span>
+				<span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">destination</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+		<span class="k">elif</span> <span class="n">destination</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">neighbors</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">source</span><span class="p">)]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">target</span> <span class="o">==</span> <span class="n">source</span><span class="p">:</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">found_tx</span><span class="p">:</span>
+					<span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+				<span class="n">tmp</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">neighbors</span> <span class="k">if</span> <span class="n">item</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">found_rx</span><span class="p">]</span>
+				<span class="k">for</span> <span class="n">neighbor</span> <span class="ow">in</span> <span class="n">tmp</span><span class="p">:</span>
+					<span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">neighbor</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">neighbor</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+			<span class="k">elif</span> <span class="n">target</span> <span class="ow">and</span> <span class="n">target</span> <span class="o">!=</span> <span class="n">source</span> <span class="ow">and</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">neighbors</span> <span class="ow">and</span> <span class="n">target</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">found_rx</span><span class="p">:</span>
+				<span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Cell</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">target</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+		<span class="n">depth_groups</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">:</span>
+			<span class="n">slotframe</span><span class="o">.</span><span class="n">cell_container</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+			<span class="n">comm</span> <span class="o">=</span> <span class="n">Command</span><span class="p">(</span><span class="s">&#39;post&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">],</span> <span class="p">{</span><span class="s">&#39;so&#39;</span><span class="p">:</span><span class="n">c</span><span class="o">.</span><span class="n">slot</span><span class="p">,</span> <span class="s">&#39;co&#39;</span><span class="p">:</span><span class="n">c</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="s">&#39;frame&#39;</span><span class="p">:</span> <span class="n">slotframe</span><span class="p">,</span> <span class="s">&#39;lo&#39;</span><span class="p">:</span><span class="n">c</span><span class="o">.</span><span class="n">option</span><span class="p">,</span> <span class="s">&#39;lt&#39;</span><span class="p">:</span><span class="n">c</span><span class="o">.</span><span class="n">type</span><span class="p">})</span>
+			<span class="n">depth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_node_depth</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">owner</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">depth</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">depth_groups</span><span class="p">:</span>
+				<span class="n">depth_groups</span><span class="p">[</span><span class="n">depth</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">comm</span><span class="p">]</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">depth_groups</span><span class="p">[</span><span class="n">depth</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">depth_groups</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+			<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">depth_groups</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
+				<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Scheduler.get_remote_children"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.get_remote_children">[docs]</a>	<span class="k">def</span> <span class="nf">get_remote_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">observe</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">NodeID</span><span class="p">)</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;get&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">observe</span> <span class="k">else</span> <span class="s">&#39;observe&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_OL&#39;</span><span class="p">]))</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Scheduler.get_remote_statistics"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.get_remote_statistics">[docs]</a>	<span class="k">def</span> <span class="nf">get_remote_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">statistics</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">observe</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">statistics</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">long</span><span class="p">)):</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;get&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">observe</span> <span class="k">else</span> <span class="s">&#39;observe&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SV&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;/&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">statistics</span><span class="p">)))</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">None</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Scheduler.set_remote_statistics"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.set_remote_statistics">[docs]</a>	<span class="k">def</span> <span class="nf">set_remote_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">definition</span><span class="p">):</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;post&#39;</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SM&#39;</span><span class="p">],</span> <span class="n">definition</span><span class="p">))</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">q</span>
+</div>
+<div class="viewcode-block" id="Scheduler.disconnect_node"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.disconnect_node">[docs]</a>	<span class="k">def</span> <span class="nf">disconnect_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Scheduler.conflict"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.conflict">[docs]</a>	<span class="k">def</span> <span class="nf">conflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">rx</span><span class="p">,</span> <span class="n">slotframe</span><span class="p">):</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slotframe</span><span class="p">,</span> <span class="n">Slotframe</span><span class="p">)</span> <span class="ow">and</span> <span class="n">slotframe</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">cell_container</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">slot</span> <span class="o">==</span> <span class="n">slot</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="o">==</span> <span class="n">tx</span> <span class="ow">or</span> <span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">tx</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span> <span class="ow">or</span> <span class="n">item</span><span class="o">.</span><span class="n">tx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">tx</span><span class="p">))):</span>
+					<span class="k">return</span> <span class="bp">True</span>
+				<span class="k">elif</span> <span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="o">==</span> <span class="n">rx</span><span class="p">)</span> <span class="ow">or</span> \
+						<span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">tx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">rx</span><span class="p">))</span> <span class="ow">or</span> \
+						<span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">rx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">tx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">rx</span><span class="p">))</span> <span class="ow">or</span> \
+						<span class="p">(</span><span class="n">rx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">tx</span><span class="p">))</span><span class="o">.</span><span class="n">isdisjoint</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">tx</span><span class="p">)))):</span>
+					<span class="k">return</span> <span class="bp">True</span>
+		<span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="Scheduler.interfere"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.interfere">[docs]</a>	<span class="k">def</span> <span class="nf">interfere</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">rx</span><span class="p">,</span> <span class="n">slotframe</span><span class="p">):</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slotframe</span><span class="p">,</span> <span class="n">Slotframe</span><span class="p">)</span> <span class="ow">and</span> <span class="n">slotframe</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+		<span class="n">channels</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">slotframe</span><span class="o">.</span><span class="n">cell_container</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">slot</span> <span class="o">==</span> <span class="n">slot</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> \
+				<span class="n">item</span><span class="o">.</span><span class="n">rx</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span> <span class="ow">and</span> \
+				<span class="n">rx</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">tx</span><span class="p">):</span>
+				<span class="n">channels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">channels</span>
+</div>
+<div class="viewcode-block" id="Scheduler.schedule"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.schedule">[docs]</a>	<span class="k">def</span> <span class="nf">schedule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">rx</span><span class="p">,</span> <span class="n">slotframe</span><span class="p">):</span>
+		<span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

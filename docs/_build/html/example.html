@@ -1,0 +1,268 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>example package &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">RiSCHER 0.4 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="example-package">
+<h1>example package<a class="headerlink" href="#example-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-example.main">
+<span id="example-main-module"></span><h2>example.main module<a class="headerlink" href="#module-example.main" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="example.main.UserInput">
+<em class="property">class </em><code class="descclassname">example.main.</code><code class="descname">UserInput</code><span class="sig-paren">(</span><em>netname</em>, <em>lbr</em>, <em>port</em>, <em>prefix</em>, <em>visualizer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/main.html#UserInput"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.main.UserInput" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="example.main.get_user_input">
+<code class="descclassname">example.main.</code><code class="descname">get_user_input</code><span class="sig-paren">(</span><em>arg_str</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/main.html#get_user_input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.main.get_user_input" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="example.main.usage">
+<code class="descclassname">example.main.</code><code class="descname">usage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/main.html#usage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.main.usage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-example.trivial">
+<span id="example-trivial-module"></span><h2>example.trivial module<a class="headerlink" href="#module-example.trivial" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="example.trivial.TrivialScheduler">
+<em class="property">class </em><code class="descclassname">example.trivial.</code><code class="descname">TrivialScheduler</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/trivial.html#TrivialScheduler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.trivial.TrivialScheduler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="index.html#core.schedule.Scheduler" title="core.schedule.Scheduler"><code class="xref py py-class docutils literal"><span class="pre">core.schedule.Scheduler</span></code></a></p>
+<p>Usage example of RiSCHER API v0.4. Each node is scheduled and assigned with:</p>
+<ul class="simple">
+<li>two <a class="reference internal" href="core.html#core.slotframe.Slotframe" title="core.slotframe.Slotframe"><code class="xref py py-class docutils literal"><span class="pre">core.slotframe.Slotframe</span></code></a>. One slotframe for Broadcast <a class="reference internal" href="core.html#core.slotframe.Cell" title="core.slotframe.Cell"><code class="xref py py-class docutils literal"><span class="pre">core.slotframe.Cell</span></code></a> of length 25 slots and another slotframe for Unicast <a class="reference internal" href="core.html#core.slotframe.Cell" title="core.slotframe.Cell"><code class="xref py py-class docutils literal"><span class="pre">core.slotframe.Cell</span></code></a> of length 21 slots.</li>
+<li>one broadcast cell and one unicast cell</li>
+<li>one observer for the children list</li>
+<li>one observer for PRR and RSSI statistics</li>
+</ul>
+<p>Nodes are allocated cells starting from channel 0 and slot 1. Priority is given to fill in the channels before another
+slot is used. Given an intended link between two nodes, the <a class="reference internal" href="#example.trivial.TrivialScheduler" title="example.trivial.TrivialScheduler"><code class="xref py py-class docutils literal"><span class="pre">TrivialScheduler</span></code></a> checks all channels of a slot to
+find possible conflicts or interferences with other transmissions. If none of the two, the link is allocated a cell on
+that slot, if available. Otherwise, the next slot is checked.</p>
+<dl class="method">
+<dt id="example.trivial.TrivialScheduler.connected">
+<code class="descname">connected</code><span class="sig-paren">(</span><em>child</em>, <em>parent</em>, <em>old_parent=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/trivial.html#TrivialScheduler.connected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.trivial.TrivialScheduler.connected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure newly connected node to communicate with neighbors. Configure both child and its neighbors as follows:</p>
+<ul class="simple">
+<li>a broadcast frame of 25 slots and a unicast frame of 21 slots</li>
+<li>a transmitting broadcast cell at child for the child&#8217;s (Tx) broadcasting to its neighbors (Rx)</li>
+<li>the receiving broadcast cells at the neighbors for child&#8217;s broadcast</li>
+<li>receiving only broadcast cells at child for neighbors&#8217; broadcasts</li>
+<li>one transmit unicast cell at child for every unicast child-&gt;neighbor link</li>
+<li>one receive unicast cell at a neighbor for every unicast child-&gt;neighbor link</li>
+<li>one transmit unicast cell at neighbor for every unicast neighbor-&gt;child link</li>
+<li>one receive unicast cell at child for every unicast neighbor-&gt;child link</li>
+<li>an observer of the PRR and RSSI statistics</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>child</strong> (<a class="reference internal" href="core.html#core.node.NodeID" title="core.node.NodeID"><em>NodeID</em></a>) &#8211; the newly connected node</li>
+<li><strong>parent</strong> (<a class="reference internal" href="core.html#core.node.NodeID" title="core.node.NodeID"><em>NodeID</em></a>) &#8211; the current parent of child at the DoDAG</li>
+<li><strong>old_parent</strong> (<em>NodeID or None -if not rewiring-</em>) &#8211; the previous parent of child at the DoDAG (in case of rewiring)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of BlockQueues that handle the all concurrent transactions with the node and its neighbors</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="example.trivial.TrivialScheduler.probed">
+<code class="descname">probed</code><span class="sig-paren">(</span><em>node</em>, <em>resource</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/trivial.html#TrivialScheduler.probed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.trivial.TrivialScheduler.probed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Install observer to node for statistics resource.</p>
+<p>Once a statistics resource has been defined, the node returns its identifier in value. This ensures an observer is
+set to node for the returned statistics resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>node</strong> (<a class="reference internal" href="core.html#core.node.NodeID" title="core.node.NodeID"><em>NodeID</em></a>) &#8211; the node the statistics resource belongs to</li>
+<li><strong>resource</strong> (<em>str (practically the uri of the resource e.g. 6t/6/sm)</em>) &#8211; the resource type the node has defined</li>
+<li><strong>value</strong> (<em>int (concatenating the resource and the value give the uri to the resource e.g. 6t/6/sm/0)</em>) &#8211; the identifier of the statistics resource</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the set of commands needed to complete the installation of the observer to the resource</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="core.html#core.interface.BlockQueue" title="core.interface.BlockQueue">BlockQueue</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="example.trivial.TrivialScheduler.schedule">
+<code class="descname">schedule</code><span class="sig-paren">(</span><em>tx</em>, <em>rx</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/trivial.html#TrivialScheduler.schedule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.trivial.TrivialScheduler.schedule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Schedules a link at a given slotframe.</p>
+<p>Starts from slot 1 and channel 0. All the channels of the slot are scanned. If the intended link does not conflict
+with any simultaneous transmission at that slot and does not interfere with any other pair of nodes, the link is
+scheduled at that channel and slot. If no such channel can be found, the next slot is scanned.</p>
+<p>Note that the slots and channels of both Broadcast-Frame and Unicast-Frame slotframes are considered to avoid conflicts
+and interferences.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first">all 16 channels are assumed available</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tx</strong> (<a class="reference internal" href="core.html#core.node.NodeID" title="core.node.NodeID"><em>NodeID</em></a>) &#8211; the transmitting node</li>
+<li><strong>rx</strong> (<em>NodeID or None</em>) &#8211; the receiving node or None if broadcast link to be scheduled</li>
+<li><strong>slotframe</strong> (<a class="reference internal" href="core.html#core.slotframe.Slotframe" title="core.slotframe.Slotframe"><em>Slotframe</em></a>) &#8211; the slotframe the link should be scheduled to</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(slotoffset, channeloffset)</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">(int,int) tuple of (None,None) tuple if cell not found</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="example.trivial.TrivialScheduler.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/example/trivial.html#TrivialScheduler.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#example.trivial.TrivialScheduler.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure root node and start the <a class="reference internal" href="#example.trivial.TrivialScheduler" title="example.trivial.TrivialScheduler"><code class="xref py py-class docutils literal"><span class="pre">TrivialScheduler</span></code></a>. The root node will have:</p>
+<ul class="simple">
+<li>a broadcast frame of 25 slots and one broadcast cell at channel 0 and slot 1</li>
+<li>a unicast frame of 21 slots</li>
+<li>an observer of the PRR and RSSI statistics</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body">uses <code class="xref py py-func docutils literal"><span class="pre">core.schedule.Reflector.start()</span></code> to initiate communication with LBR</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-example">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-example" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">example package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-example.main">example.main module</a></li>
+<li><a class="reference internal" href="#module-example.trivial">example.trivial module</a></li>
+<li><a class="reference internal" href="#module-example">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/example.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+      |
+      <a href="_sources/example.txt"
+          rel="nofollow">Page source</a></li>
+    </div>
+
+    
+
+    
+  </body>
+</html>

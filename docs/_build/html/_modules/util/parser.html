@@ -1,0 +1,164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>util.parser &mdash; RiSCHER 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="RiSCHER 0.4 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">RiSCHER 0.4 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for util.parser</h1><div class="highlight"><pre>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;George Exarchakos&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s">&quot;0.0.2&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;g.exarchakos@tue.nl&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s">&quot;Copyright 2014, The RICH Project&quot;</span>
+<span class="c">#__credits__ = [&quot;XYZ&quot;]</span>
+<span class="c">#__maintainer__ = &quot;XYZ&quot;</span>
+<span class="c">#__license__ = &quot;GPL&quot;</span>
+<span class="c">#__status__ = &quot;Production&quot;</span>
+
+
+<span class="kn">from</span> <span class="nn">exception</span> <span class="kn">import</span> <span class="n">FormatError</span>
+<span class="kn">import</span> <span class="nn">string</span>
+
+<div class="viewcode-block" id="query_to_dictionary"><a class="viewcode-back" href="../../util.html#util.parser.query_to_dictionary">[docs]</a><span class="k">def</span> <span class="nf">query_to_dictionary</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+	<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+		<span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">query_list</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">query_list</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="n">FormatError</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+			<span class="n">d</span><span class="p">[</span><span class="n">tmp</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="k">return</span> <span class="n">d</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="construct_payload"><a class="viewcode-back" href="../../util.html#util.parser.construct_payload">[docs]</a><span class="k">def</span> <span class="nf">construct_payload</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+	<span class="n">str_payload</span> <span class="o">=</span> <span class="s">&quot;{&quot;</span>
+	<span class="k">if</span> <span class="s">&quot;so&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&#39;&quot;so&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;so&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;co&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="s">&#39;&quot;co&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;co&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;fd&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="s">&#39;&quot;fd&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;fd&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;frame&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&#39;&quot;frame&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;frame&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;lo&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="s">&#39;&quot;lo&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;lo&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;lt&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="s">&#39;&quot;lt&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;lt&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;na&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="s">&#39;&quot;na&quot;:&quot;&#39;</span> <span class="o">+</span> <span class="n">content</span><span class="p">[</span><span class="s">&quot;na&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;&quot;&#39;</span>
+	<span class="k">if</span> <span class="s">&quot;mt&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&#39;&quot;mt&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;mt&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;wi&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="s">&#39;&quot;wi&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;wi&quot;</span><span class="p">])</span>
+	<span class="k">if</span> <span class="s">&quot;ns&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+		<span class="n">str_payload</span> <span class="o">+=</span> <span class="s">&#39;&quot;ns&quot;:&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">content</span><span class="p">[</span><span class="s">&quot;ns&quot;</span><span class="p">])</span>
+	<span class="k">return</span> <span class="n">str_payload</span> <span class="o">+</span> <span class="s">&quot;}&quot;</span>
+
+</div>
+<div class="viewcode-block" id="clean_payload"><a class="viewcode-back" href="../../util.html#util.parser.clean_payload">[docs]</a><span class="k">def</span> <span class="nf">clean_payload</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+	<span class="n">start_obj</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;{&#39;</span><span class="p">)</span>
+	<span class="n">start_array</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;[&#39;</span><span class="p">)</span>
+	<span class="n">end_obj</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;}&#39;</span><span class="p">)</span>
+	<span class="n">end_array</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;]&#39;</span><span class="p">)</span>
+	<span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">end</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">start_obj</span><span class="o">==-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">start_array</span><span class="o">!=-</span><span class="mi">1</span><span class="p">:</span>
+		<span class="n">start</span> <span class="o">=</span> <span class="n">start_array</span>
+	<span class="k">elif</span> <span class="n">start_obj</span><span class="o">!=-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">start_array</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+		<span class="n">start</span> <span class="o">=</span> <span class="n">start_obj</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start_obj</span><span class="p">,</span><span class="n">start_array</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">end_obj</span><span class="o">==-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">end_array</span><span class="o">!=-</span><span class="mi">1</span><span class="p">:</span>
+		<span class="n">end</span> <span class="o">=</span> <span class="n">end_array</span><span class="o">+</span><span class="mi">1</span>
+	<span class="k">elif</span> <span class="n">end_obj</span><span class="o">!=-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">end_array</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+		<span class="n">end</span> <span class="o">=</span> <span class="n">end_obj</span><span class="o">+</span><span class="mi">1</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">end</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">end_obj</span><span class="p">,</span><span class="n">end_array</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+
+	<span class="k">return</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">printable</span><span class="p">,</span> <span class="n">content</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">])</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, George Exarchakos.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
