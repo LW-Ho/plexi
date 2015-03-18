@@ -253,6 +253,7 @@ class Reflector(object):
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _receive_cell_id(self, response):
+	#receives cell_id (send from node) as a result to a cell POST
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
 			return
@@ -325,6 +326,7 @@ class Reflector(object):
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
+	# determines which function will be called regarding the used URI
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) } #id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
@@ -364,6 +366,8 @@ class Reflector(object):
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
 
 	def _connect(self, child, parent, old_parent=None):
+	# inherited function handles the installation of the proper slotframes
+	# to the pair of nodes of the established link
 		if old_parent:
 			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
 		else:
@@ -376,6 +380,7 @@ class Reflector(object):
 		return q
 
 	def _disconnect(self, node_id):
+	# handles the case of a node disconnects from the network
 		logg.info(str(node_id) + " was removed from the network")
 		q = interface.BlockQueue()
 		for (name, frame) in self.frames.items():
@@ -388,11 +393,13 @@ class Reflector(object):
 		return q
 
 	def _frame(self, who, frame, remote_fd, old_payload):
+	# handles the actions performed when a node receives his slotframes
 		logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
 		frame.set_alias_id(who, remote_fd)
 		return None
 
 	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
+	# handles the actions performed when a node receives his cell/s
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		return None
 
