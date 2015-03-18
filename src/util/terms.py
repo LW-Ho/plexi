@@ -8,16 +8,17 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__status__ = "Production"
 
 uri = {
-	'RPL': "rpl",
-	'RPL_NL': "rpl/nd",
-	'RPL_OL': "rpl/c",
-	'6TP': "6t",
-	'6TP_6': "6t/6",
-	'6TP_SF': "6t/6/sf",
-	'6TP_CL': "6t/6/cl",
+	'RPL'		: "rpl",
+	'RPL_NL'	: "rpl/nd",
+	# 'RPL_OL'	: "rpl/c",
+	'6TP'		: "6t",
+	'6TP_6'		: "6t/6",
+	'6TP_SF'	: "6t/6/sf",
+	'6TP_CL'	: "6t/6/cl",
 	# TODO: why two resources for the same thing, statistics?
-	'6TP_SV': "6t/6/ml",
-	'6TP_SM': "6t/6/sm"
+	'6TP_SV'	: "6t/6/ml",
+	'6TP_SM'	: "6t/6/sm",
+	'RPL_DODAG'	: "rpl/dodag"
 }
 
 keys = {

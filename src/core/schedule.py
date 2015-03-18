@@ -20,6 +20,8 @@ from txthings import coap
 import logging
 from core import interface
 import copy
+import datetime
+from twisted.internet import task
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -76,6 +78,17 @@ class Reflector(object):
 		self.cache = {}
 		self.sessions = {}
 		self.count_sessions = 0
+		#nodes who are temporary lost from the network are stored in here
+		#this could be either a rewiring or a true disconnect
+		#key: NodeID value: time left on lost list
+		self.lost_children = {}
+		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
+		self.time_until_dissconnect = 30
+
+	def _start(self):
+
+		l = task.LoopingCall(self._TimeTick)
+		l.start(1.0)
 
 	def _decache(self, token):
 		"""
@@ -116,6 +129,22 @@ class Reflector(object):
 					break # TODO: a bit confused of the use of this if statement... will check
 				comm = self.sessions[self.count_sessions].pop()
 
+	def _TimeTick(self):
+		#iterate throught the lost children list and subtract 1 from each entry
+		for key, value in self.lost_children.iteritems():
+			#if time is over pop this item and disconnect it, otherwise just decrement
+			if value == 0:
+				#disconnect the node and execute commands for this disconnect
+				if self.dodag.detach_node(key):
+					self._DumpGraph()
+					self.communicate(self._disconnect(key))
+					self.communicate(self.disconnected(key))
+				self.lost_children.pop(key,0)
+				#because the dict changed, break here, other disconnections are thus done with 1 second delay
+				break
+			else:
+				self.lost_children[key] = value - 1
+
 	def _touch_session(self, achieved_comm, session_id):
 		"""
 		Remove a given command from a session. Send subsequent block of commands if the given command was the last pending
@@ -142,7 +171,7 @@ class Reflector(object):
 			else:
 				del self.sessions[session_id]
 
-	def _observe_rpl_children(self, response):
+	def _observe_rpl_children(self, payload, parent_id):
 		"""
 		Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new
 		or departed nodes. Accordingly adjusts the local copy of the DoDAG.
@@ -155,36 +184,36 @@ class Reflector(object):
 		:raises: UnsupportedCase
 		"""
 
-		# Extract the token of the given response from the Communicator
-		tk = self.client.token(response.token)
-		if tk not in self.cache:
-			return
-		# Extract the session ID to which the command that triggered the response belongs
-		session_id = self.cache[tk]["session"]
-		# Build a NodeID out of the responder's IP and port. The responder is the parent of a potentially new/departed child
-		parent_id = NodeID(response.remote[0], response.remote[1])
-		# Handle replies that indicate unsuccessful processing of the GET rpl/c command
-		if response.code != coap.CONTENT:
-			tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-			# TODO: CoAP errors not properly handled yet
-			# Make sure the command is deleted from the cache and the appropriate session
-			cached_entry = self._decache(tk)
-			self._touch_session(cached_entry['command'], session_id)
-			raise exception.UnsupportedCase(tmp)
-		#TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
-		# Trim payload from non-string characters
-		clean_payload = parser.clean_payload(response.payload)
-		logg.debug("Children list from " + str(response.remote[0]) + " >> " + clean_payload + " i.e. MID:" + str(response.mid))
-		# Convert the payload to a JSON object
-		payload = json.loads(clean_payload)
-		# TODO: CBOR support required
+		# # Extract the token of the given response from the Communicator
+		# tk = self.client.token(response.token)
+		# if tk not in self.cache:
+		# 	return
+		# # Extract the session ID to which the command that triggered the response belongs
+		# session_id = self.cache[tk]["session"]
+		# # Build a NodeID out of the responder's IP and port. The responder is the parent of a potentially new/departed child
+		# # parent_id = NodeID(response.remote[0], response.remote[1])
+		# # Handle replies that indicate unsuccessful processing of the GET rpl/c command
+		# if response.code != coap.CONTENT:
+		# 	tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+		# 	# TODO: CoAP errors not properly handled yet
+		# 	# Make sure the command is deleted from the cache and the appropriate session
+		# 	cached_entry = self._decache(tk)
+		# 	self._touch_session(cached_entry['command'], session_id)
+		# 	raise exception.UnsupportedCase(tmp)
+		# #TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
+		# # # Trim payload from non-string characters
+		# # clean_payload = parser.clean_payload(payload)
+		# logg.debug("Children list from " + str(response.remote[0]) + " >> " + clean_payload + " i.e. MID:" + str(response.mid))
+		# # Convert the payload to a JSON object
+		# payload = json.loads(clean_payload)
+		# # TODO: CBOR support required
 
 		# Build a list of fetched children from the payload
 		observed_children = []
 		for n in payload:
 			observed_children.append(NodeID(str(n)))
-		# Find, remove and return the cache entry of the command that triggered this response
-		cached_entry = self._decache(tk)
+		# # Find, remove and return the cache entry of the command that triggered this response
+		# cached_entry = self._decache(tk)
 		dodag_child_list = self.dodag.get_children(parent_id)
 
 		# Detect the children that were deleted, those that are in the local DoDAG but are not in the fetched children list
@@ -194,10 +223,13 @@ class Reflector(object):
 		#  build a session (BlockQueue) to remove the related cells from affected neighbors
 		#  let user-defined function add a new session if needed
 		#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
-		for n in removed_nodes:
-			if self.dodag.detach_node(n):
-				self.communicate(self._disconnect(n))
-				self.communicate(self.disconnected(n))
+		for rn in removed_nodes:
+			logg.debug("Child lost: " + str(rn))
+			self.lost_children[rn] = self.time_until_dissconnect
+
+			# if self.dodag.detach_node(n):
+			# 	self.communicate(self._disconnect(n))
+			# 	self.communicate(self.disconnected(n))
 
 		# Iterate over all fetched children and try to attach them to the local DoDAG
 		# If attachment successful,
@@ -206,8 +238,62 @@ class Reflector(object):
 		for k in observed_children:
 			old_parent = self.dodag.get_parent(k)
 			if self.dodag.attach_child(k, parent_id):
+				self._DumpGraph()
 				self.communicate(self._connect(k, parent_id, old_parent))
 				self.communicate(self.connected(k, parent_id, old_parent))
+
+
+	def _observe_rpl_parent(self, payload, node_id):
+		#if the node is the border router do nothing
+		if payload == "Border-Router":
+			return
+		#create an nodeid object for the (supposed) new parent
+		newparent_id = NodeID(payload)
+		#check if its indeed a parent rewiring
+		if str(newparent_id) == str(self.dodag.get_parent(node_id)):
+			return
+
+		#remove it from the lost child list if it is on there
+		if node_id in self.lost_children:
+			logg.debug("Lost child returned to the network: " + str(node_id) + " to parent " + str(newparent_id))
+			#and report it
+			self.lost_children.pop(node_id,0)
+		else:#otherwise just report the rewiring
+			logg.debug("Parent rewiring of node: " + str(node_id) + " to parent " + str(newparent_id))
+
+		#update the dodag tree and dump it
+		self.dodag.switch_parent(node_id,newparent_id)
+		self._DumpGraph()
+
+	#dumps a png of the current internal dodag graph with timestamp to file
+	def _DumpGraph(self):
+		tijd = datetime.datetime.time(datetime.datetime.now())
+		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
+		self.dodag.draw_graph(graphname=filename)
+		logg.debug("Dumped dodag graph to file: " + filename)
+
+	def _observe_dodag_info(self, response):
+		#verify the token
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
+			return
+		session_id = self.cache[tk]["session"]
+		#check if the response is valid
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			cached_entry = self._decache(tk)
+			self._touch_session(cached_entry['command'], session_id)
+			raise exception.UnsupportedCase(tmp)
+
+		#report to the logger
+		logg.debug("Observed dodaginfo from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
+		#json parse the payload and decache the token
+		payload = json.loads(parser.clean_payload(response.payload))
+		cached_entry = self._decache(tk)
+		#pass the seperate pieces of information to their functions
+		self._observe_rpl_parent(payload[0][0], node_id)
+		self._observe_rpl_children(payload[1], node_id)
 		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
 		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
 		self._touch_session(cached_entry['command'], session_id)
@@ -386,10 +472,12 @@ class Reflector(object):
 						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 						del comm.payload['frame']
 			if not comm.callback:
-				if comm.uri == terms.uri['RPL_NL']:
-					comm.callback = self._observe_rpl_nodes
-				elif comm.uri == terms.uri['RPL_OL']:
-					comm.callback = self._observe_rpl_children
+				# if comm.uri == terms.uri['RPL_NL']:
+				# 	comm.callback = self._observe_rpl_nodes
+				# if comm.uri == terms.uri['RPL_OL']:
+				# 	comm.callback = self._observe_rpl_children
+				if comm.uri == terms.uri['RPL_DODAG']:
+					comm.callback = self._observe_dodag_info
 				elif comm.uri == terms.uri['6TP_SF']:
 					comm.callback = self._receive_slotframe_id
 				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
@@ -417,14 +505,14 @@ class Reflector(object):
 	def _connect(self, child, parent, old_parent=None):
 	# inherited function handles the installation of the proper slotframes
 	# to the pair of nodes of the established link
-		if old_parent:
-			logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
-		else:
-			logg.info(str(child) + ' wired to parent ' + str(parent))
+	# 	if old_parent:
+	# 		logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
+	# 	else:
+	# 		logg.info(str(child) + ' wired to parent ' + str(parent))
 
 		q = interface.BlockQueue()
-		q.push(Command('observe', child, terms.uri['RPL_OL']))
-		# TODO: commands.append(self.Command('post', child, terms.uri['6TP_SM'], {"mt":"[\"PRR\",\"RSSI\"]"})) # First step of statistics installation.
+		# q.push(Command('observe', child, terms.uri['RPL_OL']))
+		q.push(Command('observe', child, terms.uri['RPL_DODAG']))
 		q.block()
 		return q
 
@@ -493,7 +581,14 @@ class Reflector(object):
 class Scheduler(Reflector):
 
 	def start(self):
-		self.communicate(self.get_remote_children(self.root_id, True))
+		# self.communicate(self.get_remote_children(self.root_id, True))
+		super(Scheduler,self)._start()
+		#register the observing of the dodaginfo resource by frank
+		q = interface.BlockQueue()
+		q.push(Command('observe', self.root_id, terms.uri['RPL_DODAG']))
+		q.block()
+		self.communicate(q)
+
 		self.client.start()
 
 	def get_remote_frame(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
