@@ -11,14 +11,6 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. automodule:: core.schedule
-
-.. autoclass:: Reflector
-	:members:
-
-.. autoclass:: Scheduler
-	:members:
-
 Indices and tables
 ==================
 

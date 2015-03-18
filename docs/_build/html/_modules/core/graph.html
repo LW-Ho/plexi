@@ -84,6 +84,7 @@
 			<span class="bp">self</span><span class="o">.</span><span class="n">flush_to_visualizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="p">)</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">attach_node</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
 
+	<span class="c"># returns the parent_id of the inputted child_id</span>
 <div class="viewcode-block" id="DoDAG.get_neighbors"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.get_neighbors">[docs]</a>	<span class="k">def</span> <span class="nf">get_neighbors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
 		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
 </div>
@@ -93,7 +94,8 @@
 				<span class="k">if</span> <span class="s">&#39;parent&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">edge</span><span class="p">[</span><span class="n">child_id</span><span class="p">][</span><span class="n">neighbor</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">edge</span><span class="p">[</span><span class="n">child_id</span><span class="p">][</span><span class="n">neighbor</span><span class="p">][</span><span class="s">&#39;parent&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">neighbor</span><span class="p">:</span>
 					<span class="k">return</span> <span class="n">neighbor</span>
 		<span class="k">return</span> <span class="bp">None</span>
-</div>
+
+	<span class="c"># adds a node to the DoDAG graph and to the vizualized network graph</span></div>
 <div class="viewcode-block" id="DoDAG.get_children"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.get_children">[docs]</a>	<span class="k">def</span> <span class="nf">get_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
 		<span class="k">if</span> <span class="n">parent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">():</span>
 			<span class="n">children</span> <span class="o">=</span> <span class="p">[]</span>
@@ -105,7 +107,7 @@
 </div>
 <div class="viewcode-block" id="DoDAG.attach_node"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.attach_node">[docs]</a>	<span class="k">def</span> <span class="nf">attach_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
 		<span class="k">if</span> <span class="n">node_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">():</span>
-			<span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>    <span class="c"># adds the node with node_id to the locally stored graph</span>
 			<span class="k">try</span><span class="p">:</span>
 				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualize</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
 					<span class="k">if</span> <span class="n">node_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">:</span>
@@ -141,6 +143,7 @@
 			<span class="n">tmp_attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">router_attrs</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">visualizer</span><span class="o">.</span><span class="n">change_node</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">node</span><span class="p">),</span> <span class="o">**</span><span class="n">tmp_attrs</span><span class="p">)</span>
 
+	<span class="c"># creates a link (child-parent link) to the locally kept DoDAG graph</span>
 <div class="viewcode-block" id="DoDAG.attach_child"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.attach_child">[docs]</a>	<span class="k">def</span> <span class="nf">attach_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child_id</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
 		<span class="k">if</span> <span class="n">child_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">:</span>
 			<span class="k">return</span> <span class="bp">False</span>
@@ -188,7 +191,8 @@
 				<span class="n">logg</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;Visualizer - &#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="o">+</span><span class="s">&#39; - is unreachable, retrying in 10sec ...&#39;</span><span class="p">)</span>
 				<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flush_to_visualizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="p">)</span>
 		<span class="k">return</span> <span class="bp">True</span>
-</div>
+
+	<span class="c"># updates the link&#39;s statistics/metrics info for the visualizer</span></div>
 <div class="viewcode-block" id="DoDAG.update_link"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.update_link">[docs]</a>	<span class="k">def</span> <span class="nf">update_link</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
 		<span class="k">if</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">terms</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">has_edge</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">):</span>
 			<span class="k">if</span> <span class="s">&quot;statistics&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">edge</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="n">endpoint</span><span class="p">]:</span>
@@ -218,7 +222,8 @@
 				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
 					<span class="n">logg</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;Visualizer - &#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="o">+</span><span class="s">&#39; - is unreachable, retrying in 10sec ...&#39;</span><span class="p">)</span>
 					<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flush_to_visualizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="p">)</span>
-</div>
+
+	<span class="c"># updates node&#39;s info for the visualizer</span></div>
 <div class="viewcode-block" id="DoDAG.update_node"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.update_node">[docs]</a>	<span class="k">def</span> <span class="nf">update_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
 		<span class="k">if</span> <span class="n">node_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">():</span>
 			<span class="k">if</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">terms</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
@@ -237,7 +242,8 @@
 					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="p">:</span>
 						<span class="n">logg</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;Visualizer - &#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="o">+</span><span class="s">&#39; - is unreachable, retrying in 10sec ...&#39;</span><span class="p">)</span>
 						<span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flush_to_visualizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">visualize</span><span class="p">)</span>
-</div>
+
+	<span class="c"># removes a node from the locally kept DoDAG</span></div>
 <div class="viewcode-block" id="DoDAG.detach_node"><a class="viewcode-back" href="../../core.html#core.graph.DoDAG.detach_node">[docs]</a>	<span class="k">def</span> <span class="nf">detach_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
 		<span class="k">if</span> <span class="n">node_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">():</span>
 			<span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">remove_node</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
