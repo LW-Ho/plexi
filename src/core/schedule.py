@@ -86,9 +86,14 @@ class Reflector(object):
 		self.time_until_dissconnect = 30
 
 	def _start(self):
+		"""
+		registers the looping call for the :func:`_TimeTick` into the twisted library
 
+		:return None
+		"""
 		l = task.LoopingCall(self._TimeTick)
 		l.start(1.0)
+
 
 	def _decache(self, token):
 		"""
@@ -130,6 +135,14 @@ class Reflector(object):
 				comm = self.sessions[self.count_sessions].pop()
 
 	def _TimeTick(self):
+		"""
+		This function is ran every second and decreases the value of the lost_children dictionary item with as key the
+		mac address of the lost child.
+		When this value is 0 the disconnection procedure of this node is started. Also :func:`_DumpGraph` is called to
+		create a snapshot of the system after disconnection
+
+		:return: None
+		"""
 		#iterate throught the lost children list and subtract 1 from each entry
 		for key, value in self.lost_children.iteritems():
 			#if time is over pop this item and disconnect it, otherwise just decrement
@@ -173,15 +186,15 @@ class Reflector(object):
 
 	def _observe_rpl_children(self, payload, parent_id):
 		"""
-		Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new
-		or departed nodes. Accordingly adjusts the local copy of the DoDAG.
+		handles the parsing of received children list resource (part of the dodag resource). If a node is lost it is put
+		on the lost child list, if a node has appeared the connection procedure is started.
 
-		If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring
-		nodes. If a node is added, a children list observer is installed.
-
-		:param response: the response returned by a node after a GET rpl/c request
-		:type response: :class:`txthings.coap.Message`
+		:param payload: the children list
+		:type payload: list
+		:param parent_id: the id of the node which transmitted this child list
+		:type parent_id: :class:`node.NodeID`
 		:raises: UnsupportedCase
+
 		"""
 
 		# # Extract the token of the given response from the Communicator
@@ -244,6 +257,16 @@ class Reflector(object):
 
 
 	def _observe_rpl_parent(self, payload, node_id):
+		"""
+		parses the respons of the parent resource (part of the dodaginfo resource). if the parent has changed, execute
+		a rewiring procedure of this node to a new parent
+
+		:param payload: the parent of the node
+		:type payload: string
+		:param node_id: node which broadcasted this dodaginfo
+		:type node_id: :class:`node.NodeID`
+
+		"""
 		#if the node is the border router do nothing
 		if payload == "Border-Router":
 			return
@@ -267,12 +290,24 @@ class Reflector(object):
 
 	#dumps a png of the current internal dodag graph with timestamp to file
 	def _DumpGraph(self):
+		"""
+		Saves the current dodag graph to file with as filename the timestamp of the current time
+
+		"""
 		tijd = datetime.datetime.time(datetime.datetime.now())
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
 		self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
 
 	def _observe_dodag_info(self, response):
+		"""
+		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
+		the parent and the second item the children list
+
+		:param response: the incomming data package
+		:type response: :class:`txthings.coap.Message`
+
+		"""
 		#verify the token
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -461,7 +496,16 @@ class Reflector(object):
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
-	# determines which function will be called regarding the used URI
+		"""
+		Registers the callbacks for a given URI and starts the coap client for them
+
+		:param comm: the command itself on which the callback needs to be registered
+		:type comm: :class:`interface.Command`
+		:param session:
+		:type session:
+
+		"""
+		# determines which function will be called regarding the used URI
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) } #id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
@@ -503,6 +547,9 @@ class Reflector(object):
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
 
 	def _connect(self, child, parent, old_parent=None):
+		"""
+
+		"""
 	# inherited function handles the installation of the proper slotframes
 	# to the pair of nodes of the established link
 	# 	if old_parent:
