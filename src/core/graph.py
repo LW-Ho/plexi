@@ -31,6 +31,7 @@ class DoDAG(object):
 			self.flush_to_visualizer(self.visualize)
 		self.attach_node(root)
 
+	# returns the parent_id of the inputted child_id
 	def get_neighbors(self, node):
 		return self.graph.neighbors(node)
 
@@ -41,6 +42,7 @@ class DoDAG(object):
 					return neighbor
 		return None
 
+	# adds a node to the DoDAG graph and to the vizualized network graph
 	def get_children(self, parent_id):
 		if parent_id in self.graph.nodes():
 			children = []
@@ -52,7 +54,7 @@ class DoDAG(object):
 
 	def attach_node(self, node_id):
 		if node_id not in self.graph.nodes():
-			self.graph.add_node(node_id)
+			self.graph.add_node(node_id)    # adds the node with node_id to the locally stored graph
 			try:
 				if self.visualize and self.visualizer is not None:
 					if node_id == self.root:
@@ -88,6 +90,7 @@ class DoDAG(object):
 			tmp_attrs = self.router_attrs
 		self.visualizer.change_node(str(node), **tmp_attrs)
 
+	# creates a link (child-parent link) to the locally kept DoDAG graph
 	def attach_child(self, child_id, parent_id):
 		if child_id == self.root:
 			return False
@@ -136,6 +139,7 @@ class DoDAG(object):
 				reactor.callLater(10, self.flush_to_visualizer, self.visualize)
 		return True
 
+	# updates the link's statistics/metrics info for the visualizer
 	def update_link(self, node, endpoint, metric, value):
 		if metric in terms.keys.keys() and self.graph.has_edge(node, endpoint):
 			if "statistics" not in self.graph.edge[node][endpoint]:
@@ -166,6 +170,7 @@ class DoDAG(object):
 					logg.warning('Visualizer - '+self.visualize+' - is unreachable, retrying in 10sec ...')
 					reactor.callLater(10, self.flush_to_visualizer, self.visualize)
 
+	# updates node's info for the visualizer
 	def update_node(self, node_id, metric, value):
 		if node_id in self.graph.nodes():
 			if metric in terms.keys.keys():
@@ -185,6 +190,7 @@ class DoDAG(object):
 						logg.warning('Visualizer - '+self.visualize+' - is unreachable, retrying in 10sec ...')
 						reactor.callLater(10, self.flush_to_visualizer, self.visualize)
 
+	# removes a node from the locally kept DoDAG
 	def detach_node(self, node_id):
 		if node_id in self.graph.nodes():
 			self.graph.remove_node(node_id)
