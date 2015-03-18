@@ -102,21 +102,6 @@ class DoDAG(object):
 	def attach_node(self, node_id):
 		if node_id not in self.graph.nodes():
 			self.graph.add_node(node_id)    # adds the node with node_id to the locally stored graph
-			try:
-				if self.visualize and self.visualizer is not None:
-					if node_id == self.root:
-						tmp_attrs = self.root_attrs
-						tmp_attrs['label'] = node_id.stripdown()
-						self.visualizer.add_node(str(node_id), **self.root_attrs)
-					else:
-						tmp_attrs = self.leaf_attrs
-						tmp_attrs['label'] = node_id.stripdown()
-						self.visualizer.add_node(str(node_id), **self.leaf_attrs)
-			except:
-				self.visualizer = None
-				if self.visualize:
-					logg.warning('Visualizer - '+self.visualize+' - is unreachable, retrying in 10sec ...')
-					reactor.callLater(10, self.flush_to_visualizer, self.visualize)
 			return True
 		return False
 
