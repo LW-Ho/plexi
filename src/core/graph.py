@@ -100,7 +100,7 @@ class DoDAG(object):
 		http://neopythonic.blogspot.com.au/2009/04/final-words-on-tail-calls.html
 
 		:param node_id:
-		:type node_id :class:`node.NodeID`
+		:type node_id :class: `node.NodeID`
 		:return:
 		"""
 
@@ -147,9 +147,9 @@ class DoDAG(object):
 		creates a parent child link in the graph
 
 		:param child_id: the id of the child of the link
-		:type child_id: :class:`node.NodeID`
+		:type child_id: :class: `node.NodeID`
 		:param parent_id: the id of the parent of the link
-		:type parent_id :class:`node.NodeID`
+		:type parent_id :class:` node.NodeID`
 		:return:
 		"""
 		if child_id == self.root:
@@ -217,9 +217,9 @@ class DoDAG(object):
 		this is just a wrapper for the :func:`attach_child` as this already supports rewiring
 
 		:param node_id:
-		:type node_id: :class:`node.NodeID`
+		:type node_id: :class: `node.NodeID`
 		:param newparent_id:
-		:type newparent_id: :class:`node.NodeID`
+		:type newparent_id: :class: `node.NodeID`
 		:return:
 		"""
 		self.attach_child(node_id, newparent_id)
