@@ -238,7 +238,8 @@ class Reflector(object):
 		#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
 		for rn in removed_nodes:
 			logg.debug("Child lost: " + str(rn))
-			self.lost_children[rn] = self.time_until_dissconnect
+			if rn not in self.lost_children: #do not reset the timer if it is already there for a reason
+				self.lost_children[rn] = self.time_until_dissconnect
 
 			# if self.dodag.detach_node(n):
 			# 	self.communicate(self._disconnect(n))
@@ -250,6 +251,7 @@ class Reflector(object):
 		#  build and send a BlockQueue session to install a children list observer to the new node
 		#  let user-defined function add a new session if needed
 		for k in observed_children:
+			#if a
 			if not self.dodag.check_node(k):
 				old_parent = self.dodag.get_parent(k)
 				if self.dodag.attach_child(k, parent_id):
