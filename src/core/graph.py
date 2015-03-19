@@ -1,5 +1,5 @@
-__author__ = "George Exarchakos, Dimitris Sarakiotis, Ilker Oztelcan"
-__email__ = "g.exarchakos@tue.nl, d.sarakiotis@tue.nl, i.oztelcan@tue.nl"
+__author__ = "George Exarchakos, Dimitris Sarakiotis, Ilker Oztelcan, Frank Boerman"
+__email__ = "g.exarchakos@tue.nl, d.sarakiotis@tue.nl, i.oztelcan@tue.nl, f.j.l.boerman@student.tue.nl"
 __version__ = "0.0.21"
 __copyright__ = "Copyright 2014, The RICH Project"
 #__credits__ = ["XYZ"]
@@ -100,7 +100,7 @@ class DoDAG(object):
 		http://neopythonic.blogspot.com.au/2009/04/final-words-on-tail-calls.html
 
 		:param node_id:
-		:type node_id :class: `node.NodeID`
+		:type node_id: :class: `node.NodeID`
 		:return:
 		"""
 
@@ -141,6 +141,16 @@ class DoDAG(object):
 			return True
 		return False
 
+	def check_node(self, node_id):
+		"""
+		checks if the node is already on the graph
+
+		:param node_id: the node you want to be checked
+		:type node_id: :class: `node.NodeID`
+		:return: True if the node is on the graph, false if not
+		"""
+		return node_id in self.graph.nodes()
+
 
 	def attach_child(self, child_id, parent_id):
 		"""
@@ -150,7 +160,8 @@ class DoDAG(object):
 		:type child_id: :class: `node.NodeID`
 		:param parent_id: the id of the parent of the link
 		:type parent_id :class:` node.NodeID`
-		:return:
+		:return: boolean
+
 		"""
 		if child_id == self.root:
 			return False
@@ -177,7 +188,7 @@ class DoDAG(object):
 		:param endpoint:
 		:param metric:
 		:param value:
-		:return:
+
 		"""
 		if metric in terms.keys.keys() and self.graph.has_edge(node, endpoint):
 			if "statistics" not in self.graph.edge[node][endpoint]:

@@ -1,58 +1,106 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>core.schedule &mdash; RiSCHER 0.4 documentation</title>
-    
-    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
-        VERSION:     '0.4',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="RiSCHER 0.4 documentation" href="../../index.html" />
-    <link rel="up" title="Module code" href="../index.html" />
-   
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <title>core.schedule &mdash; RiSCHER 0.4 documentation</title>
+  
 
-  </head>
-  <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../../genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">RiSCHER 0.4 documentation</a> &raquo;</li>
-          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
-      </ul>
-    </div>  
+  
+  
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="RiSCHER 0.4 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../../index.html" class="fa fa-home"> RiSCHER</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">RiSCHER</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>core.schedule</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
             
   <h1>Source code for core.schedule</h1><div class="highlight"><pre>
-<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos&quot;</span>
-<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl&quot;</span>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos, Frank Boerman&quot;</span>
+<span class="n">__email__</span> <span class="o">=</span> <span class="s">&quot;d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl, f.j.l.boerman@student.tue.nl&quot;</span>
 <span class="n">__version__</span> <span class="o">=</span> <span class="s">&quot;0.0.27&quot;</span>
 <span class="n">__copyright__</span> <span class="o">=</span> <span class="s">&quot;Copyright 2014, The RICH Project&quot;</span>
 <span class="c">#__credits__ = [&quot;XYZ&quot;]</span>
@@ -73,6 +121,8 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">core</span> <span class="kn">import</span> <span class="n">interface</span>
 <span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">twisted.internet</span> <span class="kn">import</span> <span class="n">task</span>
 
 <span class="n">logg</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;RiSCHER&#39;</span><span class="p">)</span>
 <span class="n">logg</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
@@ -129,7 +179,23 @@
 		<span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="p">{}</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">sessions</span> <span class="o">=</span> <span class="p">{}</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="c">#nodes who are temporary lost from the network are stored in here</span>
+		<span class="c">#this could be either a rewiring or a true disconnect</span>
+		<span class="c">#key: NodeID value: time left on lost list</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="c">#ammount of time a lost node can be on this list until truely disconnecting, in seconds</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">time_until_dissconnect</span> <span class="o">=</span> <span class="mi">30</span>
 
+<div class="viewcode-block" id="Reflector._start"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._start">[docs]</a>	<span class="k">def</span> <span class="nf">_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		registers the looping call for the :func:`_TimeTick` into the twisted library</span>
+
+<span class="sd">		:return None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">l</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">LoopingCall</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_TimeTick</span><span class="p">)</span>
+		<span class="n">l</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+
+</div>
 <div class="viewcode-block" id="Reflector._decache"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._decache">[docs]</a>	<span class="k">def</span> <span class="nf">_decache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
 		<span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">		Remove and return the cache entry (= a command) with the given token (= id)</span>
@@ -169,6 +235,30 @@
 					<span class="k">break</span> <span class="c"># TODO: a bit confused of the use of this if statement... will check</span>
 				<span class="n">comm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">count_sessions</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
 </div>
+<div class="viewcode-block" id="Reflector._TimeTick"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._TimeTick">[docs]</a>	<span class="k">def</span> <span class="nf">_TimeTick</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		This function is ran every second and decreases the value of the lost_children dictionary item with as key the</span>
+<span class="sd">		mac address of the lost child.</span>
+<span class="sd">		When this value is 0 the disconnection procedure of this node is started. Also :func:`_DumpGraph` is called to</span>
+<span class="sd">		create a snapshot of the system after disconnection</span>
+
+<span class="sd">		:return: None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c">#iterate throught the lost children list and subtract 1 from each entry</span>
+		<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+			<span class="c">#if time is over pop this item and disconnect it, otherwise just decrement</span>
+			<span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="c">#disconnect the node and execute commands for this disconnect</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">detach_node</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_DumpGraph</span><span class="p">()</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_disconnect</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disconnected</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+				<span class="c">#because the dict changed, break here, other disconnections are thus done with 1 second delay</span>
+				<span class="k">break</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span> <span class="o">-</span> <span class="mi">1</span>
+</div>
 <div class="viewcode-block" id="Reflector._touch_session"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._touch_session">[docs]</a>	<span class="k">def</span> <span class="nf">_touch_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">achieved_comm</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
 		<span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">		Remove a given command from a session. Send subsequent block of commands if the given command was the last pending</span>
@@ -195,49 +285,49 @@
 			<span class="k">else</span><span class="p">:</span>
 				<span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span>
 </div>
-<div class="viewcode-block" id="Reflector._observe_rpl_children"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._observe_rpl_children">[docs]</a>	<span class="k">def</span> <span class="nf">_observe_rpl_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+<div class="viewcode-block" id="Reflector._observe_rpl_children"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._observe_rpl_children">[docs]</a>	<span class="k">def</span> <span class="nf">_observe_rpl_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
 		<span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">		Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new</span>
-<span class="sd">		or departed nodes. Accordingly adjusts the local copy of the DoDAG.</span>
+<span class="sd">		handles the parsing of received children list resource (part of the dodag resource). If a node is lost it is put</span>
+<span class="sd">		on the lost child list, if a node has appeared the connection procedure is started.</span>
 
-<span class="sd">		If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring</span>
-<span class="sd">		nodes. If a node is added, a children list observer is installed.</span>
-
-<span class="sd">		:param response: the response returned by a node after a GET rpl/c request</span>
-<span class="sd">		:type response: :class:`txthings.coap.Message`</span>
+<span class="sd">		:param payload: the children list</span>
+<span class="sd">		:type payload: list</span>
+<span class="sd">		:param parent_id: the id of the node which transmitted this child list</span>
+<span class="sd">		:type parent_id: :class:`node.NodeID`</span>
 <span class="sd">		:raises: UnsupportedCase</span>
+
 <span class="sd">		&quot;&quot;&quot;</span>
 
-		<span class="c"># Extract the token of the given response from the Communicator</span>
-		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
-		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
-			<span class="k">return</span>
-		<span class="c"># Extract the session ID to which the command that triggered the response belongs</span>
-		<span class="n">session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
-		<span class="c"># Build a NodeID out of the responder&#39;s IP and port. The responder is the parent of a potentially new/departed child</span>
-		<span class="n">parent_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-		<span class="c"># Handle replies that indicate unsuccessful processing of the GET rpl/c command</span>
-		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
-			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">])</span>
-			<span class="c"># TODO: CoAP errors not properly handled yet</span>
-			<span class="c"># Make sure the command is deleted from the cache and the appropriate session</span>
-			<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
-			<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
-			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
-		<span class="c">#TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt</span>
-		<span class="c"># Trim payload from non-string characters</span>
-		<span class="n">clean_payload</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
-		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Children list from &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; &gt;&gt; &quot;</span> <span class="o">+</span> <span class="n">clean_payload</span> <span class="o">+</span> <span class="s">&quot; i.e. MID:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">mid</span><span class="p">))</span>
-		<span class="c"># Convert the payload to a JSON object</span>
-		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">clean_payload</span><span class="p">)</span>
-		<span class="c"># TODO: CBOR support required</span>
+		<span class="c"># # Extract the token of the given response from the Communicator</span>
+		<span class="c"># tk = self.client.token(response.token)</span>
+		<span class="c"># if tk not in self.cache:</span>
+		<span class="c"># 	return</span>
+		<span class="c"># # Extract the session ID to which the command that triggered the response belongs</span>
+		<span class="c"># session_id = self.cache[tk][&quot;session&quot;]</span>
+		<span class="c"># # Build a NodeID out of the responder&#39;s IP and port. The responder is the parent of a potentially new/departed child</span>
+		<span class="c"># # parent_id = NodeID(response.remote[0], response.remote[1])</span>
+		<span class="c"># # Handle replies that indicate unsuccessful processing of the GET rpl/c command</span>
+		<span class="c"># if response.code != coap.CONTENT:</span>
+		<span class="c"># 	tmp = str(parent_id) + &#39; returned a &#39; + coap.responses[response.code] + &#39;\n\tRequest: &#39; + str(self.cache[tk])</span>
+		<span class="c"># 	# TODO: CoAP errors not properly handled yet</span>
+		<span class="c"># 	# Make sure the command is deleted from the cache and the appropriate session</span>
+		<span class="c"># 	cached_entry = self._decache(tk)</span>
+		<span class="c"># 	self._touch_session(cached_entry[&#39;command&#39;], session_id)</span>
+		<span class="c"># 	raise exception.UnsupportedCase(tmp)</span>
+		<span class="c"># #TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt</span>
+		<span class="c"># # # Trim payload from non-string characters</span>
+		<span class="c"># # clean_payload = parser.clean_payload(payload)</span>
+		<span class="c"># logg.debug(&quot;Children list from &quot; + str(response.remote[0]) + &quot; &gt;&gt; &quot; + clean_payload + &quot; i.e. MID:&quot; + str(response.mid))</span>
+		<span class="c"># # Convert the payload to a JSON object</span>
+		<span class="c"># payload = json.loads(clean_payload)</span>
+		<span class="c"># # TODO: CBOR support required</span>
 
 		<span class="c"># Build a list of fetched children from the payload</span>
 		<span class="n">observed_children</span> <span class="o">=</span> <span class="p">[]</span>
 		<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
 			<span class="n">observed_children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">NodeID</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)))</span>
-		<span class="c"># Find, remove and return the cache entry of the command that triggered this response</span>
-		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="c"># # Find, remove and return the cache entry of the command that triggered this response</span>
+		<span class="c"># cached_entry = self._decache(tk)</span>
 		<span class="n">dodag_child_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">parent_id</span><span class="p">)</span>
 
 		<span class="c"># Detect the children that were deleted, those that are in the local DoDAG but are not in the fetched children list</span>
@@ -247,20 +337,106 @@
 		<span class="c">#  build a session (BlockQueue) to remove the related cells from affected neighbors</span>
 		<span class="c">#  let user-defined function add a new session if needed</span>
 		<span class="c">#  TODO: what if the user would like to have a block queue only after the related cells are deleted?</span>
-		<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">removed_nodes</span><span class="p">:</span>
-			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">detach_node</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_disconnect</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
-				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disconnected</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+		<span class="k">for</span> <span class="n">rn</span> <span class="ow">in</span> <span class="n">removed_nodes</span><span class="p">:</span>
+			<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Child lost: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">rn</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">[</span><span class="n">rn</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_until_dissconnect</span>
 
-		<span class="c"># Iterate over all fetched children and try to attach them to the local DoDAG</span>
+			<span class="c"># if self.dodag.detach_node(n):</span>
+			<span class="c"># 	self.communicate(self._disconnect(n))</span>
+			<span class="c"># 	self.communicate(self.disconnected(n))</span>
+
+		<span class="c"># Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already</span>
+		<span class="c"># if they are already attached than the change in children list is due to a rewiring</span>
 		<span class="c"># If attachment successful,</span>
 		<span class="c">#  build and send a BlockQueue session to install a children list observer to the new node</span>
 		<span class="c">#  let user-defined function add a new session if needed</span>
 		<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">observed_children</span><span class="p">:</span>
-			<span class="n">old_parent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">attach_child</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
-				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">))</span>
-				<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">))</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">check_node</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+				<span class="n">old_parent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">attach_child</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_DumpGraph</span><span class="p">()</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">))</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="Reflector._observe_rpl_parent"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._observe_rpl_parent">[docs]</a>	<span class="k">def</span> <span class="nf">_observe_rpl_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		parses the respons of the parent resource (part of the dodaginfo resource). if the parent has changed, execute</span>
+<span class="sd">		a rewiring procedure of this node to a new parent</span>
+
+<span class="sd">		:param payload: the parent of the node</span>
+<span class="sd">		:type payload: string</span>
+<span class="sd">		:param node_id: node which broadcasted this dodaginfo</span>
+<span class="sd">		:type node_id: :class:`node.NodeID`</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c">#if the node is the border router do nothing</span>
+		<span class="k">if</span> <span class="n">payload</span> <span class="o">==</span> <span class="s">&quot;Border-Router&quot;</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="c">#create an nodeid object for the (supposed) new parent</span>
+		<span class="n">newparent_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+		<span class="c">#check if its indeed a parent rewiring</span>
+		<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">newparent_id</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">node_id</span><span class="p">)):</span>
+			<span class="k">return</span>
+
+		<span class="c">#remove it from the lost child list if it is on there</span>
+		<span class="k">if</span> <span class="n">node_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">:</span>
+			<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Lost child returned to the network: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; to parent &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">newparent_id</span><span class="p">))</span>
+			<span class="c">#and report it</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span><span class="c">#otherwise just report the rewiring</span>
+			<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Parent rewiring of node: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; to parent &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">newparent_id</span><span class="p">))</span>
+
+		<span class="c">#save the old parent</span>
+		<span class="n">oldparent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
+		<span class="c">#update the dodag tree</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">switch_parent</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span><span class="n">newparent_id</span><span class="p">)</span>
+		<span class="c">#do a kickback to the api</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">rewired</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">oldparent</span><span class="p">,</span> <span class="n">newparent_id</span><span class="p">)</span>
+		<span class="c">#dump the new graph to file</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_DumpGraph</span><span class="p">()</span>
+
+	<span class="c">#dumps a png of the current internal dodag graph with timestamp to file</span></div>
+<div class="viewcode-block" id="Reflector._DumpGraph"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._DumpGraph">[docs]</a>	<span class="k">def</span> <span class="nf">_DumpGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Saves the current dodag graph to file with as filename the timestamp of the current time</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">tijd</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">time</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+		<span class="n">filename</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">tijd</span><span class="o">.</span><span class="n">hour</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">tijd</span><span class="o">.</span><span class="n">minute</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;:&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">tijd</span><span class="o">.</span><span class="n">second</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;.png&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">draw_graph</span><span class="p">(</span><span class="n">graphname</span><span class="o">=</span><span class="n">filename</span><span class="p">)</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Dumped dodag graph to file: &quot;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Reflector._observe_dodag_info"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._observe_dodag_info">[docs]</a>	<span class="k">def</span> <span class="nf">_observe_dodag_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position</span>
+<span class="sd">		the parent and the second item the children list</span>
+
+<span class="sd">		:param response: the incomming data package</span>
+<span class="sd">		:type response: :class:`txthings.coap.Message`</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c">#verify the token</span>
+		<span class="n">tk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">tk</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+			<span class="k">return</span>
+		<span class="n">session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">][</span><span class="s">&quot;session&quot;</span><span class="p">]</span>
+		<span class="c">#check if the response is valid</span>
+		<span class="n">node_id</span> <span class="o">=</span> <span class="n">NodeID</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="n">coap</span><span class="o">.</span><span class="n">CONTENT</span><span class="p">:</span>
+			<span class="n">tmp</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; returned a &#39;</span> <span class="o">+</span> <span class="n">coap</span><span class="o">.</span><span class="n">responses</span><span class="p">[</span><span class="n">response</span><span class="o">.</span><span class="n">code</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n\t</span><span class="s">Request: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">tk</span><span class="p">])</span>
+			<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
+			<span class="k">raise</span> <span class="n">exception</span><span class="o">.</span><span class="n">UnsupportedCase</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+
+		<span class="c">#report to the logger</span>
+		<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Observed dodaginfo from &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">remote</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">&quot; &gt;&gt; &quot;</span> <span class="o">+</span> <span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">))</span>
+		<span class="c">#json parse the payload and decache the token</span>
+		<span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">clean_payload</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">payload</span><span class="p">))</span>
+		<span class="n">cached_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decache</span><span class="p">(</span><span class="n">tk</span><span class="p">)</span>
+		<span class="c">#pass the seperate pieces of information to their functions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_observe_rpl_parent</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">node_id</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_observe_rpl_children</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">node_id</span><span class="p">)</span>
 		<span class="c"># Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed</span>
 		<span class="c"># from the session registry. Otherwise, commands from the next block of this session will be transmitted</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
@@ -428,7 +604,16 @@
 		<span class="bp">self</span><span class="o">.</span><span class="n">_touch_session</span><span class="p">(</span><span class="n">cached_entry</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">],</span> <span class="n">session_id</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Reflector._push_command"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._push_command">[docs]</a>	<span class="k">def</span> <span class="nf">_push_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
-	<span class="c"># determines which function will be called regarding the used URI</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Registers the callbacks for a given URI and starts the coap client for them</span>
+
+<span class="sd">		:param comm: the command itself on which the callback needs to be registered</span>
+<span class="sd">		:type comm: :class:`interface.Command`</span>
+<span class="sd">		:param session:</span>
+<span class="sd">		:type session:</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># determines which function will be called regarding the used URI</span>
 		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">Command</span><span class="p">):</span>
 			<span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;session&#39;</span><span class="p">:</span> <span class="n">session</span><span class="p">,</span> <span class="s">&#39;command&#39;</span><span class="p">:</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span> <span class="p">}</span> <span class="c">#id&#39;: comm.id, &#39;op&#39;: comm.op, &#39;to&#39;: comm.to, &#39;uri&#39;: comm.uri}</span>
 			<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">:</span>
@@ -439,10 +624,12 @@
 						<span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;fd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">)</span>
 						<span class="k">del</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span>
 			<span class="k">if</span> <span class="ow">not</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
-				<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_NL&#39;</span><span class="p">]:</span>
-					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observe_rpl_nodes</span>
-				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_OL&#39;</span><span class="p">]:</span>
-					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observe_rpl_children</span>
+				<span class="c"># if comm.uri == terms.uri[&#39;RPL_NL&#39;]:</span>
+				<span class="c"># 	comm.callback = self._observe_rpl_nodes</span>
+				<span class="c"># if comm.uri == terms.uri[&#39;RPL_OL&#39;]:</span>
+				<span class="c"># 	comm.callback = self._observe_rpl_children</span>
+				<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_DODAG&#39;</span><span class="p">]:</span>
+					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observe_dodag_info</span>
 				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SF&#39;</span><span class="p">]:</span>
 					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_receive_slotframe_id</span>
 				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">op</span> <span class="o">==</span> <span class="s">&#39;post&#39;</span> <span class="ow">and</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]:</span>
@@ -468,16 +655,19 @@
 				<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">DELETE</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Reflector._connect"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._connect">[docs]</a>	<span class="k">def</span> <span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">old_parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
 	<span class="c"># inherited function handles the installation of the proper slotframes</span>
 	<span class="c"># to the pair of nodes of the established link</span>
-		<span class="k">if</span> <span class="n">old_parent</span><span class="p">:</span>
-			<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">child</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; rewired to &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; from &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">old_parent</span><span class="p">))</span>
-		<span class="k">else</span><span class="p">:</span>
-			<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">child</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; wired to parent &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">parent</span><span class="p">))</span>
+	<span class="c"># 	if old_parent:</span>
+	<span class="c"># 		logg.info(str(child) + &#39; rewired to &#39; + str(parent) + &#39; from &#39; + str(old_parent))</span>
+	<span class="c"># 	else:</span>
+	<span class="c"># 		logg.info(str(child) + &#39; wired to parent &#39; + str(parent))</span>
 
 		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
-		<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;observe&#39;</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_OL&#39;</span><span class="p">]))</span>
-		<span class="c"># TODO: commands.append(self.Command(&#39;post&#39;, child, terms.uri[&#39;6TP_SM&#39;], {&quot;mt&quot;:&quot;[\&quot;PRR\&quot;,\&quot;RSSI\&quot;]&quot;})) # First step of statistics installation.</span>
+		<span class="c"># q.push(Command(&#39;observe&#39;, child, terms.uri[&#39;RPL_OL&#39;]))</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;observe&#39;</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_DODAG&#39;</span><span class="p">]))</span>
 		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
 		<span class="k">return</span> <span class="n">q</span>
 </div>
@@ -525,9 +715,37 @@
 					<span class="bp">self</span><span class="o">.</span><span class="n">_create_session</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Reflector.connected"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.connected">[docs]</a>	<span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">old_parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		api call back for when a new node connects to the network</span>
+<span class="sd">		This callback is fired AFTER the dodag tree has been updated</span>
+
+<span class="sd">		:param child:</span>
+<span class="sd">		:param parent:</span>
+<span class="sd">		:param old_parent:</span>
+<span class="sd">		:return:</span>
+<span class="sd">		&quot;&quot;&quot;</span>
 		<span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="Reflector.disconnected"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.disconnected">[docs]</a>	<span class="k">def</span> <span class="nf">disconnected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		api callback for when a node disconnects</span>
+<span class="sd">		This callback is fired AFTER the dodag tree has been updated</span>
+
+<span class="sd">		:param node_id:</span>
+<span class="sd">		:return:</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Reflector.rewired"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.rewired">[docs]</a>	<span class="k">def</span> <span class="nf">rewired</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">,</span> <span class="n">old_parent</span><span class="p">,</span> <span class="n">new_parent</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag</span>
+<span class="sd">		tree has been updated</span>
+
+<span class="sd">		:param node_id:</span>
+<span class="sd">		:param old_parent:</span>
+<span class="sd">		:param new_parent:</span>
+<span class="sd">		:return:</span>
+<span class="sd">		&quot;&quot;&quot;</span>
 		<span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="Reflector.framed"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector.framed">[docs]</a>	<span class="k">def</span> <span class="nf">framed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">who</span><span class="p">,</span> <span class="n">local_name</span><span class="p">,</span> <span class="n">remote_alias</span><span class="p">,</span> <span class="n">old_payload</span><span class="p">):</span>
@@ -546,7 +764,14 @@
 <div class="viewcode-block" id="Scheduler"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler">[docs]</a><span class="k">class</span> <span class="nc">Scheduler</span><span class="p">(</span><span class="n">Reflector</span><span class="p">):</span>
 
 <div class="viewcode-block" id="Scheduler.start"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.start">[docs]</a>	<span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_remote_children</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root_id</span><span class="p">,</span> <span class="bp">True</span><span class="p">))</span>
+		<span class="c"># self.communicate(self.get_remote_children(self.root_id, True))</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">Scheduler</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_start</span><span class="p">()</span>
+		<span class="c">#register the observing of the dodaginfo resource by frank</span>
+		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;observe&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_id</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_DODAG&#39;</span><span class="p">]))</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+
 		<span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 </div>
 <div class="viewcode-block" id="Scheduler.get_remote_frame"><a class="viewcode-back" href="../../core.html#core.schedule.Scheduler.get_remote_frame">[docs]</a>	<span class="k">def</span> <span class="nf">get_remote_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">slotframe</span><span class="p">):</span>  <span class="c"># TODO: observe (makes sense when distributed scheduling in place)</span>
@@ -689,38 +914,59 @@
 </pre></div>
 
           </div>
-        </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, George Exarchakos.
     </p>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2015, George Exarchakos.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
-      
-    </div>
 
-    
+    </section>
 
-    
-  </body>
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.4',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
 </html>

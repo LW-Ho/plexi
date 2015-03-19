@@ -1,5 +1,5 @@
-__author__ = "Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos"
-__email__ = "d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl"
+__author__ = "Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos, Frank Boerman"
+__email__ = "d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl, f.j.l.boerman@student.tue.nl"
 __version__ = "0.0.27"
 __copyright__ = "Copyright 2014, The RICH Project"
 #__credits__ = ["XYZ"]
@@ -244,16 +244,18 @@ class Reflector(object):
 			# 	self.communicate(self._disconnect(n))
 			# 	self.communicate(self.disconnected(n))
 
-		# Iterate over all fetched children and try to attach them to the local DoDAG
+		# Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already
+		# if they are already attached than the change in children list is due to a rewiring
 		# If attachment successful,
 		#  build and send a BlockQueue session to install a children list observer to the new node
 		#  let user-defined function add a new session if needed
 		for k in observed_children:
-			old_parent = self.dodag.get_parent(k)
-			if self.dodag.attach_child(k, parent_id):
-				self._DumpGraph()
-				self.communicate(self._connect(k, parent_id, old_parent))
-				self.communicate(self.connected(k, parent_id, old_parent))
+			if not self.dodag.check_node(k):
+				old_parent = self.dodag.get_parent(k)
+				if self.dodag.attach_child(k, parent_id):
+					self._DumpGraph()
+					self.communicate(self._connect(k, parent_id, old_parent))
+					self.communicate(self.connected(k, parent_id, old_parent))
 
 
 	def _observe_rpl_parent(self, payload, node_id):
@@ -284,8 +286,13 @@ class Reflector(object):
 		else:#otherwise just report the rewiring
 			logg.debug("Parent rewiring of node: " + str(node_id) + " to parent " + str(newparent_id))
 
-		#update the dodag tree and dump it
+		#save the old parent
+		oldparent = self.dodag.get_parent(node_id)
+		#update the dodag tree
 		self.dodag.switch_parent(node_id,newparent_id)
+		#do a kickback to the api
+		self.rewired(node_id, oldparent, newparent_id)
+		#dump the new graph to file
 		self._DumpGraph()
 
 	#dumps a png of the current internal dodag graph with timestamp to file
@@ -607,9 +614,37 @@ class Reflector(object):
 					self._create_session(i)
 
 	def connected(self, child, parent, old_parent=None):
+		"""
+		api call back for when a new node connects to the network
+		This callback is fired AFTER the dodag tree has been updated
+
+		:param child:
+		:param parent:
+		:param old_parent:
+		:return:
+		"""
 		pass
 
 	def disconnected(self, node_id):
+		"""
+		api callback for when a node disconnects
+		This callback is fired AFTER the dodag tree has been updated
+
+		:param node_id:
+		:return:
+		"""
+		pass
+
+	def rewired(self, node_id, old_parent, new_parent):
+		"""
+		api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
+		tree has been updated
+
+		:param node_id:
+		:param old_parent:
+		:param new_parent:
+		:return:
+		"""
 		pass
 
 	def framed(self, who, local_name, remote_alias, old_payload):
