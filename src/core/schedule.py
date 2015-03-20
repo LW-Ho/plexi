@@ -147,10 +147,12 @@ class Reflector(object):
 		for key, value in self.lost_children.iteritems():
 			#if time is over pop this item and disconnect it, otherwise just decrement
 			if value == 0:
+				#save its children
+				children = self.dodag.get_children(key)
 				#disconnect the node and execute commands for this disconnect
 				if self.dodag.detach_node(key):
 					self._DumpGraph()
-					self.communicate(self._disconnect(key))
+					self.communicate(self._disconnect(key, children))
 					self.communicate(self.disconnected(key))
 				self.lost_children.pop(key,0)
 				#because the dict changed, break here, other disconnections are thus done with 1 second delay
@@ -572,7 +574,7 @@ class Reflector(object):
 		q.block()
 		return q
 
-	def _disconnect(self, node_id):
+	def _disconnect(self, node_id, children):
 	# handles the case of a node disconnects from the network
 		logg.info(str(node_id) + " was removed from the network")
 		q = interface.BlockQueue()
@@ -582,6 +584,10 @@ class Reflector(object):
 				if cell.owner != node_id:
 					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
 			del frame.fds[node_id]
+		q.block()
+		#query the new children on where they went
+		for child in children:
+			q.push(Command('get', child, terms.uri['RPL_DODAG']))
 		q.block()
 		return q
 
