@@ -248,10 +248,12 @@
 		<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
 			<span class="c">#if time is over pop this item and disconnect it, otherwise just decrement</span>
 			<span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="c">#save its children</span>
+				<span class="n">children</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 				<span class="c">#disconnect the node and execute commands for this disconnect</span>
 				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">detach_node</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
 					<span class="bp">self</span><span class="o">.</span><span class="n">_DumpGraph</span><span class="p">()</span>
-					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_disconnect</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_disconnect</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">children</span><span class="p">))</span>
 					<span class="bp">self</span><span class="o">.</span><span class="n">communicate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">disconnected</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
 				<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
 				<span class="c">#because the dict changed, break here, other disconnections are thus done with 1 second delay</span>
@@ -339,7 +341,8 @@
 		<span class="c">#  TODO: what if the user would like to have a block queue only after the related cells are deleted?</span>
 		<span class="k">for</span> <span class="n">rn</span> <span class="ow">in</span> <span class="n">removed_nodes</span><span class="p">:</span>
 			<span class="n">logg</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Child lost: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">rn</span><span class="p">))</span>
-			<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">[</span><span class="n">rn</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_until_dissconnect</span>
+			<span class="k">if</span> <span class="n">rn</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">:</span> <span class="c">#do not reset the timer if it is already there for a reason</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">[</span><span class="n">rn</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_until_dissconnect</span>
 
 			<span class="c"># if self.dodag.detach_node(n):</span>
 			<span class="c"># 	self.communicate(self._disconnect(n))</span>
@@ -351,6 +354,7 @@
 		<span class="c">#  build and send a BlockQueue session to install a children list observer to the new node</span>
 		<span class="c">#  let user-defined function add a new session if needed</span>
 		<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">observed_children</span><span class="p">:</span>
+			<span class="c">#if a</span>
 			<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">check_node</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
 				<span class="n">old_parent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
 				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dodag</span><span class="o">.</span><span class="n">attach_child</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">):</span>
@@ -671,7 +675,7 @@
 		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
 		<span class="k">return</span> <span class="n">q</span>
 </div>
-<div class="viewcode-block" id="Reflector._disconnect"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._disconnect">[docs]</a>	<span class="k">def</span> <span class="nf">_disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">):</span>
+<div class="viewcode-block" id="Reflector._disconnect"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._disconnect">[docs]</a>	<span class="k">def</span> <span class="nf">_disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">,</span> <span class="n">children</span><span class="p">):</span>
 	<span class="c"># handles the case of a node disconnects from the network</span>
 		<span class="n">logg</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; was removed from the network&quot;</span><span class="p">)</span>
 		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
@@ -681,6 +685,10 @@
 				<span class="k">if</span> <span class="n">cell</span><span class="o">.</span><span class="n">owner</span> <span class="o">!=</span> <span class="n">node_id</span><span class="p">:</span>
 					<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;delete&#39;</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_CL&#39;</span><span class="p">]</span><span class="o">+</span><span class="s">&#39;/&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">id</span><span class="p">)))</span>
 			<span class="k">del</span> <span class="n">frame</span><span class="o">.</span><span class="n">fds</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span>
+		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+		<span class="c">#query the new children on where they went</span>
+		<span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">children</span><span class="p">:</span>
+			<span class="n">q</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">Command</span><span class="p">(</span><span class="s">&#39;get&#39;</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_DODAG&#39;</span><span class="p">]))</span>
 		<span class="n">q</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
 		<span class="k">return</span> <span class="n">q</span>
 </div>
