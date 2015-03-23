@@ -43,17 +43,6 @@ class DoDAG(object):
 		self.attach_node(root)
 
 	#CHANGED BY FRANK
-	#draws the graph using matplotlib
-	# def draw_graph_old(self):
-	# 	# layout = nx.spring_layout(self.graph)
-	# 	layout = nx.shell_layout(self.graph)
-	# 	nx.draw(self.graph, layout)
-	# 	labels = {}
-	# 	for id in self.graph.nodes():
-	# 		labels[id] = str(id).split(":")[5].strip("]")
-	# 	nx.draw_networkx_labels(self.graph, layout, labels)
-	# 	plt.axis('off')
-	# 	plt.savefig("graph.png")
 
 	#creates a .dot file and parses it to a graph using graphviz
 	#to use this install graphviz package and make sure dot is in your path
@@ -157,9 +146,9 @@ class DoDAG(object):
 		creates a parent child link in the graph
 
 		:param child_id: the id of the child of the link
-		:type child_id: :class: `node.NodeID`
+		:type child_id: :class:`node.NodeID`
 		:param parent_id: the id of the parent of the link
-		:type parent_id :class:` node.NodeID`
+		:type parent_id :class:`node.NodeID`
 		:return: boolean
 
 		"""

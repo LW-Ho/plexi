@@ -199,30 +199,6 @@ class Reflector(object):
 
 		"""
 
-		# # Extract the token of the given response from the Communicator
-		# tk = self.client.token(response.token)
-		# if tk not in self.cache:
-		# 	return
-		# # Extract the session ID to which the command that triggered the response belongs
-		# session_id = self.cache[tk]["session"]
-		# # Build a NodeID out of the responder's IP and port. The responder is the parent of a potentially new/departed child
-		# # parent_id = NodeID(response.remote[0], response.remote[1])
-		# # Handle replies that indicate unsuccessful processing of the GET rpl/c command
-		# if response.code != coap.CONTENT:
-		# 	tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-		# 	# TODO: CoAP errors not properly handled yet
-		# 	# Make sure the command is deleted from the cache and the appropriate session
-		# 	cached_entry = self._decache(tk)
-		# 	self._touch_session(cached_entry['command'], session_id)
-		# 	raise exception.UnsupportedCase(tmp)
-		# #TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
-		# # # Trim payload from non-string characters
-		# # clean_payload = parser.clean_payload(payload)
-		# logg.debug("Children list from " + str(response.remote[0]) + " >> " + clean_payload + " i.e. MID:" + str(response.mid))
-		# # Convert the payload to a JSON object
-		# payload = json.loads(clean_payload)
-		# # TODO: CBOR support required
-
 		# Build a list of fetched children from the payload
 		observed_children = []
 		for n in payload:
@@ -243,9 +219,6 @@ class Reflector(object):
 			if rn not in self.lost_children: #do not reset the timer if it is already there for a reason
 				self.lost_children[rn] = self.time_until_dissconnect
 
-			# if self.dodag.detach_node(n):
-			# 	self.communicate(self._disconnect(n))
-			# 	self.communicate(self.disconnected(n))
 
 		# Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already
 		# if they are already attached than the change in children list is due to a rewiring
@@ -527,10 +500,6 @@ class Reflector(object):
 						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 						del comm.payload['frame']
 			if not comm.callback:
-				# if comm.uri == terms.uri['RPL_NL']:
-				# 	comm.callback = self._observe_rpl_nodes
-				# if comm.uri == terms.uri['RPL_OL']:
-				# 	comm.callback = self._observe_rpl_children
 				if comm.uri == terms.uri['RPL_DODAG']:
 					comm.callback = self._observe_dodag_info
 				elif comm.uri == terms.uri['6TP_SF']:
@@ -559,14 +528,10 @@ class Reflector(object):
 
 	def _connect(self, child, parent, old_parent=None):
 		"""
+		is called when a new node connects, simply installes the observer for the dodaginfo resource.
+		parent and old_parent are deprecated
 
 		"""
-	# inherited function handles the installation of the proper slotframes
-	# to the pair of nodes of the established link
-	# 	if old_parent:
-	# 		logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
-	# 	else:
-	# 		logg.info(str(child) + ' wired to parent ' + str(parent))
 
 		q = interface.BlockQueue()
 		# q.push(Command('observe', child, terms.uri['RPL_OL']))
