@@ -144,17 +144,6 @@
 		<span class="bp">self</span><span class="o">.</span><span class="n">attach_node</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
 
 	<span class="c">#CHANGED BY FRANK</span>
-	<span class="c">#draws the graph using matplotlib</span>
-	<span class="c"># def draw_graph_old(self):</span>
-	<span class="c"># 	# layout = nx.spring_layout(self.graph)</span>
-	<span class="c"># 	layout = nx.shell_layout(self.graph)</span>
-	<span class="c"># 	nx.draw(self.graph, layout)</span>
-	<span class="c"># 	labels = {}</span>
-	<span class="c"># 	for id in self.graph.nodes():</span>
-	<span class="c"># 		labels[id] = str(id).split(&quot;:&quot;)[5].strip(&quot;]&quot;)</span>
-	<span class="c"># 	nx.draw_networkx_labels(self.graph, layout, labels)</span>
-	<span class="c"># 	plt.axis(&#39;off&#39;)</span>
-	<span class="c"># 	plt.savefig(&quot;graph.png&quot;)</span>
 
 	<span class="c">#creates a .dot file and parses it to a graph using graphviz</span>
 	<span class="c">#to use this install graphviz package and make sure dot is in your path</span>
@@ -258,9 +247,9 @@
 <span class="sd">		creates a parent child link in the graph</span>
 
 <span class="sd">		:param child_id: the id of the child of the link</span>
-<span class="sd">		:type child_id: :class: `node.NodeID`</span>
+<span class="sd">		:type child_id: :class:`node.NodeID`</span>
 <span class="sd">		:param parent_id: the id of the parent of the link</span>
-<span class="sd">		:type parent_id :class:` node.NodeID`</span>
+<span class="sd">		:type parent_id :class:`node.NodeID`</span>
 <span class="sd">		:return: boolean</span>
 
 <span class="sd">		&quot;&quot;&quot;</span>

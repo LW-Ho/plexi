@@ -300,30 +300,6 @@
 
 <span class="sd">		&quot;&quot;&quot;</span>
 
-		<span class="c"># # Extract the token of the given response from the Communicator</span>
-		<span class="c"># tk = self.client.token(response.token)</span>
-		<span class="c"># if tk not in self.cache:</span>
-		<span class="c"># 	return</span>
-		<span class="c"># # Extract the session ID to which the command that triggered the response belongs</span>
-		<span class="c"># session_id = self.cache[tk][&quot;session&quot;]</span>
-		<span class="c"># # Build a NodeID out of the responder&#39;s IP and port. The responder is the parent of a potentially new/departed child</span>
-		<span class="c"># # parent_id = NodeID(response.remote[0], response.remote[1])</span>
-		<span class="c"># # Handle replies that indicate unsuccessful processing of the GET rpl/c command</span>
-		<span class="c"># if response.code != coap.CONTENT:</span>
-		<span class="c"># 	tmp = str(parent_id) + &#39; returned a &#39; + coap.responses[response.code] + &#39;\n\tRequest: &#39; + str(self.cache[tk])</span>
-		<span class="c"># 	# TODO: CoAP errors not properly handled yet</span>
-		<span class="c"># 	# Make sure the command is deleted from the cache and the appropriate session</span>
-		<span class="c"># 	cached_entry = self._decache(tk)</span>
-		<span class="c"># 	self._touch_session(cached_entry[&#39;command&#39;], session_id)</span>
-		<span class="c"># 	raise exception.UnsupportedCase(tmp)</span>
-		<span class="c"># #TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt</span>
-		<span class="c"># # # Trim payload from non-string characters</span>
-		<span class="c"># # clean_payload = parser.clean_payload(payload)</span>
-		<span class="c"># logg.debug(&quot;Children list from &quot; + str(response.remote[0]) + &quot; &gt;&gt; &quot; + clean_payload + &quot; i.e. MID:&quot; + str(response.mid))</span>
-		<span class="c"># # Convert the payload to a JSON object</span>
-		<span class="c"># payload = json.loads(clean_payload)</span>
-		<span class="c"># # TODO: CBOR support required</span>
-
 		<span class="c"># Build a list of fetched children from the payload</span>
 		<span class="n">observed_children</span> <span class="o">=</span> <span class="p">[]</span>
 		<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
@@ -344,9 +320,6 @@
 			<span class="k">if</span> <span class="n">rn</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">:</span> <span class="c">#do not reset the timer if it is already there for a reason</span>
 				<span class="bp">self</span><span class="o">.</span><span class="n">lost_children</span><span class="p">[</span><span class="n">rn</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_until_dissconnect</span>
 
-			<span class="c"># if self.dodag.detach_node(n):</span>
-			<span class="c"># 	self.communicate(self._disconnect(n))</span>
-			<span class="c"># 	self.communicate(self.disconnected(n))</span>
 
 		<span class="c"># Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already</span>
 		<span class="c"># if they are already attached than the change in children list is due to a rewiring</span>
@@ -628,10 +601,6 @@
 						<span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;fd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_alias_id</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">to</span><span class="p">)</span>
 						<span class="k">del</span> <span class="n">comm</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s">&#39;frame&#39;</span><span class="p">]</span>
 			<span class="k">if</span> <span class="ow">not</span> <span class="n">comm</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
-				<span class="c"># if comm.uri == terms.uri[&#39;RPL_NL&#39;]:</span>
-				<span class="c"># 	comm.callback = self._observe_rpl_nodes</span>
-				<span class="c"># if comm.uri == terms.uri[&#39;RPL_OL&#39;]:</span>
-				<span class="c"># 	comm.callback = self._observe_rpl_children</span>
 				<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;RPL_DODAG&#39;</span><span class="p">]:</span>
 					<span class="n">comm</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observe_dodag_info</span>
 				<span class="k">elif</span> <span class="n">comm</span><span class="o">.</span><span class="n">uri</span> <span class="o">==</span> <span class="n">terms</span><span class="o">.</span><span class="n">uri</span><span class="p">[</span><span class="s">&#39;6TP_SF&#39;</span><span class="p">]:</span>
@@ -660,14 +629,10 @@
 </div>
 <div class="viewcode-block" id="Reflector._connect"><a class="viewcode-back" href="../../core.html#core.schedule.Reflector._connect">[docs]</a>	<span class="k">def</span> <span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">old_parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
 		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		is called when a new node connects, simply installes the observer for the dodaginfo resource.</span>
+<span class="sd">		parent and old_parent are deprecated</span>
 
 <span class="sd">		&quot;&quot;&quot;</span>
-	<span class="c"># inherited function handles the installation of the proper slotframes</span>
-	<span class="c"># to the pair of nodes of the established link</span>
-	<span class="c"># 	if old_parent:</span>
-	<span class="c"># 		logg.info(str(child) + &#39; rewired to &#39; + str(parent) + &#39; from &#39; + str(old_parent))</span>
-	<span class="c"># 	else:</span>
-	<span class="c"># 		logg.info(str(child) + &#39; wired to parent &#39; + str(parent))</span>
 
 		<span class="n">q</span> <span class="o">=</span> <span class="n">interface</span><span class="o">.</span><span class="n">BlockQueue</span><span class="p">()</span>
 		<span class="c"># q.push(Command(&#39;observe&#39;, child, terms.uri[&#39;RPL_OL&#39;]))</span>
