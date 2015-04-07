@@ -42,7 +42,7 @@ class TrivialScheduler(Scheduler):
 		"""
 
 		# Define a frame of size 25 slots containing broabcast cells
-		f1 = Slotframe("Broadcast-Frame", 25)
+		f1 = Slotframe("Broadcast-Frame", 202)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[f1.name] = f1
 		# Produce a BlockQueue of commands which install the frame to root
@@ -52,7 +52,7 @@ class TrivialScheduler(Scheduler):
 		# Start sending the commands in q
 		self.communicate(q)
 
-		f2 = Slotframe("Unicast-Frame", 21)
+		f2 = Slotframe("Unicast-Frame", 101)
 		self.frames[f2.name] = f2
 		self.communicate(self.set_remote_frames(self.root_id, f2))
 
