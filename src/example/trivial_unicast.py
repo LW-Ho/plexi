@@ -41,7 +41,7 @@ class TrivialScheduler(Scheduler):
 		:note: uses :func:`core.schedule.Reflector.start` to initiate communication with LBR
 		"""
 
-		# Define a frame of size 25 slots containing broabcast cells
+		# Define a frame of size 202 slots containing broabcast cells
 		f1 = Slotframe("Broadcast-Frame", 202)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[f1.name] = f1
@@ -67,7 +67,7 @@ class TrivialScheduler(Scheduler):
 		"""
 		Configure newly connected node to communicate with neighbors. Configure both child and its neighbors as follows:
 
-		- a broadcast frame of 25 slots and a unicast frame of 21 slots
+		- a broadcast frame of 202 slots and a unicast frame of 101 slots
 		- a transmitting broadcast cell at child for the child's (Tx) broadcasting to its neighbors (Rx)
 		- the receiving broadcast cells at the neighbors for child's broadcast
 		- receiving only broadcast cells at child for neighbors' broadcasts
@@ -120,12 +120,15 @@ class TrivialScheduler(Scheduler):
 
 		# Allocate one unicast cell per links with every neighbor of child
 		for neighbor in [parent]+self.dodag.get_children(child):
-			# schedule the neighbor->child link
+			# schedule multiple cells for the neighbor->child link
+			cm = 0
 			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
-			if uso is not None and uco is not None:
-				ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
-			else:
-				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+			while cm < 4:
+				if uso is not None and uco is not None:
+					ucq.push(self.set_remote_link((uso + 3*cm), uco, self.frames["Unicast-Frame"], neighbor, child))
+				else:
+					logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+				cm = cm + 1
 
 			# schedule the child->neighbor link
 			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
