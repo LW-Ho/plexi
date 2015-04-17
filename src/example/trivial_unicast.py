@@ -122,8 +122,8 @@ class TrivialScheduler(Scheduler):
 		for neighbor in [parent]+self.dodag.get_children(child):
 			# schedule multiple cells for the neighbor->child link
 			cm = 0
-			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
 			while cm < 4:
+				uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
 				if uso is not None and uco is not None:
 					ucq.push(self.set_remote_link((uso + 3*cm), uco, self.frames["Unicast-Frame"], neighbor, child))
 				else:
