@@ -176,6 +176,7 @@ class TrivialScheduler(Scheduler):
 				# Exclude those cells that interfere with tx->rx transmission
 				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
 				# Take next slot, if there are no channels available or the tx->rx conflicts with another link at that slot
+			#if len(free_channels) != 0:
 			for frame in self.frames.values():
 				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
 					skip = True
