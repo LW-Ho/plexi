@@ -767,23 +767,9 @@ class Scheduler(Reflector):
 				elif (item.rx is not None and item.rx == rx) or \
 						(item.rx is None and rx is not None and item.tx in self.dodag.get_neighbors(rx)) or \
 						(item.rx is not None and rx is None and tx in self.dodag.get_neighbors(item.rx)) or \
-						(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))) or \
-						(rx is None and item.tx == self.dodag.get_parent(tx)):
+						(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))):
 					return True
 		return False
-
-	#def conflict(self, slot, tx, rx, slotframe):
-	#	assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
-	#	for item in slotframe.cell_container:
-	#		if item.slot == slot:
-	#			if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))):
-	#				return True
-	#			elif (item.rx is not None and item.rx == rx) or \
-	#					(item.rx is None and rx is not None and item.tx in self.dodag.get_neighbors(rx)) or \
-	#					(item.rx is not None and rx is None and tx in self.dodag.get_neighbors(item.rx)) or \
-	#					(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))):
-	#				return True
-	#	return False
 
 	def interfere(self, slot, tx, rx, slotframe):
 		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
