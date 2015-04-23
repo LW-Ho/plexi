@@ -170,8 +170,7 @@ class TrivialScheduler(Scheduler):
 		for frame in self.frames.values():
 			if max_slots < frame.slots:
 				max_slots = frame.slots
-		so = None
-		co = None
+
 		for slot in range(1, max_slots):
 			skip = False
 			free_channels = set(range(16))
@@ -180,19 +179,20 @@ class TrivialScheduler(Scheduler):
 				# Exclude those cells that interfere with tx->rx transmission
 				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
 				# Take next slot, if there are no channels available or the tx->rx conflicts with another link at that slot
+			#if len(free_channels) != 0:
+			for frame in self.frames.values():
 				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
 					skip = True
 					break
 			# If all previous checks are passed, pick and return the slot and channel found
 			if not skip:
-				so = slot
-				co = list(free_channels)[0]
-				break
+				return slot, list(free_channels)[0]
+
 			# If all slots of the target frame are checked without result, break and return (None,None)
 			if slot == slotframe.slots-1:
 				break
 
-		return so,co
+		return None, None
 
 	def probed(self, node, resource, value):
 		"""
