@@ -13,6 +13,7 @@ from twisted.internet import reactor
 import urllib2, logging
 # import matplotlib.pyplot as plt
 from subprocess import call
+import os
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -57,6 +58,11 @@ class DoDAG(object):
 		:type fullmac: bool
 		:param graphname: the name of the dot and png file to be created
 		"""
+		#check if the necesarry folders exist and create them if not
+		if not os.path.exists("snapshots"):
+			os.makedirs("snapshots")
+		if not os.path.exists("graphs"):
+			os.makedirs("graphs")
 		#setup the filestream and dot file
 		dotfile = "snapshots/" + graphname.split(".")[0] + ".dot"
 		stream = open(dotfile, 'w')
