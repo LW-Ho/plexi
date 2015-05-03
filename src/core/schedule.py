@@ -22,6 +22,7 @@ from core import interface
 import copy
 import datetime
 from twisted.internet import task
+import socket
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -84,6 +85,15 @@ class Reflector(object):
 		self.lost_children = {}
 		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
 		self.time_until_dissconnect = 30
+
+		if visualizer:
+			logg.info("connecting to visualize server")
+			HOST = "192.168.137.211"
+			PORT = 600
+			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.socket.connect((HOST, PORT))
+			self.socket.sendall(lbr_ip)
+
 
 	def _start(self):
 		"""
@@ -280,8 +290,9 @@ class Reflector(object):
 		"""
 		tijd = datetime.datetime.time(datetime.datetime.now())
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
-		self.dodag.draw_graph(graphname=filename)
+		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
+		self.socket.sendall(dotdata)
 
 	def _observe_dodag_info(self, response):
 		"""

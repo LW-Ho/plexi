@@ -214,7 +214,7 @@ class TrivialScheduler(Scheduler):
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, x.visualizer)
+		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, True)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)
