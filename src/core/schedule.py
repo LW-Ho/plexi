@@ -292,7 +292,8 @@ class Reflector(object):
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
 		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
-		self.socket.sendall(dotdata)
+		packet = "[\"" + str(self.root_id) + "\"," + json.dumps(dotdata) + "]"
+		self.socket.sendall(bytearray(packet))
 
 	def _observe_dodag_info(self, response):
 		"""
