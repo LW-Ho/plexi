@@ -23,6 +23,7 @@ import copy
 import datetime
 from twisted.internet import task
 import socket
+import time
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -88,7 +89,7 @@ class Reflector(object):
 
 		if visualizer:
 			logg.info("connecting to visualize server")
-			HOST = "192.168.137.211"
+			HOST = "192.168.7.102"
 			PORT = 600
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			self.socket.connect((HOST, PORT))
@@ -292,7 +293,7 @@ class Reflector(object):
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
 		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
-		packet = "[\"" + str(self.root_id) + "\"," + json.dumps(dotdata) + "]"
+		packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
 		self.socket.sendall(bytearray(packet))
 
 	def _observe_dodag_info(self, response):
