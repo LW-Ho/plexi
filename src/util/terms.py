@@ -36,7 +36,8 @@ keys = {
 	'PDR'  : "pdr",
 	'PRR'  : "PRR",
 	'LQI'  : "LQI",
-	'SLT'  : 'SLOT'
+	'SLT'  : 'SLOT',
+	'ETX'  : 'ETX'
 }
 
 cells = {

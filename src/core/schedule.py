@@ -294,7 +294,10 @@ class Reflector(object):
 		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
 		packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
-		self.socket.sendall(bytearray(packet))
+		try:
+			self.socket.sendall(bytearray(packet))
+		except:
+			pass
 
 	def _observe_dodag_info(self, response):
 		"""

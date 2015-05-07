@@ -57,7 +57,7 @@ class TrivialScheduler(Scheduler):
 		self.communicate(self.set_remote_frames(self.root_id, f2))
 
 		# Build and send a BlockQueue for a statistics observer
-		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\"]"}))
+		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
@@ -137,7 +137,7 @@ class TrivialScheduler(Scheduler):
 		commands.append(ucq)
 
 		# Build and send a BlockQueue for a statistics observer
-		commands.append(self.set_remote_statistics(child, {"mt":"[\"PRR\",\"RSSI\"]"}))
+		commands.append(self.set_remote_statistics(child, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
 
 		return commands
 
