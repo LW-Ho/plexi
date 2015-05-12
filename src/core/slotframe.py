@@ -16,6 +16,10 @@ class Slotframe(object):
 		c_minimal = Cell(None, 0, 0, None, None, None, 0, 7)
 		self.cell_container.append(c_minimal)
 
+	@property
+	def Slots(self):
+		return self.slots
+
 	def get_alias_id(self, node):
 		if node in self.fds.keys():
 			return self.fds[node]
@@ -63,7 +67,8 @@ class Slotframe(object):
 			self.cell_container.remove(dltd)
 		return deleted_cell_container
 
-
+	def __str__(self):
+		return self.name
 
 class Cell(object):
 	def __init__(self, node, so, co, tx, rx, fd, lt, lo):

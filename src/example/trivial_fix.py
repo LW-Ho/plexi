@@ -41,7 +41,7 @@ class TrivialScheduler(Scheduler):
 		:note: uses :func:`core.schedule.Reflector.start` to initiate communication with LBR
 		"""
 
-		# Define a frame of size 25 slots containing broabcast cells
+		# Define a frame of size 25 slots containing broadcast cells
 		f1 = Slotframe("Broadcast-Frame", 25)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[f1.name] = f1
@@ -58,6 +58,7 @@ class TrivialScheduler(Scheduler):
 
 		# Build and send a BlockQueue for a statistics observer
 		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
+		self._register_frames(self.frames)
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
@@ -216,7 +217,7 @@ class TrivialScheduler(Scheduler):
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, x.visualizer)
+		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, True)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)

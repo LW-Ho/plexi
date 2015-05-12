@@ -88,7 +88,7 @@ class Reflector(object):
 		self.time_until_dissconnect = 30
 
 		if visualizer:
-			logg.info("connecting to visualize server")
+			logg.info("Connecting to visualize server")
 			HOST = "192.168.7.102"
 			PORT = 600
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -578,9 +578,23 @@ class Reflector(object):
 		frame.set_alias_id(who, remote_fd)
 		return None
 
+	def _register_frames(self, frames):
+		# try:
+		l = []
+		for framename in frames.keys():
+			l.append({"id":str(framename),"cells":frames[framename].Slots})
+		self.socket.sendall(json.dumps(l))
+		# except:
+		# 	pass
+
 	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
 	# handles the actions performed when a node receives his cell/s
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+		#try sending this info to the visualizer
+		try:
+			self.socket.sendall(json.dumps(["newcell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame),"id": str(remote_cell_id), "status" : 1}]))
+		except:
+			pass
 		return None
 
 	def _probe(self, who, resource, info):
