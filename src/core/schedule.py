@@ -631,7 +631,7 @@ class Reflector(object):
 			blacklisted.append([(cchannel + 16) % 16, cslot])
 			cchannel -= 1
 			cslot -= 1
-			if cslot <= 0:
+			if cslot < 0:
 				break
 
 		#register the blacklisting
