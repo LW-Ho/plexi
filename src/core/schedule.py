@@ -86,10 +86,14 @@ class Reflector(object):
 		self.lost_children = {}
 		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
 		self.time_until_dissconnect = 30
+		#dictionary with frames as key and lists of blacklisted cells as value. blacklisted cell in format: [channeloff, slotoff]
+		self.blacklisted = {}
+		#dictionary with all defined frames
+		self.frames = {}
 
 		if visualizer:
 			logg.info("Connecting to visualize server")
-			HOST = "192.168.7.102"
+			HOST = "192.168.64.1"
 			PORT = 600
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			self.socket.connect((HOST, PORT))
@@ -563,6 +567,10 @@ class Reflector(object):
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
 				if cell.owner != node_id:
+					try:
+						self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
+					except:
+						pass
 					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
 			del frame.fds[node_id]
 		q.block()
@@ -581,21 +589,60 @@ class Reflector(object):
 	def _register_frames(self, frames):
 		# try:
 		l = []
-		for framename in frames.keys():
-			l.append({"id":str(framename),"cells":frames[framename].Slots})
-		self.socket.sendall(json.dumps(l))
-		# except:
-		# 	pass
+		for frame in frames:
+			l.append({"id":frame.name,"cells":frame.Slots})
+			self.frames[frame.name] = frame
+			self.blacklisted[frame.name] = []
+		try:
+			self.socket.sendall(json.dumps(l))
+		except:
+			pass
 
 	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
 	# handles the actions performed when a node receives his cell/s
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		#try sending this info to the visualizer
 		try:
-			self.socket.sendall(json.dumps(["newcell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame),"id": str(remote_cell_id), "status" : 1}]))
+			self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame),"id": str(remote_cell_id), "status" : 1}]))
 		except:
 			pass
 		return None
+
+	def _blacklist(self, who, slotoffs, channeloffs, frame, remote_cell_id):
+		#TODO: support removal of blacklisting
+		#blacklists given cell in given frame
+		blacklisted = []
+		F = self.frames[frame]
+		cchannel = channeloffs
+		cslot = slotoffs
+		#forward
+		while True:
+			#use a wraparound for the matrix coordinate to keep moving through the matrix
+			blacklisted.append([(cchannel + 16) % 16, cslot])
+			cchannel += 1
+			cslot += 1
+			if cslot >= F.slots:
+				break
+		#reset indices to leftup of beginpoint
+		cchannel = channeloffs - 1
+		cslot = slotoffs - 1
+		#and backward propagation
+		while True:
+			blacklisted.append([(cchannel + 16) % 16, cslot])
+			cchannel -= 1
+			cslot -= 1
+			if cslot <= 0:
+				break
+
+		#register the blacklisting
+		self.blacklisted[frame] = blacklisted
+		#try sending it to the streaming server
+		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
+		try:
+			self.socket.sendall(json.dumps(["changecell", {"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": frame,"id": str(remote_cell_id), "status":2}]))
+		except:
+			pass
+
 
 	def _probe(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))
@@ -810,6 +857,9 @@ class Scheduler(Reflector):
 				rx not in self.dodag.get_neighbors(item.tx):
 				channels.append(item.channel)
 		return channels
+
+	def blacklist(self, channel, slot, slotframe):
+		return [channel, slot] in self.blacklisted[str(slotframe)]
 
 	def schedule(self, tx, rx, slotframe):
 		raise NotImplementedError()

@@ -58,7 +58,7 @@ class TrivialScheduler(Scheduler):
 
 		# Build and send a BlockQueue for a statistics observer
 		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
-		self._register_frames(self.frames)
+		self._register_frames([f1, f2])
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
@@ -184,7 +184,10 @@ class TrivialScheduler(Scheduler):
 					break
 			# If all previous checks are passed, pick and return the slot and channel found
 			if not skip:
-				return slot, list(free_channels)[0]
+				#find first non blacklisted cell
+				for chnl in list(free_channels):
+					if not self.blacklist(chnl,slot,slotframe):
+						return slot, chnl
 
 			# If all slots of the target frame are checked without result, break and return (None,None)
 			if slot == slotframe.slots-1:
@@ -217,7 +220,7 @@ class TrivialScheduler(Scheduler):
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, True)
+		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, False)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)
