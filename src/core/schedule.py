@@ -636,6 +636,30 @@ class Reflector(object):
 
 		#register the blacklisting
 		self.blacklisted[frame] = blacklisted
+		#check for every cell if its allocated and set it for rescheduling
+		reschedulecells = []
+		# cell = F.get_cells_similar_to({"channel":channeloffs})
+		q = interface.BlockQueue()
+		for blc in blacklisted:
+			#this should return only one entry
+			cells = F.get_cell_similar_to({"channel":blc[0], "slot":blc[1]})
+			if len(cells) > 1:
+				raise NotImplementedError()
+			elif len(cells) == 0:
+				#this cell has not been scheduled
+				continue
+			cell = cells[0]
+			#send delete commands
+			q.push(Command('delete', cell.owner, terms.uri['6TP_CL'] + '/' + str(cell.id)))
+			reschedulecells += cells
+		q.block()
+		#send it to the network
+		self.communicate(q)
+		#delete the cells from the internal frame object
+		F.delete_cells(reschedulecells)
+		#report it to logger
+		logg.debug("Blacklisted cell with channeloffset: " + str(channeloffs) + " and slotoffset: " + str(slotoffs) + " and all asociates")
+
 		#try sending it to the streaming server
 		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
 		try:
@@ -643,6 +667,8 @@ class Reflector(object):
 		except:
 			pass
 
+		#return all the cells that need to be rescheduled
+		return reschedulecells
 
 	def _probe(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))

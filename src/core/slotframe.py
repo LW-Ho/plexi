@@ -63,9 +63,14 @@ class Slotframe(object):
 			# if item.owner == node_id or item.tx_node == node_id or item.rx_node == node_id:
 			if item.owner == node_id:
 				deleted_cell_container.append(item)
-		for dltd in deleted_cell_container:
-			self.cell_container.remove(dltd)
+		self.delete_cells(deleted_cell_container)
+		# for dltd in deleted_cell_container:
+		# 	self.cell_container.remove(dltd)
 		return deleted_cell_container
+
+	def delete_cells(self, cells):
+		for cell in cells:
+			self.cell_container.remove(cell)
 
 	def __str__(self):
 		return self.name
