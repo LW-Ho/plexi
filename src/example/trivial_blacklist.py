@@ -1,5 +1,5 @@
-__author__ = "George Exarchakos"
-__email__ = "g.exarchakos@tue.nl"
+__author__ = "George Exarchakos, Frank Boerman"
+__email__ = "g.exarchakos@tue.nl, f.j.l.boerman@student.tue.nl"
 __version__ = "0.0.12"
 __copyright__ = "Copyright 2015, The RICH Project"
 #__credits__ = ["XYZ"]
@@ -14,7 +14,7 @@ from core.interface import BlockQueue, Command
 from util import terms
 import sys
 import json
-
+from twisted.internet import task
 
 class TrivialScheduler(Scheduler):
 	"""
@@ -67,6 +67,14 @@ class TrivialScheduler(Scheduler):
 		#TODO: make these variable for: 1) usergui 2)relative to earlier values (running average?)
 		self.PRR_Floor = 90
 		self.ETX_Ceil = 270
+
+		#which frame needs to altered when a parent rewire happens
+		self.rewireframe = "Unicast-Frame"
+
+		#setup a check for statistic check
+		l = task.LoopingCall(self.CheckStatistic)
+		#the ammount of seconds can be finetuned here
+		l.start(30)
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
@@ -121,6 +129,7 @@ class TrivialScheduler(Scheduler):
 			bcq.push(self.set_remote_link(bso, bco, self.frames["Broadcast-Frame"], child, None))
 		else:
 			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot broadcast")
+		bcq.block()
 
 		commands.append(bcq)
 
@@ -130,25 +139,35 @@ class TrivialScheduler(Scheduler):
 		# Allocate one unicast cell per links with every neighbor of child
 		for neighbor in [parent]+self.dodag.get_children(child):
 			# schedule the neighbor->child link
-			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
-			if uso is not None and uco is not None:
-				ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
-			else:
-				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+			# uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
+			# if uso is not None and uco is not None:
+			# 	ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
+			# else:
+			# 	logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+			ucq = self.Schedule_Link(neighbor, child, self.frames["Unicast-Frame"], ucq)
 
 			# schedule the child->neighbor link
-			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
-			if uso is not None and uco is not None:
-				ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
-			else:
-				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot unicast to " + str(neighbor))
-
+			# uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
+			# if uso is not None and uco is not None:
+			# 	ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
+			# else:
+			# 	logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot unicast to " + str(neighbor))
+			ucq = self.Schedule_Link(child, neighbor, self.frames["Unicast-Frame"], ucq)
+		ucq.block()
 		commands.append(ucq)
 
 		# Build and send a BlockQueue for a statistics observer
 		commands.append(self.set_remote_statistics(child, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
 
 		return commands
+
+	def Schedule_Link(self, tx, rx, slotframe,q):
+		uso, uco = self.schedule(tx, rx, slotframe)
+		if uso is not None and uco is not None:
+			q.push(self.set_remote_link(uso, uco, slotframe, tx, rx))
+		else:
+			logg.critical("INSUFFICIENT " + slotframe.name + " SLOTS: new node " + str(rx) + " cannot receive from " + str(tx))
+		return q
 
 	def schedule(self, tx, rx, slotframe):
 		"""
@@ -227,8 +246,18 @@ class TrivialScheduler(Scheduler):
 	def reported(self, node, resource, value):
 		self.statistics[str(node).split("]")[0].strip("[")] = json.loads(value)[0]
 
+	def rewired(self, node_id, old_parent, new_parent):
+		q = BlockQueue()
+		q = self.Schedule_Link(node_id,new_parent, self.frames[self.rewireframe],q)
+		q = self.Schedule_Link(new_parent,node_id, self.frames[self.rewireframe],q)
+		q.block()
+		return [q]
+
 	def CheckStatistic(self):
+		logg.debug("Check Statistics")
 		#iterate the statistics
+		#TODO: check if bad link is not a lost child, in that case do nothing
+		q = BlockQueue()
 		for node, links in self.statistics.iteritems():
 			#iterate through all links
 			for link, stats in links.iteritems():
@@ -250,12 +279,18 @@ class TrivialScheduler(Scheduler):
 					for name, frame in self.frames.iteritems():
 							for cell in frame.get_cells_similar_to({"tx_node":node, "rx_node":link}):
 								#blacklist the cell
-								self._blacklist(cell.owner,cell.slot,cell.channel,name,-1)
+								cells = self._blacklist(cell.owner,cell.slot,cell.channel,name,-1)
+								#rescheduler the cells
+								for c in cells:
+									# self.schedule(c.tx,c.rx,frame)
+									q = self.Schedule_Link(c.tx,c.rx,frame,q)
+		#send the changes to the network
+		self.communicate([q])
 
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, False)
+		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, x.visualizer)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)

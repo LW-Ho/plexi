@@ -57,7 +57,7 @@ class Reflector(object):
 	- GET, OBSERVE, POST & DELETE any user-defined resource
 	"""
 
-	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=None):
 		"""
 		Configure :class:`Reflector` with a network name and the EUI64 address and port of the border router. Initialize
 		the DoDAG tree with a single node, the border router.
@@ -90,14 +90,21 @@ class Reflector(object):
 		self.blacklisted = {}
 		#dictionary with all defined frames
 		self.frames = {}
+		#frame which needs to be latered when there is a rewire happening
+		self.rewireframe = ""
 
-		if visualizer:
-			logg.info("Connecting to visualize server")
-			HOST = "192.168.64.1"
-			PORT = 600
-			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			self.socket.connect((HOST, PORT))
-			self.socket.sendall(lbr_ip)
+		if visualizer is not None:
+			logg.info("Connecting to visualizer server")
+			try:
+				HOST = visualizer
+				PORT = 600
+				self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.socket.connect((HOST, PORT))
+				self.socket.sendall(lbr_ip)
+			except:
+				logg.critical("Could not reach the visualizer server! (are you sure its online and specified correct ip?)")
+		else:
+			self.socket = None
 
 
 	def _start(self):
@@ -262,7 +269,7 @@ class Reflector(object):
 
 		"""
 		#if the node is the border router do nothing
-		if payload == "Border-Router":
+		if payload == "Border-Router" or node_id == self.root_id:
 			return
 		#create an nodeid object for the (supposed) new parent
 		newparent_id = NodeID(payload)
@@ -282,10 +289,23 @@ class Reflector(object):
 		oldparent = self.dodag.get_parent(node_id)
 		#update the dodag tree
 		self.dodag.switch_parent(node_id,newparent_id)
+		#do internal cleanup
+		self.communicate(self._rewired(node_id, oldparent, newparent_id))
 		#do a kickback to the api
-		self.rewired(node_id, oldparent, newparent_id)
+		self.communicate(self.rewired(node_id, oldparent, newparent_id))
 		#dump the new graph to file
 		self._DumpGraph()
+
+	def _rewired(self, node_id, old_parent, new_parent):
+		if self.rewireframe == "":
+			return []
+		F = self.frames[self.rewireframe]
+		q = interface.BlockQueue()
+		cells = F.get_cell_similar_to({"tx_node":node_id,"rx_node":old_parent}) + F.get_cell_similar_to({"rx_node":node_id,"tx_node":old_parent})
+		for c in cells:
+			q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
+		q.block()
+		return [q]
 
 	#dumps a png of the current internal dodag graph with timestamp to file
 	def _DumpGraph(self):
@@ -642,15 +662,13 @@ class Reflector(object):
 		q = interface.BlockQueue()
 		for blc in blacklisted:
 			#this should return only one entry
-			cells = F.get_cell_similar_to({"channel":blc[0], "slot":blc[1]})
-			if len(cells) > 1:
-				raise NotImplementedError()
-			elif len(cells) == 0:
-				#this cell has not been scheduled
+			cells = F.get_cell_similar_to({"channel":blc[0], "slot":blc[1],})
+			if len(cells) == 0:
+				#there has nothing been scheduled here
 				continue
-			cell = cells[0]
 			#send delete commands
-			q.push(Command('delete', cell.owner, terms.uri['6TP_CL'] + '/' + str(cell.id)))
+			for c in cells:
+				q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
 			reschedulecells += cells
 		q.block()
 		#send it to the network
@@ -714,7 +732,7 @@ class Reflector(object):
 	def rewired(self, node_id, old_parent, new_parent):
 		"""
 		api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
-		tree has been updated
+		tree has been updated, returns a list of blockqueue for commands to the network
 
 		:param node_id:
 		:param old_parent:
