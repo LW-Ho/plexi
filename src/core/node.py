@@ -9,8 +9,8 @@ __copyright__ = "Copyright 2014, The RICH Project"
 
 #from coapthon2.resources.resource import Resource
 #from coapthon2 import defines
-import networkx
-import json
+# import networkx
+# import json
 
 
 class NodeID(object):
@@ -41,13 +41,13 @@ class NodeID(object):
 		try:
 			return other is not None and self.ip == other.ip and self.port == other.port
 		except Exception:
-			print 'hooray'
+			return other is not None and self.ip == other
 
 	def __ne__(self, other):
 		try:
 			return other is None or self.ip != other.ip or self.port != other.port
 		except Exception:
-			print 'hooray'
+			return other is None and self.ip != other
 
 
 	def __repr__(self):

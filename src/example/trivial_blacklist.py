@@ -13,8 +13,9 @@ from core.slotframe import Slotframe
 from core.interface import BlockQueue, Command
 from util import terms
 import sys
-import json
+from sets import Set
 from twisted.internet import task
+from twisted.internet import reactor
 
 class TrivialScheduler(Scheduler):
 	"""
@@ -71,14 +72,19 @@ class TrivialScheduler(Scheduler):
 		#which frame needs to altered when a parent rewire happens
 		self.rewireframe = "Unicast-Frame"
 
-		#setup a check for statistic check
-		l = task.LoopingCall(self.CheckStatistic)
-		#the ammount of seconds can be finetuned here
-		l.start(15)
+		#setup a callback to start the statistics check delayed to give network time to start
+		reactor.callLater(2.5*60,self.startStatCheck)
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
 		super(TrivialScheduler, self).start()
+
+	def startStatCheck(self):
+		self.statcheck = False
+		#setup a check for statistic check
+		self.l = task.LoopingCall(self.CheckStatistic)
+		#the ammount of seconds can be finetuned here
+		self.l.start(60)
 
 	def connected(self, child, parent, old_parent=None):
 		"""
@@ -244,7 +250,17 @@ class TrivialScheduler(Scheduler):
 		return q
 
 	def reported(self, node, resource, value):
-		self.statistics[str(node).split("]")[0].strip("[")] = value[0]
+		#because contiki gives the stats in a list of dictionaries (WTF?!) convert it here to a proper dictionary
+		info = {}
+		try:
+			for infos in value:
+				info[infos.keys()[0]] = {}
+				for stat in infos[infos.keys()[0]]:
+					info[infos.keys()[0]][stat.keys()[0]] = stat[stat.keys()[0]]
+		except:
+			print "wulp"
+
+		self.statistics[str(node).split("]")[0].strip("[").split("::")[-1]] = info
 
 	def rewired(self, node_id, old_parent, new_parent):
 		q = BlockQueue()
@@ -254,6 +270,9 @@ class TrivialScheduler(Scheduler):
 		return [q]
 
 	def CheckStatistic(self):
+		if self.statcheck:
+			return
+		self.statcheck = True
 		logg.debug("Check Statistics")
 		#iterate the statistics
 		#TODO: check if bad link is not a lost child, in that case do nothing
@@ -273,19 +292,26 @@ class TrivialScheduler(Scheduler):
 				except:
 					#data for receiving end not available
 					continue
-				if ETX >= self.ETX_Ceil and PRR <= self.PRR_Floor:
+				# if ETX >= self.ETX_Ceil and PRR <= self.PRR_Floor:
 					#its within parameters for blacklisting, find the the link cells in the frames
-					logg.info("Detected bad link: " + str(node) + " -> " + str(link))
-					for name, frame in self.frames.iteritems():
-							for cell in frame.get_cells_similar_to({"tx_node":node, "rx_node":link}):
-								#blacklist the cell
-								cells = self._blacklist(cell.owner,cell.slot,cell.channel,name,-1)
-								#rescheduler the cells
-								for c in cells:
-									# self.schedule(c.tx,c.rx,frame)
-									q = self.Schedule_Link(c.tx,c.rx,frame,q)
-		#send the changes to the network
-		self.communicate([q])
+				logg.info("Detected bad link: " + str(node) + " -> " + str(link))
+				for name, frame in self.frames.iteritems():
+					#build a set to prevent duplicates (due to multiple link_types) with items (owner,slot,channel)
+					s = Set()
+					for cell in frame.get_cells_similar_to(tx_node = "aaaa::" + node, rx_node = "aaaa::" + link):
+						s.add((cell.owner,cell.slot,cell.channel))
+					cells = []
+					#blacklist the cells
+					for c in s:
+						cells += self._blacklist(c[0],c[1],c[2],name,-1)
+					#rescheduler the cells
+					for cl in cells:
+						# self.schedule(c.tx,c.rx,frame)
+						q = self.Schedule_Link(cl[0],cl[1],frame,q)
+					#send the changes to the network
+					self.communicate([q])
+				#only blacklist one link at a time to let the network adjust to the changes so break from loop
+				return
 
 if __name__ == '__main__':
 	x = main.get_user_input(None)

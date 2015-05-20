@@ -24,6 +24,7 @@ import datetime
 from twisted.internet import task
 import socket
 import time
+from sets import Set
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -301,7 +302,7 @@ class Reflector(object):
 			return []
 		F = self.frames[self.rewireframe]
 		q = interface.BlockQueue()
-		cells = F.get_cell_similar_to({"tx_node":node_id,"rx_node":old_parent}) + F.get_cell_similar_to({"rx_node":node_id,"tx_node":old_parent})
+		cells = F.get_cell_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cell_similar_to({"rx_node":node_id,"tx_node":old_parent})
 		for c in cells:
 			q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
 		q.block()
@@ -619,7 +620,9 @@ class Reflector(object):
 			pass
 
 	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
-	# handles the actions performed when a node receives his cell/s
+		# handles the actions performed when a node receives his cell/s
+		#get the cell from the frame object and fill in the remote cell id
+		frame.set_remote_cell_id(who,channeloffs,slotoffs,remote_cell_id)
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		#try sending this info to the visualizer
 		try:
@@ -631,6 +634,7 @@ class Reflector(object):
 	def _blacklist(self, who, slotoffs, channeloffs, frame, remote_cell_id):
 		#TODO: support removal of blacklisting
 		#blacklists given cell in given frame
+		#TODO: append to existing list
 		blacklisted = []
 		F = self.frames[frame]
 		cchannel = channeloffs
@@ -662,7 +666,7 @@ class Reflector(object):
 		q = interface.BlockQueue()
 		for blc in blacklisted:
 			#this should return only one entry
-			cells = F.get_cell_similar_to({"channel":blc[0], "slot":blc[1],})
+			cells = F.get_cells_similar_to(channel=blc[0], slot=blc[1])
 			if len(cells) == 0:
 				#there has nothing been scheduled here
 				continue
@@ -686,7 +690,11 @@ class Reflector(object):
 			pass
 
 		#return all the cells that need to be rescheduled
-		return reschedulecells
+		#build a set of (tx,rx) nodeID items (to prevent duplicates)
+		s = Set()
+		for c in reschedulecells:
+			s.add((c.tx,c.rx))
+		return list(s)
 
 	def _probe(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))

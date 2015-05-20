@@ -37,15 +37,15 @@ class Slotframe(object):
 				continue
 			if 'channel' in kwargs.keys() and kwargs['channel'] != i.channel:
 				continue
-			if 'link_option' in kwargs.keys() and kwargs['link_option'] != i.link_option:
+			if 'link_option' in kwargs.keys() and kwargs['link_option'] != i.option:
 				continue
-			if 'cell_id' in kwargs.keys() and kwargs['cell_id'] != i.cell_id:
+			if 'cell_id' in kwargs.keys() and kwargs['cell_id'] != i.id:
 				continue
-			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe_id:
+			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe:
 				continue
-			if 'tx_node' in kwargs.keys() and kwargs['tx_node'] != i.tx_node:
+			if 'tx_node' in kwargs.keys() and kwargs['tx_node'] != i.tx:
 				continue
-			if 'rx_node' in kwargs.keys() and kwargs['rx_node'] != i.rx_node:
+			if 'rx_node' in kwargs.keys() and kwargs['rx_node'] != i.rx:
 				continue
 			matching_cells.append(i)
 		return matching_cells
@@ -71,6 +71,12 @@ class Slotframe(object):
 	def delete_cells(self, cells):
 		for cell in cells:
 			self.cell_container.remove(cell)
+
+	def set_remote_cell_id(self,who,channel,slot,remote_id):
+		for c in self.cell_container:
+			if c.owner == who and c.channel == channel and c.slot == slot:
+				c.id = remote_id
+				return
 
 	def __str__(self):
 		return self.name
