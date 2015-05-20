@@ -442,6 +442,32 @@ class Reflector(object):
 		self.communicate(self.celled(node_id, so, co, frame, cell_cd, old_payload))
 		self._touch_session(cached_entry['command'], session_id)
 
+	def _receive_deletion(self, response):
+		"""
+		Callback for deletion of cell
+
+		:param response: the response returned by a node
+		:type response: :class:`txthings.coap.Message`
+		:raises: UnsupportedCase
+		"""
+
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
+			return
+		cache_entry = self.cache[tk]
+		session_id = cache_entry["session"]
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
+			raise exception.UnsupportedCase(tmp)
+		clean_payload = parser.clean_payload(response.payload)
+		cached_entry = self._decache(tk)
+		self.communicate(self._delete(node_id, cache_entry['command'].uri, clean_payload))
+		self.communicate(self.deleted(node_id, cache_entry['command'].uri, clean_payload))
+		self._touch_session(cached_entry['command'], session_id)
+
+
 	def _receive_probe(self, response):
 		"""
 		Callback for any other (i.e. not children, frame or cells) resource.
@@ -556,7 +582,7 @@ class Reflector(object):
 				elif comm.uri.startswith(terms.uri['6TP_SV']):
 					comm.callback = self._receive_report
 				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
-					comm.callback = None
+					comm.callback = self._receive_deletion
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self._receive_report
 				else:
@@ -708,6 +734,10 @@ class Reflector(object):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		return None
 
+	def _delete(self, who, resource, info):
+		logg.info('Deletion confirmed at ' + str(who) + " on " + str(resource) + ' : ' + str(info))
+		return None
+
 	def communicate(self, assembly):
 		"""
 		Handle all the communication with the RICH network.
@@ -757,6 +787,9 @@ class Reflector(object):
 		pass
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
+		pass
+
+	def deleted(self, who, resource, info):
 		pass
 
 	def probed(self, node, resource, value):
