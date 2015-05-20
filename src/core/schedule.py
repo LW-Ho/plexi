@@ -547,12 +547,16 @@ class Reflector(object):
 					comm.callback = self._receive_slotframe_id
 				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_cell_id
+				elif comm.op == 'delete' and comm.uri == terms.uri['6TP_CL']:
+					comm.callback = None
 				elif comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_probe
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self._receive_probe
 				elif comm.uri.startswith(terms.uri['6TP_SV']):
 					comm.callback = self._receive_report
+				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
+					comm.callback = None
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self._receive_report
 				else:
@@ -680,7 +684,7 @@ class Reflector(object):
 		#delete the cells from the internal frame object
 		F.delete_cells(reschedulecells)
 		#report it to logger
-		logg.debug("Blacklisted cell with channeloffset: " + str(channeloffs) + " and slotoffset: " + str(slotoffs) + " and all asociates")
+		logg.debug("Blacklisted cell with channeloffset: " + str(channeloffs) + " and slotoffset: " + str(slotoffs) + " and all asociates in frame " + F.name)
 
 		#try sending it to the streaming server
 		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
