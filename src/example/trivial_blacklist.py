@@ -74,7 +74,7 @@ class TrivialScheduler(Scheduler):
 		#setup a check for statistic check
 		l = task.LoopingCall(self.CheckStatistic)
 		#the ammount of seconds can be finetuned here
-		l.start(30)
+		l.start(15)
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
@@ -244,7 +244,7 @@ class TrivialScheduler(Scheduler):
 		return q
 
 	def reported(self, node, resource, value):
-		self.statistics[str(node).split("]")[0].strip("[")] = json.loads(value)[0]
+		self.statistics[str(node).split("]")[0].strip("[")] = value[0]
 
 	def rewired(self, node_id, old_parent, new_parent):
 		q = BlockQueue()
@@ -273,7 +273,7 @@ class TrivialScheduler(Scheduler):
 				except:
 					#data for receiving end not available
 					continue
-				if ETX > self.ETX_Ceil and PRR < self.PRR_Floor:
+				if ETX >= self.ETX_Ceil and PRR <= self.PRR_Floor:
 					#its within parameters for blacklisting, find the the link cells in the frames
 					logg.info("Detected bad link: " + str(node) + " -> " + str(link))
 					for name, frame in self.frames.iteritems():
