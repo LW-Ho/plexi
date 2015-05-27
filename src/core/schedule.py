@@ -302,7 +302,7 @@ class Reflector(object):
 			return []
 		F = self.frames[self.rewireframe]
 		q = interface.BlockQueue()
-		cells = F.get_cell_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cell_similar_to({"rx_node":node_id,"tx_node":old_parent})
+		cells = F.get_cells_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cells_similar_to({"rx_node":node_id,"tx_node":old_parent})
 		for c in cells:
 			q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
 		q.block()
