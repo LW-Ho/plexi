@@ -16,6 +16,10 @@ class Slotframe(object):
 		c_minimal = Cell(None, 0, 0, None, None, None, 0, 7)
 		self.cell_container.append(c_minimal)
 
+	@property
+	def Slots(self):
+		return self.slots
+
 	def get_alias_id(self, node):
 		if node in self.fds.keys():
 			return self.fds[node]
@@ -33,15 +37,15 @@ class Slotframe(object):
 				continue
 			if 'channel' in kwargs.keys() and kwargs['channel'] != i.channel:
 				continue
-			if 'link_option' in kwargs.keys() and kwargs['link_option'] != i.link_option:
+			if 'link_option' in kwargs.keys() and kwargs['link_option'] != i.option:
 				continue
-			if 'cell_id' in kwargs.keys() and kwargs['cell_id'] != i.cell_id:
+			if 'cell_id' in kwargs.keys() and kwargs['cell_id'] != i.id:
 				continue
-			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe_id:
+			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe:
 				continue
-			if 'tx_node' in kwargs.keys() and kwargs['tx_node'] != i.tx_node:
+			if 'tx_node' in kwargs.keys() and kwargs['tx_node'] != i.tx:
 				continue
-			if 'rx_node' in kwargs.keys() and kwargs['rx_node'] != i.rx_node:
+			if 'rx_node' in kwargs.keys() and kwargs['rx_node'] != i.rx:
 				continue
 			matching_cells.append(i)
 		return matching_cells
@@ -59,11 +63,23 @@ class Slotframe(object):
 			# if item.owner == node_id or item.tx_node == node_id or item.rx_node == node_id:
 			if item.owner == node_id:
 				deleted_cell_container.append(item)
-		for dltd in deleted_cell_container:
-			self.cell_container.remove(dltd)
+		self.delete_cells(deleted_cell_container)
+		# for dltd in deleted_cell_container:
+		# 	self.cell_container.remove(dltd)
 		return deleted_cell_container
 
+	def delete_cells(self, cells):
+		for cell in cells:
+			self.cell_container.remove(cell)
 
+	def set_remote_cell_id(self,who,channel,slot,remote_id):
+		for c in self.cell_container:
+			if c.owner == who and c.channel == channel and c.slot == slot:
+				c.id = remote_id
+				return
+
+	def __str__(self):
+		return self.name
 
 class Cell(object):
 	def __init__(self, node, so, co, tx, rx, fd, lt, lo):

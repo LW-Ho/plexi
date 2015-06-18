@@ -22,6 +22,9 @@ from core import interface
 import copy
 import datetime
 from twisted.internet import task
+import socket
+import time
+from sets import Set
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -55,7 +58,7 @@ class Reflector(object):
 	- GET, OBSERVE, POST & DELETE any user-defined resource
 	"""
 
-	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=None):
 		"""
 		Configure :class:`Reflector` with a network name and the EUI64 address and port of the border router. Initialize
 		the DoDAG tree with a single node, the border router.
@@ -84,6 +87,26 @@ class Reflector(object):
 		self.lost_children = {}
 		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
 		self.time_until_dissconnect = 30
+		#dictionary with frames as key and lists of blacklisted cells as value. blacklisted cell in format: [channeloff, slotoff]
+		self.blacklisted = {}
+		#dictionary with all defined frames
+		self.frames = {}
+		#frame which needs to be latered when there is a rewire happening
+		self.rewireframe = ""
+
+		if visualizer is not None:
+			logg.info("Connecting to visualizer server")
+			try:
+				HOST = visualizer
+				PORT = 600
+				self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.socket.connect((HOST, PORT))
+				self.socket.sendall(lbr_ip)
+			except:
+				logg.critical("Could not reach the visualizer server! (are you sure its online and specified correct ip?)")
+		else:
+			self.socket = None
+
 
 	def _start(self):
 		"""
@@ -247,7 +270,7 @@ class Reflector(object):
 
 		"""
 		#if the node is the border router do nothing
-		if payload == "Border-Router":
+		if payload == "Border-Router" or node_id == self.root_id:
 			return
 		#create an nodeid object for the (supposed) new parent
 		newparent_id = NodeID(payload)
@@ -267,10 +290,23 @@ class Reflector(object):
 		oldparent = self.dodag.get_parent(node_id)
 		#update the dodag tree
 		self.dodag.switch_parent(node_id,newparent_id)
+		#do internal cleanup
+		self.communicate(self._rewired(node_id, oldparent, newparent_id))
 		#do a kickback to the api
-		self.rewired(node_id, oldparent, newparent_id)
+		self.communicate(self.rewired(node_id, oldparent, newparent_id))
 		#dump the new graph to file
 		self._DumpGraph()
+
+	def _rewired(self, node_id, old_parent, new_parent):
+		if self.rewireframe == "":
+			return []
+		F = self.frames[self.rewireframe]
+		q = interface.BlockQueue()
+		cells = F.get_cells_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cells_similar_to({"rx_node":node_id,"tx_node":old_parent})
+		for c in cells:
+			q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
+		q.block()
+		return [q]
 
 	#dumps a png of the current internal dodag graph with timestamp to file
 	def _DumpGraph(self):
@@ -280,8 +316,13 @@ class Reflector(object):
 		"""
 		tijd = datetime.datetime.time(datetime.datetime.now())
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
-		self.dodag.draw_graph(graphname=filename)
+		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
+		packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
+		try:
+			self.socket.sendall(bytearray(packet))
+		except:
+			pass
 
 	def _observe_dodag_info(self, response):
 		"""
@@ -401,6 +442,32 @@ class Reflector(object):
 		self.communicate(self.celled(node_id, so, co, frame, cell_cd, old_payload))
 		self._touch_session(cached_entry['command'], session_id)
 
+	def _receive_deletion(self, response):
+		"""
+		Callback for deletion of cell
+
+		:param response: the response returned by a node
+		:type response: :class:`txthings.coap.Message`
+		:raises: UnsupportedCase
+		"""
+
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
+			return
+		cache_entry = self.cache[tk]
+		session_id = cache_entry["session"]
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
+			raise exception.UnsupportedCase(tmp)
+		clean_payload = parser.clean_payload(response.payload)
+		cached_entry = self._decache(tk)
+		self.communicate(self._delete(node_id, cache_entry['command'].uri, clean_payload))
+		self.communicate(self.deleted(node_id, cache_entry['command'].uri, clean_payload))
+		self._touch_session(cached_entry['command'], session_id)
+
+
 	def _receive_probe(self, response):
 		"""
 		Callback for any other (i.e. not children, frame or cells) resource.
@@ -506,12 +573,16 @@ class Reflector(object):
 					comm.callback = self._receive_slotframe_id
 				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_cell_id
+				elif comm.op == 'delete' and comm.uri == terms.uri['6TP_CL']:
+					comm.callback = None
 				elif comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_probe
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self._receive_probe
 				elif comm.uri.startswith(terms.uri['6TP_SV']):
 					comm.callback = self._receive_report
+				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
+					comm.callback = self._receive_deletion
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self._receive_report
 				else:
@@ -547,6 +618,10 @@ class Reflector(object):
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
 				if cell.owner != node_id:
+					try:
+						self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
+					except:
+						pass
 					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
 			del frame.fds[node_id]
 		q.block()
@@ -562,10 +637,94 @@ class Reflector(object):
 		frame.set_alias_id(who, remote_fd)
 		return None
 
+	def _register_frames(self, frames):
+		# try:
+		l = []
+		for frame in frames:
+			l.append({"id":frame.name,"cells":frame.Slots})
+			self.frames[frame.name] = frame
+			self.blacklisted[frame.name] = []
+		try:
+			self.socket.sendall(json.dumps(l))
+		except:
+			pass
+
 	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
-	# handles the actions performed when a node receives his cell/s
+		# handles the actions performed when a node receives his cell/s
+		#get the cell from the frame object and fill in the remote cell id
+		frame.set_remote_cell_id(who,channeloffs,slotoffs,remote_cell_id)
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+		#try sending this info to the visualizer
+		try:
+			self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame),"id": str(remote_cell_id), "status" : 1}]))
+		except:
+			pass
 		return None
+
+	def _blacklist(self, who, slotoffs, channeloffs, frame, remote_cell_id):
+		#TODO: support removal of blacklisting
+		#blacklists given cell in given frame
+		#TODO: append to existing list
+		blacklisted = []
+		F = self.frames[frame]
+		cchannel = channeloffs
+		cslot = slotoffs
+		#forward
+		while True:
+			#use a wraparound for the matrix coordinate to keep moving through the matrix
+			blacklisted.append([(cchannel + 16) % 16, cslot])
+			cchannel += 1
+			cslot += 1
+			if cslot >= F.slots:
+				break
+		#reset indices to leftup of beginpoint
+		cchannel = channeloffs - 1
+		cslot = slotoffs - 1
+		#and backward propagation
+		while True:
+			blacklisted.append([(cchannel + 16) % 16, cslot])
+			cchannel -= 1
+			cslot -= 1
+			if cslot < 0:
+				break
+
+		#register the blacklisting
+		self.blacklisted[frame] = blacklisted
+		#check for every cell if its allocated and set it for rescheduling
+		reschedulecells = []
+		# cell = F.get_cells_similar_to({"channel":channeloffs})
+		q = interface.BlockQueue()
+		for blc in blacklisted:
+			#this should return only one entry
+			cells = F.get_cells_similar_to(channel=blc[0], slot=blc[1])
+			if len(cells) == 0:
+				#there has nothing been scheduled here
+				continue
+			#send delete commands
+			for c in cells:
+				q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
+			reschedulecells += cells
+		q.block()
+		#send it to the network
+		self.communicate(q)
+		#delete the cells from the internal frame object
+		F.delete_cells(reschedulecells)
+		#report it to logger
+		logg.debug("Blacklisted cell with channeloffset: " + str(channeloffs) + " and slotoffset: " + str(slotoffs) + " and all asociates in frame " + F.name)
+
+		#try sending it to the streaming server
+		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
+		try:
+			self.socket.sendall(json.dumps(["changecell", {"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": frame,"id": str(remote_cell_id), "status":2}]))
+		except:
+			pass
+
+		#return all the cells that need to be rescheduled
+		#build a set of (tx,rx) nodeID items (to prevent duplicates)
+		s = Set()
+		for c in reschedulecells:
+			s.add((c.tx,c.rx))
+		return list(s)
 
 	def _probe(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))
@@ -573,6 +732,10 @@ class Reflector(object):
 
 	def _report(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		return None
+
+	def _delete(self, who, resource, info):
+		logg.info('Deletion confirmed at ' + str(who) + " on " + str(resource) + ' : ' + str(info))
 		return None
 
 	def communicate(self, assembly):
@@ -611,7 +774,7 @@ class Reflector(object):
 	def rewired(self, node_id, old_parent, new_parent):
 		"""
 		api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
-		tree has been updated
+		tree has been updated, returns a list of blockqueue for commands to the network
 
 		:param node_id:
 		:param old_parent:
@@ -624,6 +787,9 @@ class Reflector(object):
 		pass
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
+		pass
+
+	def deleted(self, who, resource, info):
 		pass
 
 	def probed(self, node, resource, value):
@@ -782,6 +948,9 @@ class Scheduler(Reflector):
 				rx not in self.dodag.get_neighbors(item.tx):
 				channels.append(item.channel)
 		return channels
+
+	def blacklist(self, channel, slot, slotframe):
+		return [channel, slot] in self.blacklisted[str(slotframe)]
 
 	def schedule(self, tx, rx, slotframe):
 		raise NotImplementedError()

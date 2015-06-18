@@ -66,7 +66,8 @@ class DoDAG(object):
 		#setup the filestream and dot file
 		dotfile = "snapshots/" + graphname.split(".")[0] + ".dot"
 		stream = open(dotfile, 'w')
-		stream.write("digraph Test {\n\tnode [shape = " + shape + "];\n\tsplines=false;\n")
+		dotdata = "digraph Test {\n\tnode [shape = " + shape + "];\n\tsplines=false;\n"
+		stream.write(dotdata)
 		#iterate through the nodes
 		for nid in self.graph.nodes():
 			parent = self.get_parent(nid)
@@ -75,13 +76,17 @@ class DoDAG(object):
 			# stream.write('\t' + parent + ' -> ' + str(id) +  ' [label="' + str(count) + '", color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
 			#write the dot file
 			if fullmac:
+				dotdata +='\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n'
 				stream.write('\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
 			else:
+				dotdata += '\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n'
 				stream.write('\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+		dotdata += "}\n"
 		stream.write("}\n")
 		stream.close()
 		#activate graphviz to create the graph from the dotfile
 		call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
+		return dotdata
 
 	#detaches a node AND ALL ITS CHILDREN
 	def detach_node(self, node_id):
