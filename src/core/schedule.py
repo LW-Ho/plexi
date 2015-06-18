@@ -497,11 +497,11 @@ class Reflector(object):
 		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
-		info = None
-		if cache_entry['command'].uri == terms.uri['6TP_SM']:
-			info = payload[terms.keys['SM_ID']]
-		else:
-			info = payload
+		#info = None
+		#if cache_entry['command'].uri == terms.uri['6TP_SM']:
+		#	info = payload[terms.keys['SM_ID']]
+		#else:
+		info = payload
 		cached_entry = self._decache(tk)
 		self.communicate(self._probe(node_id, cache_entry['command'].uri, info))
 		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
@@ -539,7 +539,7 @@ class Reflector(object):
 		info = None
 		if cache_entry['command'].uri.startswith(terms.uri['6TP_CL']):
 			info = payload
-		elif cache_entry['command'].uri.startswith(terms.uri['6TP_SV']):
+		elif cache_entry['command'].uri.startswith(terms.uri['6TP_SM']):
 			info = payload
 		cached_entry = self._decache(tk)
 		self.communicate(self._report(node_id, cache_entry['command'].uri, info))
@@ -562,7 +562,7 @@ class Reflector(object):
 			if comm.payload:
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
 					if comm.uri == terms.uri['6TP_SF']:
-						comm.payload = {'ns': comm.payload['frame'].slots}
+						comm.payload = [comm.payload['frame'].slots]
 					elif comm.uri == terms.uri['6TP_CL']:
 						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 						del comm.payload['frame']
@@ -579,7 +579,7 @@ class Reflector(object):
 					comm.callback = self._receive_probe
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self._receive_probe
-				elif comm.uri.startswith(terms.uri['6TP_SV']):
+				elif comm.uri.startswith(terms.uri['6TP_SM']):
 					comm.callback = self._receive_report
 				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
 					comm.callback = self._receive_deletion
@@ -909,7 +909,7 @@ class Scheduler(Reflector):
 	def get_remote_statistics(self, node, statistics=0, observe=False):
 		q = interface.BlockQueue()
 		if isinstance(statistics, (int, long)):
-			q.push(Command('get' if not observe else 'observe', node, terms.uri['6TP_SV']+'/'+str(statistics)))
+			q.push(Command('get' if not observe else 'observe', node, terms.uri['6TP_SM']+'/'+str(statistics)))
 		else:
 			return None
 		q.block()
