@@ -206,7 +206,7 @@ class TrivialScheduler(Scheduler):
 		:rtype: BlockQueue
 		"""
 		q = BlockQueue()
-		q.push(Command('observe', node, terms.uri['6TP_SV'] + "/" + str(value)))
+		q.push(Command('observe', node, terms.uri['6TP_SM'] + "/" + str(value)))
 		q.block()
 		return q
 
