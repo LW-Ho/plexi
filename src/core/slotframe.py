@@ -56,7 +56,7 @@ class Slotframe(object):
 	def delete_links_of(self, node_id):
 		deleted_cell_container = []
 		for item in self.cell_container:
-			if item.owner == node_id or item.tx_node == node_id or item.rx_node == node_id:
+			if item.owner == node_id or item.tx == node_id or item.rx == node_id:
 				deleted_cell_container.append(item)
 		for dltd in deleted_cell_container:
 			self.cell_container.remove(dltd)
