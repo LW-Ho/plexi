@@ -497,11 +497,11 @@ class Reflector(object):
 		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
-		#info = None
-		#if cache_entry['command'].uri == terms.uri['6TP_SM']:
-		#	info = payload[terms.keys['SM_ID']]
-		#else:
-		info = payload
+		info = None
+		if cache_entry['command'].uri == terms.uri['6TP_SM']:
+			info = payload[0]
+		else:
+			info = payload
 		cached_entry = self._decache(tk)
 		self.communicate(self._probe(node_id, cache_entry['command'].uri, info))
 		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
