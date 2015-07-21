@@ -1,5 +1,5 @@
-__author__ = "George Exarchakos, Dimitris Sarakiotis, Ilker Oztelcan"
-__email__ = "g.exarchakos@tue.nl, d.sarakiotis@tue.nl, i.oztelcan@tue.nl"
+__author__ = "George Exarchakos, Dimitris Sarakiotis, Ilker Oztelcan, Frank Boerman"
+__email__ = "g.exarchakos@tue.nl, d.sarakiotis@tue.nl, i.oztelcan@tue.nl, f.j.l.boerman@student.tue.nl"
 __version__ = "0.0.21"
 __copyright__ = "Copyright 2014, The RICH Project"
 #__credits__ = ["XYZ"]
@@ -13,13 +13,29 @@ from twisted.internet import reactor
 import urllib2, logging
 # import matplotlib.pyplot as plt
 from subprocess import call
+import os
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
 
 
 class DoDAG(object):
+	"""
+	Keep track of the dodag tree of the network.
+
+	This uses a networkx graph in the background and can dump it to file with graphviz package
+
+
+	"""
 	def __init__(self, name, root, visualize=False):
+		"""
+		create the networkx graph and setup the attributes and root node
+
+		:param name: name of the graph
+		:param root: ID of the border router
+		:param visualize: the gephi visualizer NOT USED ANYMORE
+		:return:
+		"""
 		self.graph = nx.Graph(name=name)
 		self.root = root
 		self.root_attrs = {'r':1.0, 'g':0.0, 'b':0.0}
@@ -28,46 +44,66 @@ class DoDAG(object):
 		self.attach_node(root)
 
 	#CHANGED BY FRANK
-	#draws the graph using matplotlib
-	# def draw_graph_old(self):
-	# 	# layout = nx.spring_layout(self.graph)
-	# 	layout = nx.shell_layout(self.graph)
-	# 	nx.draw(self.graph, layout)
-	# 	labels = {}
-	# 	for id in self.graph.nodes():
-	# 		labels[id] = str(id).split(":")[5].strip("]")
-	# 	nx.draw_networkx_labels(self.graph, layout, labels)
-	# 	plt.axis('off')
-	# 	plt.savefig("graph.png")
 
 	#creates a .dot file and parses it to a graph using graphviz
 	#to use this install graphviz package and make sure dot is in your path
 	def draw_graph(self, shape="circle", color="blue", penwidth=1, fullmac=False, graphname="graph.png"):
+		"""
+		Saves a snapshot of the current dodag tree to a dot file and creates a png figure from that
+
+		:param shape: the shape of each node
+		:param color: color of the lines between the nodes
+		:param penwidth: width in pixels of the connecting lines
+		:param fullmac: wether the full mac address needs to be displayed or only the last four letters
+		:type fullmac: bool
+		:param graphname: the name of the dot and png file to be created
+		"""
+		#check if the necesarry folders exist and create them if not
+		if not os.path.exists("snapshots"):
+			os.makedirs("snapshots")
+		if not os.path.exists("graphs"):
+			os.makedirs("graphs")
 		#setup the filestream and dot file
 		dotfile = "snapshots/" + graphname.split(".")[0] + ".dot"
 		stream = open(dotfile, 'w')
-		stream.write("digraph Test {\n\tnode [shape = " + shape + "];\n\tsplines=false;\n")
+		dotdata = "digraph Test {\n\tnode [shape = " + shape + "];\n\tsplines=false;\n"
+		stream.write(dotdata)
 		#iterate through the nodes
 		for nid in self.graph.nodes():
 			parent = self.get_parent(nid)
 			if parent is None:
 				continue
 			# stream.write('\t' + parent + ' -> ' + str(id) +  ' [label="' + str(count) + '", color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+			#write the dot file
 			if fullmac:
+				dotdata +='\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n'
 				stream.write('\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
 			else:
+				dotdata += '\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n'
 				stream.write('\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+		dotdata += "}\n"
 		stream.write("}\n")
 		stream.close()
+		#activate graphviz to create the graph from the dotfile
 		call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
+		return dotdata
 
 	#detaches a node AND ALL ITS CHILDREN
 	def detach_node(self, node_id):
-		#WARNING THIS FUNCTION IS RECURSIVE
-		#this means that for very large graphs it will either crash or run until infinite time because python does not implement tail recursion optimization
-		#for more information see:
-		#http://neopythonic.blogspot.com.au/2009/04/tail-recursion-elimination.html
-		#http://neopythonic.blogspot.com.au/2009/04/final-words-on-tail-calls.html
+		"""
+		Detaches a node AND ALL ITS CHILDREN from the graph
+
+		WARNING THIS FUNCTION IS RECURSIVE
+		this means that for very large graphs it will either crash or run until infinite time because python does not implement tail recursion optimization
+		for more information see:
+		http://neopythonic.blogspot.com.au/2009/04/tail-recursion-elimination.html
+		http://neopythonic.blogspot.com.au/2009/04/final-words-on-tail-calls.html
+
+		:param node_id:
+		:type node_id: :class: `node.NodeID`
+		:return:
+		"""
+
 		if node_id in self.graph.nodes():
 			#get all children and recursive call this function on them
 			for neighbor in self.graph.neighbors(node_id):
@@ -105,9 +141,28 @@ class DoDAG(object):
 			return True
 		return False
 
+	def check_node(self, node_id):
+		"""
+		checks if the node is already on the graph
 
-	# creates a link (child-parent link) to the locally kept DoDAG graph
+		:param node_id: the node you want to be checked
+		:type node_id: :class: `node.NodeID`
+		:return: True if the node is on the graph, false if not
+		"""
+		return node_id in self.graph.nodes()
+
+
 	def attach_child(self, child_id, parent_id):
+		"""
+		creates a parent child link in the graph
+
+		:param child_id: the id of the child of the link
+		:type child_id: :class:`node.NodeID`
+		:param parent_id: the id of the parent of the link
+		:type parent_id :class:`node.NodeID`
+		:return: boolean
+
+		"""
 		if child_id == self.root:
 			return False
 		if child_id not in self.graph.nodes():
@@ -125,8 +180,16 @@ class DoDAG(object):
 		self.graph.add_edge(child_id, parent_id, parent=parent_id, child=child_id)
 		return True
 
-	# updates the link's statistics/metrics info for the visualizer
 	def update_link(self, node, endpoint, metric, value):
+		"""
+		updates the statistics information on a link in the graph
+
+		:param node:
+		:param endpoint:
+		:param metric:
+		:param value:
+
+		"""
 		if metric in terms.keys.keys() and self.graph.has_edge(node, endpoint):
 			if "statistics" not in self.graph.edge[node][endpoint]:
 				self.graph.edge[node][endpoint]["statistics"] = {}
@@ -159,7 +222,15 @@ class DoDAG(object):
 		return nx.shortest_path(self.graph, node_id, self.root).__len__()-1 #TODO rewrite based on the parent-child relationship
 
 	#ADDED BY FRANK
-	#rewires node to different parent in the local dodag tree
 	def switch_parent(self, node_id, newparent_id):
-		#this is just a wrapper for the attach child as this already supports rewiring
+		"""
+		rewires a node to a different parent in the local dodag tree
+		this is just a wrapper for the :func:`attach_child` as this already supports rewiring
+
+		:param node_id:
+		:type node_id: :class: `node.NodeID`
+		:param newparent_id:
+		:type newparent_id: :class: `node.NodeID`
+		:return:
+		"""
 		self.attach_child(node_id, newparent_id)

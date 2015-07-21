@@ -1,52 +1,101 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>core package &mdash; RiSCHER 0.4 documentation</title>
-    
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.4',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="RiSCHER 0.4 documentation" href="index.html" />
-   
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <title>core package &mdash; RiSCHER 0.4 documentation</title>
+  
 
-  </head>
-  <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">RiSCHER 0.4 documentation</a> &raquo;</li> 
-      </ul>
-    </div>  
+  
+  
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="RiSCHER 0.4 documentation" href="index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="index.html" class="fa fa-home"> RiSCHER</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="simple">
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">RiSCHER</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>core package</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/core.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
             
   <div class="section" id="core-package">
 <h1>core package<a class="headerlink" href="#core-package" title="Permalink to this headline">¶</a></h1>
@@ -134,10 +183,27 @@
 <dt id="core.graph.DoDAG">
 <em class="property">class </em><code class="descclassname">core.graph.</code><code class="descname">DoDAG</code><span class="sig-paren">(</span><em>name</em>, <em>root</em>, <em>visualize=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Keep track of the dodag tree of the network.</p>
+<p>This uses a networkx graph in the background and can dump it to file with graphviz package</p>
 <dl class="method">
 <dt id="core.graph.DoDAG.attach_child">
 <code class="descname">attach_child</code><span class="sig-paren">(</span><em>child_id</em>, <em>parent_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.attach_child"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.attach_child" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>creates a parent child link in the graph</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>child_id</strong> (<code class="xref py py-class docutils literal"><span class="pre">node.NodeID</span></code>) &#8211; the id of the child of the link</li>
+<li><strong>parent_id</strong> &#8211; the id of the parent of the link</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>:type parent_id <code class="xref py py-class docutils literal"><span class="pre">node.NodeID</span></code>
+:return: boolean</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.graph.DoDAG.attach_node">
@@ -145,14 +211,62 @@
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="core.graph.DoDAG.detach_node">
-<code class="descname">detach_node</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.detach_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.detach_node" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="core.graph.DoDAG.check_node">
+<code class="descname">check_node</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.check_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.check_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>checks if the node is already on the graph</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>node_id</strong> &#8211; the node you want to be checked</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if the node is on the graph, false if not</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
-<dt id="core.graph.DoDAG.flush_to_visualizer">
-<code class="descname">flush_to_visualizer</code><span class="sig-paren">(</span><em>visualize</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.flush_to_visualizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.flush_to_visualizer" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="core.graph.DoDAG.detach_node">
+<code class="descname">detach_node</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.detach_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.detach_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Detaches a node AND ALL ITS CHILDREN from the graph</p>
+<p>WARNING THIS FUNCTION IS RECURSIVE
+this means that for very large graphs it will either crash or run until infinite time because python does not implement tail recursion optimization
+for more information see:
+<a class="reference external" href="http://neopythonic.blogspot.com.au/2009/04/tail-recursion-elimination.html">http://neopythonic.blogspot.com.au/2009/04/tail-recursion-elimination.html</a>
+<a class="reference external" href="http://neopythonic.blogspot.com.au/2009/04/final-words-on-tail-calls.html">http://neopythonic.blogspot.com.au/2009/04/final-words-on-tail-calls.html</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>node_id</strong> &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.graph.DoDAG.draw_graph">
+<code class="descname">draw_graph</code><span class="sig-paren">(</span><em>shape='circle'</em>, <em>color='blue'</em>, <em>penwidth=1</em>, <em>fullmac=False</em>, <em>graphname='graph.png'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.draw_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.draw_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves a snapshot of the current dodag tree to a dot file and creates a png figure from that</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>shape</strong> &#8211; the shape of each node</li>
+<li><strong>color</strong> &#8211; color of the lines between the nodes</li>
+<li><strong>penwidth</strong> &#8211; width in pixels of the connecting lines</li>
+<li><strong>fullmac</strong> (<em>bool</em>) &#8211; wether the full mac address needs to be displayed or only the last four letters</li>
+<li><strong>graphname</strong> &#8211; the name of the dot and png file to be created</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.graph.DoDAG.get_children">
@@ -175,9 +289,46 @@
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="core.graph.DoDAG.switch_parent">
+<code class="descname">switch_parent</code><span class="sig-paren">(</span><em>node_id</em>, <em>newparent_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.switch_parent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.switch_parent" title="Permalink to this definition">¶</a></dt>
+<dd><p>rewires a node to a different parent in the local dodag tree
+this is just a wrapper for the <a class="reference internal" href="#core.graph.DoDAG.attach_child" title="core.graph.DoDAG.attach_child"><code class="xref py py-func docutils literal"><span class="pre">attach_child()</span></code></a> as this already supports rewiring</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>node_id</strong> &#8211; </li>
+<li><strong>newparent_id</strong> &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="core.graph.DoDAG.update_link">
 <code class="descname">update_link</code><span class="sig-paren">(</span><em>node</em>, <em>endpoint</em>, <em>metric</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/graph.html#DoDAG.update_link"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.graph.DoDAG.update_link" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>updates the statistics information on a link in the graph</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>node</strong> &#8211; </li>
+<li><strong>endpoint</strong> &#8211; </li>
+<li><strong>metric</strong> &#8211; </li>
+<li><strong>value</strong> &#8211; </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.graph.DoDAG.update_node">
@@ -298,6 +449,29 @@ of the network.</p>
 <li>GET, OBSERVE, POST &amp; DELETE any user-defined resource</li>
 </ul>
 <dl class="method">
+<dt id="core.schedule.Reflector._DumpGraph">
+<code class="descname">_DumpGraph</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._DumpGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._DumpGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the current dodag graph to file with as filename the timestamp of the current time</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._TimeTick">
+<code class="descname">_TimeTick</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._TimeTick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._TimeTick" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is ran every second and decreases the value of the lost_children dictionary item with as key the
+mac address of the lost child.
+When this value is 0 the disconnection procedure of this node is started. Also <a class="reference internal" href="#core.schedule.Reflector._DumpGraph" title="core.schedule.Reflector._DumpGraph"><code class="xref py py-func docutils literal"><span class="pre">_DumpGraph()</span></code></a> is called to
+create a snapshot of the system after disconnection</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="core.schedule.Reflector._cell">
 <code class="descname">_cell</code><span class="sig-paren">(</span><em>who</em>, <em>slotoffs</em>, <em>channeloffs</em>, <em>frame</em>, <em>remote_cell_id</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._cell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._cell" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -305,7 +479,9 @@ of the network.</p>
 <dl class="method">
 <dt id="core.schedule.Reflector._connect">
 <code class="descname">_connect</code><span class="sig-paren">(</span><em>child</em>, <em>parent</em>, <em>old_parent=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._connect" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>is called when a new node connects, simply installes the observer for the dodaginfo resource.
+parent and old_parent are deprecated</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.schedule.Reflector._create_session">
@@ -342,7 +518,7 @@ of its first block are sent to their destinations.</p>
 
 <dl class="method">
 <dt id="core.schedule.Reflector._disconnect">
-<code class="descname">_disconnect</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._disconnect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._disconnect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_disconnect</code><span class="sig-paren">(</span><em>node_id</em>, <em>children</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._disconnect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._disconnect" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -351,19 +527,56 @@ of its first block are sent to their destinations.</p>
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="core.schedule.Reflector._observe_rpl_children">
-<code class="descname">_observe_rpl_children</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._observe_rpl_children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._observe_rpl_children" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new
-or departed nodes. Accordingly adjusts the local copy of the DoDAG.</p>
-<p>If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring
-nodes. If a node is added, a children list observer is installed.</p>
+<dt id="core.schedule.Reflector._observe_dodag_info">
+<code class="descname">_observe_dodag_info</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._observe_dodag_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._observe_dodag_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
+the parent and the second item the children list</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>response</strong> (<code class="xref py py-class docutils literal"><span class="pre">txthings.coap.Message</span></code>) &#8211; the response returned by a node after a GET rpl/c request</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>response</strong> (<code class="xref py py-class docutils literal"><span class="pre">txthings.coap.Message</span></code>) &#8211; the incomming data package</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body">UnsupportedCase</td>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._observe_rpl_children">
+<code class="descname">_observe_rpl_children</code><span class="sig-paren">(</span><em>payload</em>, <em>parent_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._observe_rpl_children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._observe_rpl_children" title="Permalink to this definition">¶</a></dt>
+<dd><p>handles the parsing of received children list resource (part of the dodag resource). If a node is lost it is put
+on the lost child list, if a node has appeared the connection procedure is started.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>payload</strong> (<em>list</em>) &#8211; the children list</li>
+<li><strong>parent_id</strong> (<code class="xref py py-class docutils literal"><span class="pre">node.NodeID</span></code>) &#8211; the id of the node which transmitted this child list</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last">UnsupportedCase</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._observe_rpl_parent">
+<code class="descname">_observe_rpl_parent</code><span class="sig-paren">(</span><em>payload</em>, <em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._observe_rpl_parent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._observe_rpl_parent" title="Permalink to this definition">¶</a></dt>
+<dd><p>parses the respons of the parent resource (part of the dodaginfo resource). if the parent has changed, execute
+a rewiring procedure of this node to a new parent</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>payload</strong> (<em>string</em>) &#8211; the parent of the node</li>
+<li><strong>node_id</strong> (<code class="xref py py-class docutils literal"><span class="pre">node.NodeID</span></code>) &#8211; node which broadcasted this dodaginfo</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -377,7 +590,20 @@ nodes. If a node is added, a children list observer is installed.</p>
 <dl class="method">
 <dt id="core.schedule.Reflector._push_command">
 <code class="descname">_push_command</code><span class="sig-paren">(</span><em>comm</em>, <em>session</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._push_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._push_command" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Registers the callbacks for a given URI and starts the coap client for them</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>comm</strong> (<code class="xref py py-class docutils literal"><span class="pre">interface.Command</span></code>) &#8211; the command itself on which the callback needs to be registered</li>
+<li><strong>session</strong> &#8211; </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.schedule.Reflector._receive_cell_id">
@@ -466,6 +692,13 @@ with references to that frame are possible.</p>
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="core.schedule.Reflector._start">
+<code class="descname">_start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._start" title="Permalink to this definition">¶</a></dt>
+<dd><p>registers the looping call for the <a class="reference internal" href="#core.schedule.Reflector._TimeTick" title="core.schedule.Reflector._TimeTick"><code class="xref py py-func docutils literal"><span class="pre">_TimeTick()</span></code></a> into the twisted library</p>
+<p>:return None</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="core.schedule.Reflector._touch_session">
 <code class="descname">_touch_session</code><span class="sig-paren">(</span><em>achieved_comm</em>, <em>session_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._touch_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._touch_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remove a given command from a session. Send subsequent block of commands if the given command was the last pending
@@ -498,12 +731,42 @@ command of the current block of the session.</p>
 <dl class="method">
 <dt id="core.schedule.Reflector.connected">
 <code class="descname">connected</code><span class="sig-paren">(</span><em>child</em>, <em>parent</em>, <em>old_parent=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.connected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.connected" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>api call back for when a new node connects to the network
+This callback is fired AFTER the dodag tree has been updated</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>child</strong> &#8211; </li>
+<li><strong>parent</strong> &#8211; </li>
+<li><strong>old_parent</strong> &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.schedule.Reflector.disconnected">
 <code class="descname">disconnected</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.disconnected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.disconnected" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>api callback for when a node disconnects
+This callback is fired AFTER the dodag tree has been updated</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>node_id</strong> &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="core.schedule.Reflector.framed">
@@ -519,6 +782,29 @@ command of the current block of the session.</p>
 <dt id="core.schedule.Reflector.reported">
 <code class="descname">reported</code><span class="sig-paren">(</span><em>node</em>, <em>resource</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.reported"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.reported" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector.rewired">
+<code class="descname">rewired</code><span class="sig-paren">(</span><em>node_id</em>, <em>old_parent</em>, <em>new_parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.rewired"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.rewired" title="Permalink to this definition">¶</a></dt>
+<dd><p>api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
+tree has been updated</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>node_id</strong> &#8211; </li>
+<li><strong>old_parent</strong> &#8211; </li>
+<li><strong>new_parent</strong> &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 </dd></dl>
 
@@ -681,63 +967,59 @@ command of the current block of the session.</p>
 
 
           </div>
-        </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">core package</a><ul>
-<li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#module-core.client">core.client module</a></li>
-<li><a class="reference internal" href="#module-core.graph">core.graph module</a></li>
-<li><a class="reference internal" href="#module-core.interface">core.interface module</a></li>
-<li><a class="reference internal" href="#module-core.node">core.node module</a></li>
-<li><a class="reference internal" href="#module-core.schedule">core.schedule module</a></li>
-<li><a class="reference internal" href="#module-core.slotframe">core.slotframe module</a></li>
-<li><a class="reference internal" href="#module-core">Module contents</a></li>
-</ul>
-</li>
-</ul>
+          <footer>
+  
 
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/core.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, George Exarchakos.
     </p>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2015, George Exarchakos.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.2</a>
-      
-      |
-      <a href="_sources/core.txt"
-          rel="nofollow">Page source</a></li>
-    </div>
 
-    
+    </section>
 
-    
-  </body>
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.4',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
 </html>

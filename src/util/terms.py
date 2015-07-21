@@ -15,8 +15,7 @@ uri = {
 	'6TP_6'		: "6t/6",
 	'6TP_SF'	: "6t/6/sf",
 	'6TP_CL'	: "6t/6/cl",
-	# TODO: why two resources for the same thing, statistics?
-	'6TP_SV'	: "6t/6/ml",
+	#'6TP_SV'	: "6t/6/ml",
 	'6TP_SM'	: "6t/6/sm",
 	'RPL_DODAG'	: "rpl/dodag"
 }
@@ -36,7 +35,8 @@ keys = {
 	'PDR'  : "pdr",
 	'PRR'  : "PRR",
 	'LQI'  : "LQI",
-	'SLT'  : 'SLOT'
+	'SLT'  : 'SLOT',
+	'ETX'  : 'ETX'
 }
 
 cells = {

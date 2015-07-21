@@ -1,5 +1,5 @@
-__author__ = "Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos"
-__email__ = "d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl"
+__author__ = "Dimitris Sarakiotis, Ilker Oztelcan, George Exarchakos, Frank Boerman"
+__email__ = "d.sarakiotis@tue.nl, i.oztelcan@tue.nl, g.exarchakos@tue.nl, f.j.l.boerman@student.tue.nl"
 __version__ = "0.0.27"
 __copyright__ = "Copyright 2014, The RICH Project"
 #__credits__ = ["XYZ"]
@@ -22,6 +22,9 @@ from core import interface
 import copy
 import datetime
 from twisted.internet import task
+import socket
+import time
+from sets import Set
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -55,7 +58,7 @@ class Reflector(object):
 	- GET, OBSERVE, POST & DELETE any user-defined resource
 	"""
 
-	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=False):
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=None):
 		"""
 		Configure :class:`Reflector` with a network name and the EUI64 address and port of the border router. Initialize
 		the DoDAG tree with a single node, the border router.
@@ -84,11 +87,36 @@ class Reflector(object):
 		self.lost_children = {}
 		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
 		self.time_until_dissconnect = 30
+		#dictionary with frames as key and lists of blacklisted cells as value. blacklisted cell in format: [channeloff, slotoff]
+		self.blacklisted = {}
+		#dictionary with all defined frames
+		self.frames = {}
+		#frame which needs to be latered when there is a rewire happening
+		self.rewireframe = ""
+
+		if visualizer is not None:
+			logg.info("Connecting to visualizer server")
+			try:
+				HOST = visualizer
+				PORT = 600
+				self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.socket.connect((HOST, PORT))
+				self.socket.sendall(lbr_ip)
+			except:
+				logg.critical("Could not reach the visualizer server! (are you sure its online and specified correct ip?)")
+		else:
+			self.socket = None
+
 
 	def _start(self):
+		"""
+		registers the looping call for the :func:`_TimeTick` into the twisted library
 
+		:return None
+		"""
 		l = task.LoopingCall(self._TimeTick)
 		l.start(1.0)
+
 
 	def _decache(self, token):
 		"""
@@ -130,14 +158,24 @@ class Reflector(object):
 				comm = self.sessions[self.count_sessions].pop()
 
 	def _TimeTick(self):
+		"""
+		This function is ran every second and decreases the value of the lost_children dictionary item with as key the
+		mac address of the lost child.
+		When this value is 0 the disconnection procedure of this node is started. Also :func:`_DumpGraph` is called to
+		create a snapshot of the system after disconnection
+
+		:return: None
+		"""
 		#iterate throught the lost children list and subtract 1 from each entry
 		for key, value in self.lost_children.iteritems():
 			#if time is over pop this item and disconnect it, otherwise just decrement
 			if value == 0:
+				#save its children
+				children = self.dodag.get_children(key)
 				#disconnect the node and execute commands for this disconnect
 				if self.dodag.detach_node(key):
 					self._DumpGraph()
-					self.communicate(self._disconnect(key))
+					self.communicate(self._disconnect(key, children))
 					self.communicate(self.disconnected(key))
 				self.lost_children.pop(key,0)
 				#because the dict changed, break here, other disconnections are thus done with 1 second delay
@@ -173,40 +211,16 @@ class Reflector(object):
 
 	def _observe_rpl_children(self, payload, parent_id):
 		"""
-		Callback for the children list resource. Triggered upon reception of a reply on the GET rpl/c command. Detects new
-		or departed nodes. Accordingly adjusts the local copy of the DoDAG.
+		handles the parsing of received children list resource (part of the dodag resource). If a node is lost it is put
+		on the lost child list, if a node has appeared the connection procedure is started.
 
-		If a node departed or rewired, new sessions of commands are built to delete corresponding cells from the neighboring
-		nodes. If a node is added, a children list observer is installed.
-
-		:param response: the response returned by a node after a GET rpl/c request
-		:type response: :class:`txthings.coap.Message`
+		:param payload: the children list
+		:type payload: list
+		:param parent_id: the id of the node which transmitted this child list
+		:type parent_id: :class:`node.NodeID`
 		:raises: UnsupportedCase
-		"""
 
-		# # Extract the token of the given response from the Communicator
-		# tk = self.client.token(response.token)
-		# if tk not in self.cache:
-		# 	return
-		# # Extract the session ID to which the command that triggered the response belongs
-		# session_id = self.cache[tk]["session"]
-		# # Build a NodeID out of the responder's IP and port. The responder is the parent of a potentially new/departed child
-		# # parent_id = NodeID(response.remote[0], response.remote[1])
-		# # Handle replies that indicate unsuccessful processing of the GET rpl/c command
-		# if response.code != coap.CONTENT:
-		# 	tmp = str(parent_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-		# 	# TODO: CoAP errors not properly handled yet
-		# 	# Make sure the command is deleted from the cache and the appropriate session
-		# 	cached_entry = self._decache(tk)
-		# 	self._touch_session(cached_entry['command'], session_id)
-		# 	raise exception.UnsupportedCase(tmp)
-		# #TODO if an existing observer is detected, the scheduler has previously lost contact with the network. The whole topology has to be rebuilt
-		# # # Trim payload from non-string characters
-		# # clean_payload = parser.clean_payload(payload)
-		# logg.debug("Children list from " + str(response.remote[0]) + " >> " + clean_payload + " i.e. MID:" + str(response.mid))
-		# # Convert the payload to a JSON object
-		# payload = json.loads(clean_payload)
-		# # TODO: CBOR support required
+		"""
 
 		# Build a list of fetched children from the payload
 		observed_children = []
@@ -225,27 +239,38 @@ class Reflector(object):
 		#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
 		for rn in removed_nodes:
 			logg.debug("Child lost: " + str(rn))
-			self.lost_children[rn] = self.time_until_dissconnect
+			if rn not in self.lost_children: #do not reset the timer if it is already there for a reason
+				self.lost_children[rn] = self.time_until_dissconnect
 
-			# if self.dodag.detach_node(n):
-			# 	self.communicate(self._disconnect(n))
-			# 	self.communicate(self.disconnected(n))
 
-		# Iterate over all fetched children and try to attach them to the local DoDAG
+		# Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already
+		# if they are already attached than the change in children list is due to a rewiring
 		# If attachment successful,
 		#  build and send a BlockQueue session to install a children list observer to the new node
 		#  let user-defined function add a new session if needed
 		for k in observed_children:
-			old_parent = self.dodag.get_parent(k)
-			if self.dodag.attach_child(k, parent_id):
-				self._DumpGraph()
-				self.communicate(self._connect(k, parent_id, old_parent))
-				self.communicate(self.connected(k, parent_id, old_parent))
+			#if a
+			if not self.dodag.check_node(k):
+				old_parent = self.dodag.get_parent(k)
+				if self.dodag.attach_child(k, parent_id):
+					self._DumpGraph()
+					self.communicate(self._connect(k, parent_id, old_parent))
+					self.communicate(self.connected(k, parent_id, old_parent))
 
 
 	def _observe_rpl_parent(self, payload, node_id):
+		"""
+		parses the respons of the parent resource (part of the dodaginfo resource). if the parent has changed, execute
+		a rewiring procedure of this node to a new parent
+
+		:param payload: the parent of the node
+		:type payload: string
+		:param node_id: node which broadcasted this dodaginfo
+		:type node_id: :class:`node.NodeID`
+
+		"""
 		#if the node is the border router do nothing
-		if payload == "Border-Router":
+		if payload == "Border-Router" or node_id == self.root_id:
 			return
 		#create an nodeid object for the (supposed) new parent
 		newparent_id = NodeID(payload)
@@ -261,18 +286,53 @@ class Reflector(object):
 		else:#otherwise just report the rewiring
 			logg.debug("Parent rewiring of node: " + str(node_id) + " to parent " + str(newparent_id))
 
-		#update the dodag tree and dump it
+		#save the old parent
+		oldparent = self.dodag.get_parent(node_id)
+		#update the dodag tree
 		self.dodag.switch_parent(node_id,newparent_id)
+		#do internal cleanup
+		self.communicate(self._rewired(node_id, oldparent, newparent_id))
+		#do a kickback to the api
+		self.communicate(self.rewired(node_id, oldparent, newparent_id))
+		#dump the new graph to file
 		self._DumpGraph()
+
+	def _rewired(self, node_id, old_parent, new_parent):
+		if self.rewireframe == "":
+			return []
+		F = self.frames[self.rewireframe]
+		q = interface.BlockQueue()
+		cells = F.get_cells_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cells_similar_to({"rx_node":node_id,"tx_node":old_parent})
+		for c in cells:
+			q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
+		q.block()
+		return [q]
 
 	#dumps a png of the current internal dodag graph with timestamp to file
 	def _DumpGraph(self):
+		"""
+		Saves the current dodag graph to file with as filename the timestamp of the current time
+
+		"""
 		tijd = datetime.datetime.time(datetime.datetime.now())
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
-		self.dodag.draw_graph(graphname=filename)
+		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
+		packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
+		try:
+			self.socket.sendall(bytearray(packet))
+		except:
+			pass
 
 	def _observe_dodag_info(self, response):
+		"""
+		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
+		the parent and the second item the children list
+
+		:param response: the incomming data package
+		:type response: :class:`txthings.coap.Message`
+
+		"""
 		#verify the token
 		tk = self.client.token(response.token)
 		if tk not in self.cache:
@@ -382,6 +442,32 @@ class Reflector(object):
 		self.communicate(self.celled(node_id, so, co, frame, cell_cd, old_payload))
 		self._touch_session(cached_entry['command'], session_id)
 
+	def _receive_deletion(self, response):
+		"""
+		Callback for deletion of cell
+
+		:param response: the response returned by a node
+		:type response: :class:`txthings.coap.Message`
+		:raises: UnsupportedCase
+		"""
+
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
+			return
+		cache_entry = self.cache[tk]
+		session_id = cache_entry["session"]
+		node_id = NodeID(response.remote[0], response.remote[1])
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			self._decache(tk)
+			raise exception.UnsupportedCase(tmp)
+		clean_payload = parser.clean_payload(response.payload)
+		cached_entry = self._decache(tk)
+		self.communicate(self._delete(node_id, cache_entry['command'].uri, clean_payload))
+		self.communicate(self.deleted(node_id, cache_entry['command'].uri, clean_payload))
+		self._touch_session(cached_entry['command'], session_id)
+
+
 	def _receive_probe(self, response):
 		"""
 		Callback for any other (i.e. not children, frame or cells) resource.
@@ -411,11 +497,11 @@ class Reflector(object):
 		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
-		info = None
-		if cache_entry['command'].uri == terms.uri['6TP_SM']:
-			info = payload[terms.keys['SM_ID']]
-		else:
-			info = payload
+		#info = None
+		#if cache_entry['command'].uri == terms.uri['6TP_SM']:
+		#	info = payload[terms.keys['SM_ID']]
+		#else:
+		info = payload
 		cached_entry = self._decache(tk)
 		self.communicate(self._probe(node_id, cache_entry['command'].uri, info))
 		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
@@ -453,7 +539,7 @@ class Reflector(object):
 		info = None
 		if cache_entry['command'].uri.startswith(terms.uri['6TP_CL']):
 			info = payload
-		elif cache_entry['command'].uri.startswith(terms.uri['6TP_SV']):
+		elif cache_entry['command'].uri.startswith(terms.uri['6TP_SM']):
 			info = payload
 		cached_entry = self._decache(tk)
 		self.communicate(self._report(node_id, cache_entry['command'].uri, info))
@@ -461,33 +547,42 @@ class Reflector(object):
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
-	# determines which function will be called regarding the used URI
+		"""
+		Registers the callbacks for a given URI and starts the coap client for them
+
+		:param comm: the command itself on which the callback needs to be registered
+		:type comm: :class:`interface.Command`
+		:param session:
+		:type session:
+
+		"""
+		# determines which function will be called regarding the used URI
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) } #id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
 			if comm.payload:
 				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
 					if comm.uri == terms.uri['6TP_SF']:
-						comm.payload = {'ns': comm.payload['frame'].slots}
+						comm.payload = [comm.payload['frame'].slots]
 					elif comm.uri == terms.uri['6TP_CL']:
 						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 						del comm.payload['frame']
 			if not comm.callback:
-				# if comm.uri == terms.uri['RPL_NL']:
-				# 	comm.callback = self._observe_rpl_nodes
-				# if comm.uri == terms.uri['RPL_OL']:
-				# 	comm.callback = self._observe_rpl_children
 				if comm.uri == terms.uri['RPL_DODAG']:
 					comm.callback = self._observe_dodag_info
 				elif comm.uri == terms.uri['6TP_SF']:
 					comm.callback = self._receive_slotframe_id
 				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_cell_id
+				elif comm.op == 'delete' and comm.uri == terms.uri['6TP_CL']:
+					comm.callback = None
 				elif comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_probe
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self._receive_probe
-				elif comm.uri.startswith(terms.uri['6TP_SV']):
+				elif comm.uri.startswith(terms.uri['6TP_SM']):
 					comm.callback = self._receive_report
+				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
+					comm.callback = self._receive_deletion
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self._receive_report
 				else:
@@ -503,12 +598,11 @@ class Reflector(object):
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
 
 	def _connect(self, child, parent, old_parent=None):
-	# inherited function handles the installation of the proper slotframes
-	# to the pair of nodes of the established link
-	# 	if old_parent:
-	# 		logg.info(str(child) + ' rewired to ' + str(parent) + ' from ' + str(old_parent))
-	# 	else:
-	# 		logg.info(str(child) + ' wired to parent ' + str(parent))
+		"""
+		is called when a new node connects, simply installes the observer for the dodaginfo resource.
+		parent and old_parent are deprecated
+
+		"""
 
 		q = interface.BlockQueue()
 		# q.push(Command('observe', child, terms.uri['RPL_OL']))
@@ -516,7 +610,7 @@ class Reflector(object):
 		q.block()
 		return q
 
-	def _disconnect(self, node_id):
+	def _disconnect(self, node_id, children):
 	# handles the case of a node disconnects from the network
 		logg.info(str(node_id) + " was removed from the network")
 		q = interface.BlockQueue()
@@ -524,8 +618,16 @@ class Reflector(object):
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
 				if cell.owner != node_id:
+					try:
+						self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
+					except:
+						pass
 					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
 			del frame.fds[node_id]
+		q.block()
+		#query the new children on where they went
+		for child in children:
+			q.push(Command('get', child, terms.uri['RPL_DODAG']))
 		q.block()
 		return q
 
@@ -535,10 +637,94 @@ class Reflector(object):
 		frame.set_alias_id(who, remote_fd)
 		return None
 
+	def _register_frames(self, frames):
+		# try:
+		l = []
+		for frame in frames:
+			l.append({"id":frame.name,"cells":frame.Slots})
+			self.frames[frame.name] = frame
+			self.blacklisted[frame.name] = []
+		try:
+			self.socket.sendall(json.dumps(l))
+		except:
+			pass
+
 	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
-	# handles the actions performed when a node receives his cell/s
+		# handles the actions performed when a node receives his cell/s
+		#get the cell from the frame object and fill in the remote cell id
+		frame.set_remote_cell_id(who,channeloffs,slotoffs,remote_cell_id)
 		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+		#try sending this info to the visualizer
+		try:
+			self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame),"id": str(remote_cell_id), "status" : 1}]))
+		except:
+			pass
 		return None
+
+	def _blacklist(self, who, slotoffs, channeloffs, frame, remote_cell_id):
+		#TODO: support removal of blacklisting
+		#blacklists given cell in given frame
+		#TODO: append to existing list
+		blacklisted = []
+		F = self.frames[frame]
+		cchannel = channeloffs
+		cslot = slotoffs
+		#forward
+		while True:
+			#use a wraparound for the matrix coordinate to keep moving through the matrix
+			blacklisted.append([(cchannel + 16) % 16, cslot])
+			cchannel += 1
+			cslot += 1
+			if cslot >= F.slots:
+				break
+		#reset indices to leftup of beginpoint
+		cchannel = channeloffs - 1
+		cslot = slotoffs - 1
+		#and backward propagation
+		while True:
+			blacklisted.append([(cchannel + 16) % 16, cslot])
+			cchannel -= 1
+			cslot -= 1
+			if cslot < 0:
+				break
+
+		#register the blacklisting
+		self.blacklisted[frame] = blacklisted
+		#check for every cell if its allocated and set it for rescheduling
+		reschedulecells = []
+		# cell = F.get_cells_similar_to({"channel":channeloffs})
+		q = interface.BlockQueue()
+		for blc in blacklisted:
+			#this should return only one entry
+			cells = F.get_cells_similar_to(channel=blc[0], slot=blc[1])
+			if len(cells) == 0:
+				#there has nothing been scheduled here
+				continue
+			#send delete commands
+			for c in cells:
+				q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
+			reschedulecells += cells
+		q.block()
+		#send it to the network
+		self.communicate(q)
+		#delete the cells from the internal frame object
+		F.delete_cells(reschedulecells)
+		#report it to logger
+		logg.debug("Blacklisted cell with channeloffset: " + str(channeloffs) + " and slotoffset: " + str(slotoffs) + " and all asociates in frame " + F.name)
+
+		#try sending it to the streaming server
+		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
+		try:
+			self.socket.sendall(json.dumps(["changecell", {"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": frame,"id": str(remote_cell_id), "status":2}]))
+		except:
+			pass
+
+		#return all the cells that need to be rescheduled
+		#build a set of (tx,rx) nodeID items (to prevent duplicates)
+		s = Set()
+		for c in reschedulecells:
+			s.add((c.tx,c.rx))
+		return list(s)
 
 	def _probe(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))
@@ -546,6 +732,10 @@ class Reflector(object):
 
 	def _report(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		return None
+
+	def _delete(self, who, resource, info):
+		logg.info('Deletion confirmed at ' + str(who) + " on " + str(resource) + ' : ' + str(info))
 		return None
 
 	def communicate(self, assembly):
@@ -560,15 +750,46 @@ class Reflector(object):
 					self._create_session(i)
 
 	def connected(self, child, parent, old_parent=None):
+		"""
+		api call back for when a new node connects to the network
+		This callback is fired AFTER the dodag tree has been updated
+
+		:param child:
+		:param parent:
+		:param old_parent:
+		:return:
+		"""
 		pass
 
 	def disconnected(self, node_id):
+		"""
+		api callback for when a node disconnects
+		This callback is fired AFTER the dodag tree has been updated
+
+		:param node_id:
+		:return:
+		"""
+		pass
+
+	def rewired(self, node_id, old_parent, new_parent):
+		"""
+		api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
+		tree has been updated, returns a list of blockqueue for commands to the network
+
+		:param node_id:
+		:param old_parent:
+		:param new_parent:
+		:return:
+		"""
 		pass
 
 	def framed(self, who, local_name, remote_alias, old_payload):
 		pass
 
 	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
+		pass
+
+	def deleted(self, who, resource, info):
 		pass
 
 	def probed(self, node, resource, value):
@@ -688,7 +909,7 @@ class Scheduler(Reflector):
 	def get_remote_statistics(self, node, statistics=0, observe=False):
 		q = interface.BlockQueue()
 		if isinstance(statistics, (int, long)):
-			q.push(Command('get' if not observe else 'observe', node, terms.uri['6TP_SV']+'/'+str(statistics)))
+			q.push(Command('get' if not observe else 'observe', node, terms.uri['6TP_SM']+'/'+str(statistics)))
 		else:
 			return None
 		q.block()
@@ -707,13 +928,15 @@ class Scheduler(Reflector):
 		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
 		for item in slotframe.cell_container:
 			if item.slot == slot:
-				if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))):
-					return True
+				if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))) or \
+					item.tx == tx:
+						return True
 				elif (item.rx is not None and item.rx == rx) or \
-						(item.rx is None and rx is not None and item.tx in self.dodag.get_neighbors(rx)) or \
-						(item.rx is not None and rx is None and tx in self.dodag.get_neighbors(item.rx)) or \
-						(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))):
-					return True
+					(item.rx is None and rx is not None and item.tx in self.dodag.get_neighbors(rx)) or \
+					(item.rx is not None and rx is None and tx in self.dodag.get_neighbors(item.rx)) or \
+					(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))) or \
+					(rx is None and item.tx == self.dodag.get_parent(tx)) or item.tx == rx:
+						return True
 		return False
 
 	def interfere(self, slot, tx, rx, slotframe):
@@ -725,6 +948,9 @@ class Scheduler(Reflector):
 				rx not in self.dodag.get_neighbors(item.tx):
 				channels.append(item.channel)
 		return channels
+
+	def blacklist(self, channel, slot, slotframe):
+		return [channel, slot] in self.blacklisted[str(slotframe)]
 
 	def schedule(self, tx, rx, slotframe):
 		raise NotImplementedError()

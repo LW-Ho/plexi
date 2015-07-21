@@ -41,7 +41,7 @@ class TrivialScheduler(Scheduler):
 		:note: uses :func:`core.schedule.Reflector.start` to initiate communication with LBR
 		"""
 
-		# Define a frame of size 25 slots containing broabcast cells
+		# Define a frame of size 25 slots containing broadcast cells
 		f1 = Slotframe("Broadcast-Frame", 25)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[f1.name] = f1
@@ -57,7 +57,8 @@ class TrivialScheduler(Scheduler):
 		self.communicate(self.set_remote_frames(self.root_id, f2))
 
 		# Build and send a BlockQueue for a statistics observer
-		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\"]"}))
+		self.communicate(self.set_remote_statistics(self.root_id, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
+		self._register_frames([f1, f2])
 
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
@@ -137,7 +138,7 @@ class TrivialScheduler(Scheduler):
 		commands.append(ucq)
 
 		# Build and send a BlockQueue for a statistics observer
-		commands.append(self.set_remote_statistics(child, {"mt":"[\"PRR\",\"RSSI\"]"}))
+		commands.append(self.set_remote_statistics(child, {"mt":"[\"PRR\",\"RSSI\",\"ETX\"]"}))
 
 		return commands
 
@@ -176,12 +177,17 @@ class TrivialScheduler(Scheduler):
 				# Exclude those cells that interfere with tx->rx transmission
 				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
 				# Take next slot, if there are no channels available or the tx->rx conflicts with another link at that slot
+			#if len(free_channels) != 0:
+			for frame in self.frames.values():
 				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
 					skip = True
 					break
 			# If all previous checks are passed, pick and return the slot and channel found
 			if not skip:
-				return slot, list(free_channels)[0]
+				#find first non blacklisted cell
+				for chnl in list(free_channels):
+					if not self.blacklist(chnl,slot,slotframe):
+						return slot, chnl
 
 			# If all slots of the target frame are checked without result, break and return (None,None)
 			if slot == slotframe.slots-1:
@@ -206,7 +212,7 @@ class TrivialScheduler(Scheduler):
 		:rtype: BlockQueue
 		"""
 		q = BlockQueue()
-		q.push(Command('observe', node, terms.uri['6TP_SM'] + "/" + str(value)))
+		q.push(Command('observe', node, terms.uri['6TP_SV'] + "/" + str(value)))
 		q.block()
 		return q
 
@@ -214,7 +220,7 @@ class TrivialScheduler(Scheduler):
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, True)
+		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, False)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)

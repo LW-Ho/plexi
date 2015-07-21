@@ -41,8 +41,8 @@ class TrivialScheduler(Scheduler):
 		:note: uses :func:`core.schedule.Reflector.start` to initiate communication with LBR
 		"""
 
-		# Define a frame of size 25 slots containing broabcast cells
-		f1 = Slotframe("Broadcast-Frame", 25)
+		# Define a frame of size 202 slots containing broabcast cells
+		f1 = Slotframe("Broadcast-Frame", 202)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[f1.name] = f1
 		# Produce a BlockQueue of commands which install the frame to root
@@ -52,7 +52,7 @@ class TrivialScheduler(Scheduler):
 		# Start sending the commands in q
 		self.communicate(q)
 
-		f2 = Slotframe("Unicast-Frame", 21)
+		f2 = Slotframe("Unicast-Frame", 101)
 		self.frames[f2.name] = f2
 		self.communicate(self.set_remote_frames(self.root_id, f2))
 
@@ -67,7 +67,7 @@ class TrivialScheduler(Scheduler):
 		"""
 		Configure newly connected node to communicate with neighbors. Configure both child and its neighbors as follows:
 
-		- a broadcast frame of 25 slots and a unicast frame of 21 slots
+		- a broadcast frame of 202 slots and a unicast frame of 101 slots
 		- a transmitting broadcast cell at child for the child's (Tx) broadcasting to its neighbors (Rx)
 		- the receiving broadcast cells at the neighbors for child's broadcast
 		- receiving only broadcast cells at child for neighbors' broadcasts
@@ -120,12 +120,15 @@ class TrivialScheduler(Scheduler):
 
 		# Allocate one unicast cell per links with every neighbor of child
 		for neighbor in [parent]+self.dodag.get_children(child):
-			# schedule the neighbor->child link
-			uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
-			if uso is not None and uco is not None:
-				ucq.push(self.set_remote_link(uso, uco, self.frames["Unicast-Frame"], neighbor, child))
-			else:
-				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+			# schedule multiple cells for the neighbor->child link
+			cm = 0
+			while cm < 4:
+				uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
+				if uso is not None and uco is not None:
+					ucq.push(self.set_remote_link((uso + 3*cm), uco, self.frames["Unicast-Frame"], neighbor, child))
+				else:
+					logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
+				cm = cm + 1
 
 			# schedule the child->neighbor link
 			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
@@ -176,6 +179,8 @@ class TrivialScheduler(Scheduler):
 				# Exclude those cells that interfere with tx->rx transmission
 				free_channels = free_channels.difference(self.interfere(slot, tx, rx, frame))
 				# Take next slot, if there are no channels available or the tx->rx conflicts with another link at that slot
+			#if len(free_channels) != 0:
+			for frame in self.frames.values():
 				if len(free_channels) == 0 or self.conflict(slot, tx, rx, frame):
 					skip = True
 					break
@@ -206,7 +211,7 @@ class TrivialScheduler(Scheduler):
 		:rtype: BlockQueue
 		"""
 		q = BlockQueue()
-		q.push(Command('observe', node, terms.uri['6TP_SM'] + "/" + str(value)))
+		q.push(Command('observe', node, terms.uri['6TP_SV'] + "/" + str(value)))
 		q.block()
 		return q
 
@@ -214,7 +219,7 @@ class TrivialScheduler(Scheduler):
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, True)
+		sch = TrivialScheduler(x.network_name, x.lbr, x.port, x.prefix, x.visualizer)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)

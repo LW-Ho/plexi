@@ -37,7 +37,7 @@ def usage():
 	print('\t-h,\t--help\t\t\tthis usage message')
 	print('\t-b,\t--LBR=\t\t\tIPv6 address of Low-Power and Lossy Network Border Router e.g. 215:8d00:52:68c7 or aaaa::215:8d00:52:68c7 (port:5684 assumed)')
 	print('\t-p,\t--prefix=\t\t4-character address prefix e.g. aaaa')
-	print('\t-v,\t--visualizer=\tIPv4:port address of the graph visualizer server')
+	print('\t-v,\t--visualizer=\tip address of FrankFancyGraphStreamer server')
 
 def get_user_input(arg_str):
 	lbr = None
@@ -89,4 +89,4 @@ def get_user_input(arg_str):
 		usage()
 		return 2
 
-	return UserInput("RICHNET", lbr, 5684, prefix, visualizer if visualizer else False)
+	return UserInput("RICHNET", lbr, 5684, prefix, visualizer if visualizer else None)
