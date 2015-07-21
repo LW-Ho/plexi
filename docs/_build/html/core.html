@@ -426,7 +426,7 @@ this is just a wrapper for the <a class="reference internal" href="#core.graph.D
 <span id="core-schedule-module"></span><h2>core.schedule module<a class="headerlink" href="#module-core.schedule" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="core.schedule.Reflector">
-<em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Reflector</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Reflector</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>Handle all the communication with the RICH network in a concurrent way.</p>
 <p>Implements a callback-model to send operations to network nodes and trigger the appropriate callback upon replies.
@@ -472,6 +472,11 @@ create a snapshot of the system after disconnection</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="core.schedule.Reflector._blacklist">
+<code class="descname">_blacklist</code><span class="sig-paren">(</span><em>who</em>, <em>slotoffs</em>, <em>channeloffs</em>, <em>frame</em>, <em>remote_cell_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._blacklist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._blacklist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="core.schedule.Reflector._cell">
 <code class="descname">_cell</code><span class="sig-paren">(</span><em>who</em>, <em>slotoffs</em>, <em>channeloffs</em>, <em>frame</em>, <em>remote_cell_id</em>, <em>old_payload</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._cell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._cell" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -515,6 +520,11 @@ of its first block are sent to their destinations.</p>
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._delete">
+<code class="descname">_delete</code><span class="sig-paren">(</span><em>who</em>, <em>resource</em>, <em>info</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._delete" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="core.schedule.Reflector._disconnect">
@@ -625,6 +635,22 @@ The returned ID is recorded so that future requests with references to that cell
 </dd></dl>
 
 <dl class="method">
+<dt id="core.schedule.Reflector._receive_deletion">
+<code class="descname">_receive_deletion</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_deletion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_deletion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for deletion of cell</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>response</strong> (<code class="xref py py-class docutils literal"><span class="pre">txthings.coap.Message</span></code>) &#8211; the response returned by a node</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body">UnsupportedCase</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="core.schedule.Reflector._receive_probe">
 <code class="descname">_receive_probe</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_probe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_probe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for any other (i.e. not children, frame or cells) resource.</p>
@@ -687,8 +713,18 @@ with references to that frame are possible.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="core.schedule.Reflector._register_frames">
+<code class="descname">_register_frames</code><span class="sig-paren">(</span><em>frames</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._register_frames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._register_frames" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="core.schedule.Reflector._report">
 <code class="descname">_report</code><span class="sig-paren">(</span><em>who</em>, <em>resource</em>, <em>info</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._report"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._report" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.schedule.Reflector._rewired">
+<code class="descname">_rewired</code><span class="sig-paren">(</span><em>node_id</em>, <em>old_parent</em>, <em>new_parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._rewired"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._rewired" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -752,6 +788,11 @@ This callback is fired AFTER the dodag tree has been updated</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="core.schedule.Reflector.deleted">
+<code class="descname">deleted</code><span class="sig-paren">(</span><em>who</em>, <em>resource</em>, <em>info</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.deleted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.deleted" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="core.schedule.Reflector.disconnected">
 <code class="descname">disconnected</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.disconnected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.disconnected" title="Permalink to this definition">¶</a></dt>
 <dd><p>api callback for when a node disconnects
@@ -787,7 +828,7 @@ This callback is fired AFTER the dodag tree has been updated</p>
 <dt id="core.schedule.Reflector.rewired">
 <code class="descname">rewired</code><span class="sig-paren">(</span><em>node_id</em>, <em>old_parent</em>, <em>new_parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector.rewired"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector.rewired" title="Permalink to this definition">¶</a></dt>
 <dd><p>api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
-tree has been updated</p>
+tree has been updated, returns a list of blockqueue for commands to the network</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -810,8 +851,13 @@ tree has been updated</p>
 
 <dl class="class">
 <dt id="core.schedule.Scheduler">
-<em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Scheduler</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">core.schedule.</code><code class="descname">Scheduler</code><span class="sig-paren">(</span><em>net_name</em>, <em>lbr_ip</em>, <em>lbr_port</em>, <em>prefix</em>, <em>visualizer=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#core.schedule.Reflector" title="core.schedule.Reflector"><code class="xref py py-class docutils literal"><span class="pre">core.schedule.Reflector</span></code></a></p>
+<dl class="method">
+<dt id="core.schedule.Scheduler.blacklist">
+<code class="descname">blacklist</code><span class="sig-paren">(</span><em>channel</em>, <em>slot</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.blacklist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.blacklist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="core.schedule.Scheduler.conflict">
 <code class="descname">conflict</code><span class="sig-paren">(</span><em>slot</em>, <em>tx</em>, <em>rx</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.conflict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.conflict" title="Permalink to this definition">¶</a></dt>
@@ -932,6 +978,16 @@ tree has been updated</p>
 <dt id="core.slotframe.Slotframe">
 <em class="property">class </em><code class="descclassname">core.slotframe.</code><code class="descname">Slotframe</code><span class="sig-paren">(</span><em>name</em>, <em>slots</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="attribute">
+<dt id="core.slotframe.Slotframe.Slots">
+<code class="descname">Slots</code><a class="headerlink" href="#core.slotframe.Slotframe.Slots" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.slotframe.Slotframe.delete_cells">
+<code class="descname">delete_cells</code><span class="sig-paren">(</span><em>cells</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.delete_cells"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.delete_cells" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="core.slotframe.Slotframe.delete_links_of">
 <code class="descname">delete_links_of</code><span class="sig-paren">(</span><em>node_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.delete_links_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.delete_links_of" title="Permalink to this definition">¶</a></dt>
@@ -955,6 +1011,11 @@ tree has been updated</p>
 <dl class="method">
 <dt id="core.slotframe.Slotframe.set_alias_id">
 <code class="descname">set_alias_id</code><span class="sig-paren">(</span><em>node</em>, <em>id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.set_alias_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.set_alias_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="core.slotframe.Slotframe.set_remote_cell_id">
+<code class="descname">set_remote_cell_id</code><span class="sig-paren">(</span><em>who</em>, <em>channel</em>, <em>slot</em>, <em>remote_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe.set_remote_cell_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe.set_remote_cell_id" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

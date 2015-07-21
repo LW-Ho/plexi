@@ -138,7 +138,7 @@
 	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-h,</span><span class="se">\t</span><span class="s">--help</span><span class="se">\t\t\t</span><span class="s">this usage message&#39;</span><span class="p">)</span>
 	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-b,</span><span class="se">\t</span><span class="s">--LBR=</span><span class="se">\t\t\t</span><span class="s">IPv6 address of Low-Power and Lossy Network Border Router e.g. 215:8d00:52:68c7 or aaaa::215:8d00:52:68c7 (port:5684 assumed)&#39;</span><span class="p">)</span>
 	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-p,</span><span class="se">\t</span><span class="s">--prefix=</span><span class="se">\t\t</span><span class="s">4-character address prefix e.g. aaaa&#39;</span><span class="p">)</span>
-	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-v,</span><span class="se">\t</span><span class="s">--visualizer=</span><span class="se">\t</span><span class="s">IPv4:port address of the graph visualizer server&#39;</span><span class="p">)</span>
+	<span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\t</span><span class="s">-v,</span><span class="se">\t</span><span class="s">--visualizer=</span><span class="se">\t</span><span class="s">ip address of FrankFancyGraphStreamer server&#39;</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="get_user_input"><a class="viewcode-back" href="../../example.html#example.main.get_user_input">[docs]</a><span class="k">def</span> <span class="nf">get_user_input</span><span class="p">(</span><span class="n">arg_str</span><span class="p">):</span>
 	<span class="n">lbr</span> <span class="o">=</span> <span class="bp">None</span>
@@ -190,7 +190,7 @@
 		<span class="n">usage</span><span class="p">()</span>
 		<span class="k">return</span> <span class="mi">2</span>
 
-	<span class="k">return</span> <span class="n">UserInput</span><span class="p">(</span><span class="s">&quot;RICHNET&quot;</span><span class="p">,</span> <span class="n">lbr</span><span class="p">,</span> <span class="mi">5684</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">visualizer</span> <span class="k">if</span> <span class="n">visualizer</span> <span class="k">else</span> <span class="bp">False</span><span class="p">)</span></div>
+	<span class="k">return</span> <span class="n">UserInput</span><span class="p">(</span><span class="s">&quot;RICHNET&quot;</span><span class="p">,</span> <span class="n">lbr</span><span class="p">,</span> <span class="mi">5684</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">visualizer</span> <span class="k">if</span> <span class="n">visualizer</span> <span class="k">else</span> <span class="bp">None</span><span class="p">)</span></div>
 </pre></div>
 
           </div>
