@@ -43,3 +43,47 @@ cells = {
 	'broadcast',
 	'unicast'
 }
+
+resources = {
+	'RPL': {
+		'LABEL': 'rpl',
+		'DAG': {
+			'LABEL': 'dag',
+			'PARENT': {'LABEL': 'parent'},
+			'CHILD': {'LABEL': 'CHILD'}
+		}
+	},
+	'6TOP': {
+		'LABEL': '6top',
+		'SLOTFRAME': {
+			'LABEL': 'slotFrame',
+			'ID': {'LABEL':'frame'},
+			'SLOTS': { 'LABEL':'slots'}
+		},
+		'CELLLIST': {
+			'LABEL': 'cellList',
+			'ID': {'LABEL':'link'},
+			'SLOTFRAME': {'LABEL': 'frame'},
+			'CHANNELOFFSET': {'LABEL': 'channel'},
+			'SLOTOFFSET': {'LABEL': 'slot'},
+			'LINKOPTION': {'LABEL': 'option'},
+			'LINKTYPE': {'LABEL': 'type'},
+			'TARGETADDRESS': {'LABEL': 'target'}
+		},
+		'NEIGHBOURLIST': {
+			'LABEL': 'nbrList',
+			'AGE':{ 'LABEL': 'age'}
+		}
+	}
+}
+
+def get_resource_uri(*uri,**queries):
+	path = ''
+	object = resources
+	for rsrc in uri:
+		if rsrc in object:
+			path += '/'+object[rsrc]['LABEL']
+			object = object[rsrc]
+		else:
+			return None
+	return path

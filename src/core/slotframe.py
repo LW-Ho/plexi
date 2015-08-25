@@ -11,7 +11,7 @@ class Slotframe(object):
 	def __init__(self, name, slots):
 		self.cell_container = []	# Cell container of this slotframe
 		self.slots = slots			# Size of this slotframe in number of slots
-		self.name = name			# Scheduler-assigned reference name of this slotframe
+		self.name = name			# SchedulerInterface-assigned reference name of this slotframe
 		self.fds = {}   			# Node-assigned ids of this slotframe in (key : value) format --> (node : sf_id)
 		c_minimal = Cell(None, 0, 0, None, None, None, 0, 7)
 		self.cell_container.append(c_minimal)

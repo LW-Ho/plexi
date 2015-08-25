@@ -74,7 +74,7 @@ class Reflector(object):
 		"""
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
-		logg.info("Scheduler started with LBR=" + str(self.root_id))
+		logg.info("SchedulerInterface started with LBR=" + str(self.root_id))
 		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
@@ -799,14 +799,12 @@ class Reflector(object):
 		pass
 
 
-class Scheduler(Reflector):
+class SchedulerInterface(Reflector):
 
 	def start(self):
-		# self.communicate(self.get_remote_children(self.root_id, True))
-		super(Scheduler,self)._start()
-		#register the observing of the dodaginfo resource by frank
+		super(SchedulerInterface,self)._start()
 		q = interface.BlockQueue()
-		q.push(Command('observe', self.root_id, terms.uri['RPL_DODAG']))
+		q.push(Command('observe', self.root_id, terms.get_resource_uri('RPL','DAG')))
 		q.block()
 		self.communicate(q)
 

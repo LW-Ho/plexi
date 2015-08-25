@@ -8,7 +8,7 @@ __copyright__ = "Copyright 2015, The RICH Project"
 #__status__ = "Production"
 
 from example import main
-from core.schedule import Scheduler, logg
+from core.schedule import SchedulerInterface, logg
 from core.slotframe import Slotframe
 from core.interface import BlockQueue, Command
 from util import terms
@@ -17,7 +17,7 @@ from sets import Set
 from twisted.internet import task
 from twisted.internet import reactor
 
-class TrivialScheduler(Scheduler):
+class TrivialScheduler(SchedulerInterface):
 	"""
 	Usage example of RiSCHER API v0.4. Each node is scheduled and assigned with:
 
