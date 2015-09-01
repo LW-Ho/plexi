@@ -269,11 +269,13 @@ class Reflector(object):
 		:type node_id: :class:`node.NodeID`
 
 		"""
+		assert isinstance(payload,list)
+
 		#if the node is the border router do nothing
-		if payload == "Border-Router" or node_id == self.root_id:
+		if len(payload) == 0 or node_id == self.root_id:
 			return
 		#create an nodeid object for the (supposed) new parent
-		newparent_id = NodeID(payload)
+		newparent_id = NodeID(payload[0])
 		#check if its indeed a parent rewiring
 		if str(newparent_id) == str(self.dodag.get_parent(node_id)):
 			return
@@ -347,12 +349,12 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 
 		#report to the logger
-		logg.debug("Observed dodaginfo from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
+		logg.debug("Observed rpl/dag from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
 		#json parse the payload and decache the token
 		payload = json.loads(parser.clean_payload(response.payload))
 		cached_entry = self._decache(tk)
 		#pass the seperate pieces of information to their functions
-		self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']][0], node_id)
+		self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
 		self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
 		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
 		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
@@ -567,7 +569,7 @@ class Reflector(object):
 						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 						del comm.payload['frame']
 			if not comm.callback:
-				if comm.uri == terms.uri['RPL_DODAG']:
+				if comm.uri.startswith(terms.get_resource_uri('RPL', 'DAG')):
 					comm.callback = self._observe_dodag_info
 				elif comm.uri == terms.uri['6TP_SF']:
 					comm.callback = self._receive_slotframe_id

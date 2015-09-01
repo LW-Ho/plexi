@@ -7,11 +7,6 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__license__ = "GPL"
 #__status__ = "Production"
 
-#from coapthon2.resources.resource import Resource
-#from coapthon2 import defines
-# import networkx
-# import json
-
 
 class NodeID(object):
 	prefix = "aaaa"

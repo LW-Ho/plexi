@@ -50,7 +50,7 @@ resources = {
 		'DAG': {
 			'LABEL': 'dag',
 			'PARENT': {'LABEL': 'parent'},
-			'CHILD': {'LABEL': 'CHILD'}
+			'CHILD': {'LABEL': 'child'}
 		}
 	},
 	'6TOP': {
@@ -81,9 +81,13 @@ def get_resource_uri(*uri,**queries):
 	path = ''
 	parent = None
 	object = resources
+	first_item = 1
 	for rsrc in uri:
 		if rsrc in object:
-			path += '/'+object[rsrc]['LABEL']
+			if not first_item:
+				path += '/'
+			first_item = 0
+			path += object[rsrc]['LABEL']
 			parent = object
 			object = object[rsrc]
 		else:
