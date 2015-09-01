@@ -114,19 +114,41 @@ class DoDAG(object):
 			return True
 		return False
 
-	# returns the parent_id of the inputted child_id
 	def get_neighbors(self, node):
+		"""
+		Returns an array of :class: `node.NodeID`s within communication range of node.
+
+		There is no guarantee that the local centralized replica of DoDAG has the most up-to-date information.
+
+		:param node_id:
+		:type node_id: :class: `node.NodeID`
+		:return: array of node IDs
+		"""
 		return self.graph.neighbors(node)
 
 	def get_parent(self, child_id):
+		"""
+		Returns the parent :class:`node.NodeID` of child_id.
+
+		:param child_id:
+		:type child_id: :class: `node.NodeID`
+		:return: the node ID of the parent
+		"""
 		if child_id in self.graph.nodes():
 			for neighbor in self.graph.neighbors(child_id):
 				if 'parent' in self.graph.edge[child_id][neighbor] and self.graph.edge[child_id][neighbor]['parent'] == neighbor:
 					return neighbor
 		return None
 
-	# adds a node to the DoDAG graph and to the vizualized network graph
 	def get_children(self, parent_id):
+		"""
+		Returns an array of children :class: `node.NodeID`of parent_id. These are nodes connected to parent_id with a rank \
+		higher than parent's rank just by one hop.
+
+		:param parent_id:
+		:type parent_id: :class: `node.NodeID`
+		:return: array of node IDs
+		"""
 		if parent_id in self.graph.nodes():
 			children = []
 			for neighbor in self.graph.neighbors(parent_id):
@@ -143,7 +165,7 @@ class DoDAG(object):
 
 	def check_node(self, node_id):
 		"""
-		checks if the node is already on the graph
+		Checks if the node is already on the graph
 
 		:param node_id: the node you want to be checked
 		:type node_id: :class: `node.NodeID`
@@ -154,7 +176,7 @@ class DoDAG(object):
 
 	def attach_child(self, child_id, parent_id):
 		"""
-		creates a parent child link in the graph
+		Creates a parent-child link in the graph
 
 		:param child_id: the id of the child of the link
 		:type child_id: :class:`node.NodeID`

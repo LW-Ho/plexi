@@ -74,7 +74,7 @@ class Reflector(object):
 		"""
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
-		logg.info("SchedulerInterface started with LBR=" + str(self.root_id))
+		logg.info("scheduler interface started with LBR=" + str(self.root_id))
 		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.frames = {}
@@ -95,7 +95,7 @@ class Reflector(object):
 		self.rewireframe = ""
 
 		if visualizer is not None:
-			logg.info("Connecting to visualizer server")
+			logg.info("connecting to visualizer server")
 			try:
 				HOST = visualizer
 				PORT = 600
@@ -103,7 +103,7 @@ class Reflector(object):
 				self.socket.connect((HOST, PORT))
 				self.socket.sendall(lbr_ip)
 			except:
-				logg.critical("Could not reach the visualizer server! (are you sure its online and specified correct ip?)")
+				logg.critical("could not reach the visualizer server! (are you sure its online and specified correct ip?)")
 		else:
 			self.socket = None
 
@@ -238,7 +238,7 @@ class Reflector(object):
 		#  let user-defined function add a new session if needed
 		#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
 		for rn in removed_nodes:
-			logg.debug("Child lost: " + str(rn))
+			logg.debug("child is lost: " + str(rn))
 			if rn not in self.lost_children: #do not reset the timer if it is already there for a reason
 				self.lost_children[rn] = self.time_until_dissconnect
 
@@ -280,11 +280,11 @@ class Reflector(object):
 
 		#remove it from the lost child list if it is on there
 		if node_id in self.lost_children:
-			logg.debug("Lost child returned to the network: " + str(node_id) + " to parent " + str(newparent_id))
+			logg.debug("lost child returned to the network: " + str(node_id) + " to parent " + str(newparent_id))
 			#and report it
 			self.lost_children.pop(node_id,0)
 		else:#otherwise just report the rewiring
-			logg.debug("Parent rewiring of node: " + str(node_id) + " to parent " + str(newparent_id))
+			logg.debug("parent rewiring of node: " + str(node_id) + " to parent " + str(newparent_id))
 
 		#save the old parent
 		oldparent = self.dodag.get_parent(node_id)
@@ -304,7 +304,7 @@ class Reflector(object):
 		q = interface.BlockQueue()
 		cells = F.get_cells_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cells_similar_to({"rx_node":node_id,"tx_node":old_parent})
 		for c in cells:
-			q.push(Command('delete', c.owner, terms.uri['6TP_CL'] + '/' + str(c.id)))
+			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(c.id))))
 		q.block()
 		return [q]
 
@@ -352,8 +352,8 @@ class Reflector(object):
 		payload = json.loads(parser.clean_payload(response.payload))
 		cached_entry = self._decache(tk)
 		#pass the seperate pieces of information to their functions
-		self._observe_rpl_parent(payload[0][0], node_id)
-		self._observe_rpl_children(payload[1], node_id)
+		self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']][0], node_id)
+		self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
 		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
 		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
 		self._touch_session(cached_entry['command'], session_id)

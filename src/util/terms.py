@@ -79,11 +79,26 @@ resources = {
 
 def get_resource_uri(*uri,**queries):
 	path = ''
+	parent = None
 	object = resources
 	for rsrc in uri:
 		if rsrc in object:
 			path += '/'+object[rsrc]['LABEL']
+			parent = object
 			object = object[rsrc]
+		else:
+			return None
+	first_item = 1
+	for k,v in queries.iteritems():
+		if first_item == 1:
+			path += '?'
+		else:
+			path += '&'
+		first_item = 0
+		if k in object:
+			path += object[k]['LABEL']+"="+str(v)
+		elif k in parent:
+			path += parent[k]['LABEL']+"="+str(v)
 		else:
 			return None
 	return path
