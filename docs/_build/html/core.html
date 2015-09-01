@@ -655,9 +655,9 @@ The returned ID is recorded so that future requests with references to that cell
 <code class="descname">_receive_probe</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_probe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_probe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for any other (i.e. not children, frame or cells) resource.</p>
 <p>Triggered upon reception of a reply on POST, DELETE commands on i.e. 6t/6/sm etc. This can be coupled with
-<a class="reference internal" href="#core.schedule.Reflector._receive_report" title="core.schedule.Reflector._receive_report"><code class="xref py py-func docutils literal"><span class="pre">_receive_report()</span></code></a> function to implement a 2-way handshake.
+<a class="reference internal" href="#core.schedule.Reflector._get_resource" title="core.schedule.Reflector._get_resource"><code class="xref py py-func docutils literal"><span class="pre">_get_resource()</span></code></a> function to implement a 2-way handshake.
 It supports POST 6t/6/sm for defining a statistics metrics resource (receive its id) and then use the returned id
-to GET/OBSERVE 6t/6/sm/0 its reported values via <a class="reference internal" href="#core.schedule.Reflector._receive_report" title="core.schedule.Reflector._receive_report"><code class="xref py py-func docutils literal"><span class="pre">_receive_report()</span></code></a> function. Extensible for any other command/resource
+to GET/OBSERVE 6t/6/sm/0 its reported values via <a class="reference internal" href="#core.schedule.Reflector._get_resource" title="core.schedule.Reflector._get_resource"><code class="xref py py-func docutils literal"><span class="pre">_get_resource()</span></code></a> function. Extensible for any other command/resource
 but payload will passed to <a class="reference internal" href="#core.schedule.Reflector.probed" title="core.schedule.Reflector.probed"><code class="xref py py-func docutils literal"><span class="pre">probed()</span></code></a> uninterpreted in JSON format as a dictionary or list.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -672,8 +672,8 @@ but payload will passed to <a class="reference internal" href="#core.schedule.Re
 </dd></dl>
 
 <dl class="method">
-<dt id="core.schedule.Reflector._receive_report">
-<code class="descname">_receive_report</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._receive_report"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._receive_report" title="Permalink to this definition">¶</a></dt>
+<dt id="core.schedule.Reflector._get_resource">
+<code class="descname">_get_resource</code><span class="sig-paren">(</span><em>response</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Reflector._get_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Reflector._get_resource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for any other (i.e. not children, frame or cells) resource.</p>
 <p>Though similar to <a class="reference internal" href="#core.schedule.Reflector._receive_probe" title="core.schedule.Reflector._receive_probe"><code class="xref py py-func docutils literal"><span class="pre">_receive_probe()</span></code></a>, the semantics are different. It is meant to be triggered by responses on
 GET/OBSERVE commands on i.e. 6t/6/sf or 6t/6/sm etc whereas <a class="reference internal" href="#core.schedule.Reflector._receive_probe" title="core.schedule.Reflector._receive_probe"><code class="xref py py-func docutils literal"><span class="pre">_receive_probe()</span></code></a> is meant more for POST/DELETE.
@@ -879,8 +879,8 @@ tree has been updated, returns a list of blockqueue for commands to the network<
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="core.schedule.Scheduler.get_remote_frame">
-<code class="descname">get_remote_frame</code><span class="sig-paren">(</span><em>node</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.get_remote_frame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.get_remote_frame" title="Permalink to this definition">¶</a></dt>
+<dt id="core.schedule.Scheduler.get_slotframes_by_id">
+<code class="descname">get_slotframes_by_id</code><span class="sig-paren">(</span><em>node</em>, <em>slotframe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/schedule.html#Scheduler.get_slotframes_by_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.schedule.Scheduler.get_slotframes_by_id" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -979,8 +979,8 @@ tree has been updated, returns a list of blockqueue for commands to the network<
 <em class="property">class </em><code class="descclassname">core.slotframe.</code><code class="descname">Slotframe</code><span class="sig-paren">(</span><em>name</em>, <em>slots</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/slotframe.html#Slotframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#core.slotframe.Slotframe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <dl class="attribute">
-<dt id="core.slotframe.Slotframe.Slots">
-<code class="descname">Slots</code><a class="headerlink" href="#core.slotframe.Slotframe.Slots" title="Permalink to this definition">¶</a></dt>
+<dt id="core.slotframe.Slotframe.slots">
+<code class="descname">slots</code><a class="headerlink" href="#core.slotframe.Slotframe.slots" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">

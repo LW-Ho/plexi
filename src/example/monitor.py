@@ -31,7 +31,6 @@ class Monitor(SchedulerInterface):
 	"""
 
 	def start(self):
-
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
 		super(Monitor, self).start()

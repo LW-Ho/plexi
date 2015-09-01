@@ -77,7 +77,6 @@ class Reflector(object):
 		logg.info("scheduler interface started with LBR=" + str(self.root_id))
 		self.client = LazyCommunicator(5)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
-		self.frames = {}
 		self.cache = {}
 		self.sessions = {}
 		self.count_sessions = 0
@@ -326,7 +325,7 @@ class Reflector(object):
 		except:
 			pass
 
-	def _observe_dodag_info(self, response):
+	def _get_rpl_dag(self, response):
 		"""
 		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
 		the parent and the second item the children list
@@ -354,13 +353,18 @@ class Reflector(object):
 		payload = json.loads(parser.clean_payload(response.payload))
 		cached_entry = self._decache(tk)
 		#pass the seperate pieces of information to their functions
-		self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
-		self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
+		if cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','PARENT')):
+			self._observe_rpl_parent(payload, node_id)
+		elif cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','CHILD')):
+			self._observe_rpl_children(payload, node_id)
+		else:
+			self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
+			self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
 		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
 		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
 		self._touch_session(cached_entry['command'], session_id)
 
-	def _receive_slotframe_id(self, response):
+	def _post_6top_slotframe(self, response):
 		"""
 		Callback for slotframe resource. Triggered upon reception of a reply on the POST 6t/6/sf command. Records the slotframe
 		identifier returned by the responder.
@@ -475,9 +479,9 @@ class Reflector(object):
 		Callback for any other (i.e. not children, frame or cells) resource.
 
 		Triggered upon reception of a reply on POST, DELETE commands on i.e. 6t/6/sm etc. This can be coupled with
-		:func:`_receive_report` function to implement a 2-way handshake.
+		:func:`_get_resource` function to implement a 2-way handshake.
 		It supports POST 6t/6/sm for defining a statistics metrics resource (receive its id) and then use the returned id
-		to GET/OBSERVE 6t/6/sm/0 its reported values via :func:`_receive_report` function. Extensible for any other command/resource
+		to GET/OBSERVE 6t/6/sm/0 its reported values via :func:`_get_resource` function. Extensible for any other command/resource
 		but payload will passed to :func:`probed` uninterpreted in JSON format as a dictionary or list.
 
 		:param response: the response returned by a node after any request excluding GET rpl/c, POST 6t/6/sf, POST 6t/6/cl
@@ -509,7 +513,7 @@ class Reflector(object):
 		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
 		self._touch_session(cached_entry['command'], session_id)
 
-	def _receive_report(self, response):
+	def _get_resource(self, response):
 		"""
 		Callback for any other (i.e. not children, frame or cells) resource.
 
@@ -535,17 +539,12 @@ class Reflector(object):
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		clean_payload = parser.clean_payload(response.payload)
-		logg.debug("Probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
+		logg.debug("probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
-		info = None
-		if cache_entry['command'].uri.startswith(terms.uri['6TP_CL']):
-			info = payload
-		elif cache_entry['command'].uri.startswith(terms.uri['6TP_SM']):
-			info = payload
 		cached_entry = self._decache(tk)
-		self.communicate(self._report(node_id, cache_entry['command'].uri, info))
-		self.communicate(self.reported(node_id, cache_entry['command'].uri, info))
+		self.communicate(self._report(node_id, cache_entry['command'].uri, payload))
+		self.communicate(self.reported(node_id, cache_entry['command'].uri, payload))
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
@@ -570,9 +569,11 @@ class Reflector(object):
 						del comm.payload['frame']
 			if not comm.callback:
 				if comm.uri.startswith(terms.get_resource_uri('RPL', 'DAG')):
-					comm.callback = self._observe_dodag_info
-				elif comm.uri == terms.uri['6TP_SF']:
-					comm.callback = self._receive_slotframe_id
+					comm.callback = self._get_rpl_dag
+				elif comm.op == 'post' and comm.uri.startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
+					comm.callback = self._post_6top_slotframe
+				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
+					comm.callback = self._get_resource
 				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
 					comm.callback = self._receive_cell_id
 				elif comm.op == 'delete' and comm.uri == terms.uri['6TP_CL']:
@@ -582,13 +583,13 @@ class Reflector(object):
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self._receive_probe
 				elif comm.uri.startswith(terms.uri['6TP_SM']):
-					comm.callback = self._receive_report
+					comm.callback = self._get_resource
 				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
 					comm.callback = self._receive_deletion
 				elif comm.uri.startswith(terms.uri['6TP_CL']):
-					comm.callback = self._receive_report
+					comm.callback = self._get_resource
 				else:
-					comm.callback = self._receive_report
+					comm.callback = self._get_resource
 			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
 				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
@@ -643,7 +644,7 @@ class Reflector(object):
 		# try:
 		l = []
 		for frame in frames:
-			l.append({"id":frame.name,"cells":frame.Slots})
+			l.append({"id":frame.name,"cells":frame.slots})
 			self.frames[frame.name] = frame
 			self.blacklisted[frame.name] = []
 		try:
@@ -806,23 +807,50 @@ class SchedulerInterface(Reflector):
 	def start(self):
 		super(SchedulerInterface,self)._start()
 		q = interface.BlockQueue()
-		q.push(Command('observe', self.root_id, terms.get_resource_uri('RPL','DAG')))
+		q.push(Command('observe', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
 		q.block()
 		self.communicate(q)
 
 		self.client.start()
 
-	def get_remote_frame(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
+	def get_slotframe(self, node):  # TODO: observe (makes sense when distributed scheduling in place)
+		assert isinstance(node, NodeID)
+		q = interface.BlockQueue()
+		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME')))
+		q.block()
+		return q
+
+	def get_slotframe_by_id(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
 		assert isinstance(slotframe, Slotframe)
-		raise exception.UnsupportedCase('GET command for slotframes is not supported')
-
-	def set_remote_frames(self, node, slotframes):
-		assert isinstance(node, NodeID)
-		assert isinstance(slotframes, Slotframe) #TODO or isinstance(slotframes, array)
 		q = interface.BlockQueue()
-		for item in [slotframes] if isinstance(slotframes, Slotframe) else slotframes:
-			q.push(Command('post', node, terms.uri['6TP_SF'], {'frame': item}))
+		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', ID=slotframe.get_alias_id(node))))
+		q.block()
+		return q
+
+	def get_slotframe_by_size(self, node, size):  # TODO: observe (makes sense when distributed scheduling in place)
+		assert isinstance(node, NodeID)
+		q = interface.BlockQueue()
+		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', SLOTS=size)))
+		q.block()
+		return q
+
+	def post_slotframes(self, node, slotframes):
+		assert isinstance(node, NodeID)
+		assert isinstance(slotframes, Slotframe) or isinstance(slotframes, list)
+		last_id = -1;
+		for name, frame in self.frames.items():
+			tmp = frame.get_alias_id(node)
+			if tmp > last_id:
+				last_id = tmp
+		q = interface.BlockQueue()
+		payload = []
+		for item in slotframes:
+			last_id += 1
+			item.set_alias_id(node,last_id)
+			payload.append({terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']: last_id,
+							terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']: item.slots})
+		q.push(Command('post', node, terms.get_resource_uri('6TOP','SLOTFRAME'), payload))
 		q.block()
 		return q
 

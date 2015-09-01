@@ -17,7 +17,7 @@ class Slotframe(object):
 		self.cell_container.append(c_minimal)
 
 	@property
-	def Slots(self):
+	def slots(self):
 		return self.slots
 
 	def get_alias_id(self, node):
