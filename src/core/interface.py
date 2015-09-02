@@ -26,8 +26,11 @@ class Command(object):
 		return self.id == other.id
 
 	def __copy__(self):
-		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), copy.copy(self.xtra), self.callback)
+		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), self.callback)
 		comm.id = self.id
+		tmp = self.attachment()
+		if isinstance(tmp, dict):
+			comm.attach(**tmp)
 		return comm
 
 	def __str__(self):

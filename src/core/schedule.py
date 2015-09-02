@@ -393,17 +393,22 @@ class Reflector(object):
 		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
-		# Extract from response the remote ID of the installed frame
-		local_fd = payload['fd']
-		# Extract from cache the Slotframe object the fetched ID should belong to
-		old_payload = self.cache[tk]['command'].payload
-		frame = old_payload['frame']
-		# Find, remove and return the cache entry of the command that triggered this response
+		posted_frames = self.cache[tk]['command'].attachment()['frames']
+		posted_payload = self.cache[tk]['command'].payload
+		if isinstance(posted_payload, dict) and len(payload) == 1:
+			posted_payload = [posted_payload]
+		i = 0
+		while i < len(payload):
+			if payload[i] == 1:
+				fd = posted_payload[i][terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]
+				frame = posted_frames[fd]
+				frame.set_alias_id(node_id, fd)
+				# Make sure the local copy of the global slotframe registers the local id returned by responder node
+				self.communicate(self._frame(node_id, frame, fd, posted_payload[i]))
+				# Let user defined actions/commands run as soon as the frame id is registered
+				self.communicate(self.framed(node_id, frame, fd, posted_payload[i]))
+			i += 1
 		cached_entry = self._decache(tk)
-		# Make sure the local copy of the global slotframe registers the local id returned by responder node
-		self.communicate(self._frame(node_id, frame, local_fd, old_payload))
-		# Let user defined actions/commands run as soon as the frame id is registered
-		self.communicate(self.framed(node_id, frame, local_fd, old_payload))
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _receive_cell_id(self, response):
@@ -560,13 +565,13 @@ class Reflector(object):
 		# determines which function will be called regarding the used URI
 		if isinstance(comm, Command):
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) } #id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
-			if comm.payload:
-				if isinstance(comm.payload, dict) and 'frame' in comm.payload:
-					if comm.uri == terms.uri['6TP_SF']:
-						comm.payload = [comm.payload['frame'].slots]
-					elif comm.uri == terms.uri['6TP_CL']:
-						comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
-						del comm.payload['frame']
+			# if comm.payload:
+			# 	if isinstance(comm.payload, dict) and 'frame' in comm.payload:
+			# 		if comm.uri == terms.uri['6TP_SF']:
+			# 			comm.payload = [comm.payload['frame'].slots]
+			# 		elif comm.uri == terms.uri['6TP_CL']:
+			# 			comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
+			# 			del comm.payload['frame']
 			if not comm.callback:
 				if comm.uri.startswith(terms.get_resource_uri('RPL', 'DAG')):
 					comm.callback = self._get_rpl_dag
@@ -856,8 +861,10 @@ class SchedulerInterface(Reflector):
 			info[frame_id] = item
 			payload.append({terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']: frame_id,
 							terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']: item.slots})
+		if len(payload) == 1:
+			payload = payload[0]
 		comm = Command('post', node, terms.get_resource_uri('6TOP','SLOTFRAME'), payload)
-		comm.attach(info)
+		comm.attach(frames=info)
 		q.push(comm)
 		q.block()
 		return q

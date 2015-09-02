@@ -16,9 +16,9 @@ class Slotframe(object):
 		c_minimal = Cell(None, 0, 0, None, None, None, 0, 7)
 		self.cell_container.append(c_minimal)
 
-	@property
-	def slots(self):
-		return self.slots
+	# @property
+	# def slots(self):
+	# 	return self.slots
 
 	def get_alias_id(self, node):
 		if node in self.fds.keys():
