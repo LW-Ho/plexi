@@ -845,12 +845,20 @@ class SchedulerInterface(Reflector):
 				last_id = tmp
 		q = interface.BlockQueue()
 		payload = []
+		info = {}
+		if isinstance(slotframes, Slotframe):
+			slotframes = [slotframes]
 		for item in slotframes:
-			last_id += 1
-			item.set_alias_id(node,last_id)
-			payload.append({terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']: last_id,
+			frame_id = item.get_alias_id(node)
+			if not frame_id:
+				last_id += 1
+				frame_id = last_id
+			info[frame_id] = item
+			payload.append({terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']: frame_id,
 							terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']: item.slots})
-		q.push(Command('post', node, terms.get_resource_uri('6TOP','SLOTFRAME'), payload))
+		comm = Command('post', node, terms.get_resource_uri('6TOP','SLOTFRAME'), payload)
+		comm.attach(info)
+		q.push(comm)
 		q.block()
 		return q
 

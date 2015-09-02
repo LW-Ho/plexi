@@ -19,18 +19,19 @@ class Command(object):
 		self.to = to
 		self.uri = uri
 		self.content = payload
+		self.xtra = None
 		self.callback = callback
 
 	def __eq__(self, other):
 		return self.id == other.id
 
 	def __copy__(self):
-		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), self.callback)
+		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), copy.copy(self.xtra), self.callback)
 		comm.id = self.id
 		return comm
 
 	def __str__(self):
-		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.callback)
+		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.xtra) + ' ' + str(self.callback)
 
 	@property
 	def payload(self):
@@ -41,6 +42,15 @@ class Command(object):
 		if load and "frame" in load and isinstance(load["frame"], str):
 			raise Exception("got you")
 		self.content = load
+
+	def attachment(self):
+		return self.xtra
+
+	def attach(self, **kwargs):
+		if not self.xtra:
+			self.xtra = {}
+		for k,v in kwargs.iteritems():
+			self.xtra[k] = v
 
 	def __eq__(self, other):
 		return self.id == other.id

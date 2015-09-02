@@ -31,6 +31,8 @@ class Monitor(SchedulerInterface):
 	"""
 
 	def start(self):
+		f1 = Slotframe("Broadcast-Frame", 25)
+		self.post_slotframes(self.root_id, f1)
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
 		super(Monitor, self).start()
