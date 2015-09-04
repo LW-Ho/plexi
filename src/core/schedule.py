@@ -572,26 +572,27 @@ class Reflector(object):
 			# 		elif comm.uri == terms.uri['6TP_CL']:
 			# 			comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
 			# 			del comm.payload['frame']
-			if not comm.callback:
+			if not comm.callback: # TODO: what if operation/resource not supported?
 				if comm.uri.startswith(terms.get_resource_uri('RPL', 'DAG')):
-					comm.callback = self._get_rpl_dag
-				elif comm.op == 'post' and comm.uri.startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
-					comm.callback = self._post_6top_slotframe
+					if comm.op == 'get':
+						comm.callback = self._get_rpl_dag
 				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
-					comm.callback = self._get_resource
-				elif comm.op == 'post' and comm.uri == terms.uri['6TP_CL']:
-					comm.callback = self._receive_cell_id
-				elif comm.op == 'delete' and comm.uri == terms.uri['6TP_CL']:
-					comm.callback = None
-				elif comm.uri == terms.uri['6TP_CL']:
-					comm.callback = self._receive_probe
+					if comm.op == 'post':
+						comm.callback = self._post_6top_slotframe
+					elif comm.op == 'get':
+						comm.callback = self._get_resource
+					# elif comm.op == 'delete': TODO: support slotframe deletion
+					# 	comm.callback = self._get_resource
+				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'CELLLIST')):
+					if comm.op == 'post':
+						comm.callback = self._post_link
+					elif comm.op == 'get':
+						comm.callback = self._get_resource
+					# elif comm.op == 'delete': TODO: support celllist deletion
+					# 	comm.callback = self._get_resource
 				elif comm.uri == terms.uri['6TP_SM']:
 					comm.callback = self._receive_probe
 				elif comm.uri.startswith(terms.uri['6TP_SM']):
-					comm.callback = self._get_resource
-				elif comm.uri.startswith(terms.uri['6TP_CL']) and comm.op == 'delete':
-					comm.callback = self._receive_deletion
-				elif comm.uri.startswith(terms.uri['6TP_CL']):
 					comm.callback = self._get_resource
 				else:
 					comm.callback = self._get_resource
@@ -818,7 +819,7 @@ class SchedulerInterface(Reflector):
 
 		self.client.start()
 
-	def get_slotframe(self, node):  # TODO: observe (makes sense when distributed scheduling in place)
+	def get_slotframes(self, node):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
 		q = interface.BlockQueue()
 		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME')))
@@ -869,14 +870,30 @@ class SchedulerInterface(Reflector):
 		q.block()
 		return q
 
-	def get_remote_cell(self, node, cell=None):
+	def get_links(self, node):
+		assert isinstance(node, NodeID)
 		q = interface.BlockQueue()
-		if cell is None:
-			q.push(Command('get', node, terms.uri['6TP_CL']))
-		elif isinstance(cell, (int, long)):
-			q.push(Command('get', node, terms.uri['6TP_CL']+'/'+str(cell)))
-		elif isinstance(cell, Cell) and cell.id:
-			q.push(Command('get', node, terms.uri['6TP_CL']+'/'+str(cell.id)))
+		q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST')))
+		q.block()
+		return q
+
+	def get_link_by_coords(self, node, slotframe, slot, channel):
+		assert isinstance(node, NodeID)
+		assert isinstance(slotframe, Slotframe)
+		q = interface.BlockQueue()
+		# TODO: get link by coordinates
+		q.block()
+		return q
+
+	def get_link_by_id(self, node, link):
+		assert isinstance(node, NodeID)
+		q = interface.BlockQueue()
+		if link is None:
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST')))
+		elif isinstance(link, (int, long)):
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST'), ID=str(link)))
+		elif isinstance(link, Cell) and link.id:
+			q.push(Command('get', node, terms.terms.get_resource_uri('6TOP', 'CELLLIST'), ID=str(link.id)))
 		else:
 			return None
 		q.block()
