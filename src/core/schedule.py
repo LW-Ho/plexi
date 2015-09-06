@@ -899,7 +899,7 @@ class SchedulerInterface(Reflector):
 		q.block()
 		return q
 
-	def set_remote_link(self, slot, channel, slotframe, source, destination, target=None):
+	def post_links(self, slot, channel, slotframe, source, destination, target=None):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
@@ -946,7 +946,13 @@ class SchedulerInterface(Reflector):
 		depth_groups = {}
 		for c in cells:
 			slotframe.cell_container.append(c)
-			comm = Command('post', c.owner, terms.uri['6TP_CL'], {'so':c.slot, 'co':c.channel, 'frame': slotframe, 'lo':c.option, 'lt':c.type})
+			comm = Command('post', c.owner, terms.get_resource_uri('6TOP','CELLLIST'), {
+				terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']:c.slot,
+				terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']:c.channel,
+				terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: slotframe,
+				terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']:c.option,
+				terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']:c.type
+			})
 			depth = self.dodag.get_node_depth(c.owner)
 			if depth not in depth_groups:
 				depth_groups[depth] = [comm]
