@@ -891,9 +891,9 @@ class SchedulerInterface(Reflector):
 		if link is None:
 			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST')))
 		elif isinstance(link, (int, long)):
-			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST'), ID=str(link)))
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(link))))
 		elif isinstance(link, Cell) and link.id:
-			q.push(Command('get', node, terms.terms.get_resource_uri('6TOP', 'CELLLIST'), ID=str(link.id)))
+			q.push(Command('get', node, terms.terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(link.id))))
 		else:
 			return None
 		q.block()

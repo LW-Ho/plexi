@@ -32,7 +32,7 @@ class Monitor(SchedulerInterface):
 
 	def start(self):
 		f1 = Slotframe("Broadcast-Frame", 25)
-		q=self.post_slotframes(self.root_id, f1)
+		q=self.get_link_by_id(self.root_id, 0)
 		self.communicate(q)
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent
