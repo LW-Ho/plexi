@@ -37,9 +37,13 @@ class Communicator(object):
 	def token(self, ticket):
 		return self.tickets[ticket] if ticket in self.tickets else None
 
-	def request(self, to_node, operation, uri, token, callback, payload='', kwargs=None):
+	def request(self, to_node, operation, uri, token, callback, payload, **kwargs):
+		if not payload:
+			payload = ''
 		request = coap.Message(mtype=coap.CON, code=operation if operation != coap.OBSERVE else coap.GET, token=token, payload=payload)
 		request.opt.uri_path = uri.split('/')
+		if 'query' in kwargs and kwargs['query']:
+			request.opt.uri_query = kwargs['query'].split('&')
 		request.remote = (to_node.ip, to_node.port)
 		#request.opt.accept = coap.media_types_rev['application/json']
 		#request.opt.content_format = coap.media_types_rev['application/json']
@@ -59,17 +63,17 @@ class Communicator(object):
 		self.tickets[requester.app_request.token] = token
 		self.start()
 
-	def GET(self, to_node, uri, token, callback):
-		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback)
+	def GET(self, to_node, uri, token, callback, query=None):
+		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback, payload=None, query=query)
 
-	def OBSERVE(self, to_node, uri, token, callback):
-		reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback)
+	def OBSERVE(self, to_node, uri, token, callback, query=None):
+		reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback, payload=None, query=query)
 
 	def POST(self, to_node, uri, payload, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.POST, uri, token, callback, payload)
 
-	def DELETE(self, to_node, uri, token, callback):
-		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback)
+	def DELETE(self, to_node, uri, token, callback, query=None):
+		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback, payload=None, query=query)
 
 	def test_callable(self, response):
 		print(str(self.token(response.token)) + ' = ' + response.remote[0] + ':' + str(response.remote[1]) + ' = ' + response.content)
