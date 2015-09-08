@@ -19,6 +19,7 @@ class Command(object):
 		self.to = to
 		tmp = uri.split('?')
 		self.path = tmp[0]
+		self.query = None
 		if len(tmp) == 2:
 			self.query = tmp[1]
 		self.content = payload
@@ -29,7 +30,7 @@ class Command(object):
 		return self.id == other.id
 
 	def __copy__(self):
-		comm = Command(self.op, self.to, self.path+'?'+self.query, copy.copy(self.payload), self.callback)
+		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), self.callback)
 		comm.id = self.id
 		tmp = self.attachment()
 		if isinstance(tmp, dict):
@@ -37,7 +38,7 @@ class Command(object):
 		return comm
 
 	def __str__(self):
-		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.path) + ' ' + str(self.query) + ' ' + str(self.content) + ' ' + str(self.xtra) + ' ' + str(self.callback)
+		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.xtra) + ' ' + str(self.callback)
 
 	@property
 	def payload(self):
@@ -48,6 +49,10 @@ class Command(object):
 		if load and "frame" in load and isinstance(load["frame"], str):
 			raise Exception("got you")
 		self.content = load
+
+	@property
+	def uri(self):
+		return self.path+'?'+self.query if self.query else self.path
 
 	def attachment(self):
 		return self.xtra

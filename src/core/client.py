@@ -37,7 +37,7 @@ class Communicator(object):
 	def token(self, ticket):
 		return self.tickets[ticket] if ticket in self.tickets else None
 
-	def request(self, to_node, operation, uri, token, callback, payload):
+	def request(self, to_node, operation, uri, token, callback, payload=None):
 		if not payload:
 			payload = ''
 		request = coap.Message(mtype=coap.CON, code=operation if operation != coap.OBSERVE else coap.GET, token=token, payload=payload)
@@ -65,16 +65,16 @@ class Communicator(object):
 		self.start()
 
 	def GET(self, to_node, uri, token, callback):
-		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback, payload=None)
+		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback)
 
 	def OBSERVE(self, to_node, uri, token, callback):
-		reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback, payload=None)
+		reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback)
 
 	def POST(self, to_node, uri, payload, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.POST, uri, token, callback, payload)
 
 	def DELETE(self, to_node, uri, token, callback):
-		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback, payload=None)
+		reactor.callWhenRunning(self.request, to_node, coap.GET, uri, token, callback)
 
 	def test_callable(self, response):
 		print(str(self.token(response.token)) + ' = ' + response.remote[0] + ':' + str(response.remote[1]) + ' = ' + response.content)
