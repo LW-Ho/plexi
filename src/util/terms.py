@@ -77,9 +77,8 @@ resources = {
 	}
 }
 
-def get_resource_uri(*uri,**queries):
+def get_resource_uri(*uri):
 	path = ''
-	parent = None
 	object = resources
 	first_item = 1
 	for rsrc in uri:
@@ -92,17 +91,20 @@ def get_resource_uri(*uri,**queries):
 			object = object[rsrc]
 		else:
 			return None
+	return path
+
+def get_resource_queries(**queries):
+	query = ''
+	parent = None
 	first_item = 1
 	for k,v in queries.iteritems():
-		if first_item == 1:
-			path += '?'
-		else:
-			path += '&'
+		if not first_item:
+			query += '&'
 		first_item = 0
 		if k in object:
-			path += object[k]['LABEL']+"="+str(v)
+			query += object[k]['LABEL']+"="+str(v)
 		elif k in parent:
-			path += parent[k]['LABEL']+"="+str(v)
+			query += parent[k]['LABEL']+"="+str(v)
 		else:
 			return None
-	return path
+	return query

@@ -598,13 +598,13 @@ class Reflector(object):
 					comm.callback = self._get_resource
 			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
-				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
+				self.client.GET(comm.to, comm.uri, comm.id, comm.callback, comm.query)
 			elif comm.op == 'observe':
-				self.client.OBSERVE(comm.to, comm.uri, comm.id, comm.callback)
+				self.client.OBSERVE(comm.to, comm.uri, comm.id, comm.callback, comm.query)
 			elif comm.op == 'post':
 				self.client.POST(comm.to, comm.uri, parser.construct_payload(comm.payload), comm.id, comm.callback)
 			elif comm.op == 'delete':
-				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
+				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback, comm.query)
 
 	def _connect(self, child, parent, old_parent=None):
 		"""
@@ -830,14 +830,14 @@ class SchedulerInterface(Reflector):
 		assert isinstance(node, NodeID)
 		assert isinstance(slotframe, Slotframe)
 		q = interface.BlockQueue()
-		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', ID=slotframe.get_alias_id(node))))
+		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME'), terms.get_resource_queries(ID=slotframe.get_alias_id(node))))
 		q.block()
 		return q
 
 	def get_slotframe_by_size(self, node, size):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
 		q = interface.BlockQueue()
-		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', SLOTS=size)))
+		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME'), terms.get_resource_queries(SLOTS=size)))
 		q.block()
 		return q
 
@@ -864,7 +864,7 @@ class SchedulerInterface(Reflector):
 							terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']: item.slots})
 		if len(payload) == 1:
 			payload = payload[0]
-		comm = Command('post', node, terms.get_resource_uri('6TOP','SLOTFRAME'), payload)
+		comm = Command('post', node, terms.get_resource_uri('6TOP','SLOTFRAME'), None, payload)
 		comm.attach(frames=info)
 		q.push(comm)
 		q.block()
@@ -891,9 +891,9 @@ class SchedulerInterface(Reflector):
 		if link is None:
 			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST')))
 		elif isinstance(link, (int, long)):
-			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(link))))
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST'), terms.get_resource_queries(ID=str(link))))
 		elif isinstance(link, Cell) and link.id:
-			q.push(Command('get', node, terms.terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(link.id))))
+			q.push(Command('get', node, terms.terms.get_resource_uri('6TOP', 'CELLLIST'), terms.get_resource_queries(ID=str(link.id))))
 		else:
 			return None
 		q.block()
@@ -946,7 +946,7 @@ class SchedulerInterface(Reflector):
 		depth_groups = {}
 		for c in cells:
 			slotframe.cell_container.append(c)
-			comm = Command('post', c.owner, terms.get_resource_uri('6TOP','CELLLIST'), {
+			comm = Command('post', c.owner, terms.get_resource_uri('6TOP','CELLLIST'), None, {
 				terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']:c.slot,
 				terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']:c.channel,
 				terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: slotframe,

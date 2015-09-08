@@ -12,12 +12,14 @@ import copy
 
 class Command(object):
 	token = 0
-	def __init__(self, op, to, uri, payload=None, callback=None):
+	def __init__(self, op, to, uri, query=None, payload=None, callback=None):
+		assert not query or isinstance(query, str)
 		self.id = Command.token
 		Command.token += 1
 		self.op = op
 		self.to = to
 		self.uri = uri
+		self.query = query
 		self.content = payload
 		self.xtra = None
 		self.callback = callback
@@ -26,7 +28,7 @@ class Command(object):
 		return self.id == other.id
 
 	def __copy__(self):
-		comm = Command(self.op, self.to, self.uri, copy.copy(self.payload), self.callback)
+		comm = Command(self.op, self.to, self.uri, self.query, copy.copy(self.payload), self.callback)
 		comm.id = self.id
 		tmp = self.attachment()
 		if isinstance(tmp, dict):
@@ -34,7 +36,7 @@ class Command(object):
 		return comm
 
 	def __str__(self):
-		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.content) + ' ' + str(self.xtra) + ' ' + str(self.callback)
+		return str(self.id) + ': ' + self.op + ' ' + str(self.to) + ' ' + str(self.uri) + ' ' + str(self.query) + ' ' + str(self.content) + ' ' + str(self.xtra) + ' ' + str(self.callback)
 
 	@property
 	def payload(self):
@@ -45,6 +47,14 @@ class Command(object):
 		if load and "frame" in load and isinstance(load["frame"], str):
 			raise Exception("got you")
 		self.content = load
+
+	@property
+	def query(self):
+		return self.query
+
+	@payload.setter
+	def query(self, q):
+		self.query = q
 
 	def attachment(self):
 		return self.xtra
