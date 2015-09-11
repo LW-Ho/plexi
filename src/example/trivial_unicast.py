@@ -48,7 +48,7 @@ class TrivialScheduler(SchedulerInterface):
 		# Produce a BlockQueue of commands which install the frame to root
 		q = self.set_remote_frames(self.root_id, f1)
 		# Once frame installed, install a broadcast cell to root on its broadcast frame
-		q.push(self.post_links(1, 0, f1, self.root_id, None, self.root_id))
+		q.push(self.post_link(1, 0, f1, self.root_id, None, self.root_id))
 		# Start sending the commands in q
 		self.communicate(q)
 
@@ -104,12 +104,12 @@ class TrivialScheduler(SchedulerInterface):
 				continue
 			if c.tx == parent or c.tx in self.dodag.get_children(child):
 				# Note that post_links modifies the cell_container you are also reading in this loop
-				bcq.push(self.post_links(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx, None, child))
+				bcq.push(self.post_link(c.slot, c.channel, self.frames["Broadcast-Frame"], c.tx, None, child))
 
 		# Schedule a broadcast cell for the child, if there is space in the Broadcast-Frame
 		bso, bco = self.schedule(child, None, self.frames["Broadcast-Frame"])
 		if bso is not None and bco is not None:
-			bcq.push(self.post_links(bso, bco, self.frames["Broadcast-Frame"], child, None))
+			bcq.push(self.post_link(bso, bco, self.frames["Broadcast-Frame"], child, None))
 		else:
 			logg.critical("INSUFFICIENT BROADCAST SLOTS: new node " + str(child) + " cannot broadcast")
 
@@ -125,7 +125,7 @@ class TrivialScheduler(SchedulerInterface):
 			while cm < 4:
 				uso, uco = self.schedule(neighbor, child, self.frames["Unicast-Frame"])
 				if uso is not None and uco is not None:
-					ucq.push(self.post_links((uso + 3*cm), uco, self.frames["Unicast-Frame"], neighbor, child))
+					ucq.push(self.post_link((uso + 3*cm), uco, self.frames["Unicast-Frame"], neighbor, child))
 				else:
 					logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot receive from " + str(neighbor))
 				cm = cm + 1
@@ -133,7 +133,7 @@ class TrivialScheduler(SchedulerInterface):
 			# schedule the child->neighbor link
 			uso, uco = self.schedule(child, neighbor, self.frames["Unicast-Frame"])
 			if uso is not None and uco is not None:
-				ucq.push(self.post_links(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
+				ucq.push(self.post_link(uso, uco, self.frames["Unicast-Frame"], child, neighbor))
 			else:
 				logg.critical("INSUFFICIENT UNICAST SLOTS: new node " + str(child) + " cannot unicast to " + str(neighbor))
 

@@ -27,26 +27,32 @@ def query_to_dictionary(query):
 def construct_payload(content):
 	if isinstance(content, dict):
 		str_payload = "{"
-		if "so" in content:
-			str_payload += '"so":' + str(content["so"])
-		if "co" in content:
-			str_payload += "," + '"co":' + str(content["co"])
-		if "fd" in content:
-			str_payload += "," + '"fd":' + str(content["fd"])
-		if "frame" in content:
-			str_payload += '"frame":' + str(content["frame"])
-		if "lo" in content:
-			str_payload += "," + '"lo":' + str(content["lo"])
-		if "lt" in content:
-			str_payload += "," + '"lt":' + str(content["lt"])
-		if "na" in content:
-			str_payload += "," + '"na":"' + content["na"] + '"'
-		if "mt" in content:
-			str_payload += '"mt":' + str(content["mt"])
-		if "wi" in content:
-			str_payload += "," + '"wi":' + str(content["wi"])
-		if "ns" in content:
-			str_payload += '"ns":' + str(content["ns"])
+		first_item = 1
+		for k, v in content.items():
+			if not first_item:
+				str_payload += ','
+			str_payload += '"'+str(k)+'":'+str(v)
+			first_item = 0
+		# if "so" in content:
+		# 	str_payload += '"so":' + str(content["so"])
+		# if "co" in content:
+		# 	str_payload += "," + '"co":' + str(content["co"])
+		# if "fd" in content:
+		# 	str_payload += "," + '"fd":' + str(content["fd"])
+		# if "frame" in content:
+		# 	str_payload += '"frame":' + str(content["frame"])
+		# if "lo" in content:
+		# 	str_payload += "," + '"lo":' + str(content["lo"])
+		# if "lt" in content:
+		# 	str_payload += "," + '"lt":' + str(content["lt"])
+		# if "na" in content:
+		# 	str_payload += "," + '"na":"' + content["na"] + '"'
+		# if "mt" in content:
+		# 	str_payload += '"mt":' + str(content["mt"])
+		# if "wi" in content:
+		# 	str_payload += "," + '"wi":' + str(content["wi"])
+		# if "ns" in content:
+		# 	str_payload += '"ns":' + str(content["ns"])
 		return str_payload + "}"
 	elif isinstance(content, list):
 		return str(content)

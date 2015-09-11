@@ -411,7 +411,7 @@ class Reflector(object):
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
-	def _receive_cell_id(self, response):
+	def _post_6top_link(self, response):
 		"""
 		Callback for cell resource. Triggered upon reception of a reply on the POST 6t/6/cl command. Records the cell
 		identifier returned by the responder.
@@ -437,20 +437,29 @@ class Reflector(object):
 		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
-		# Pick the returned identifier of the new cell
-		cell_cd = payload['cd']
 		# Extract from cache the payload of te command that triggered this response
 		old_payload = self.cache[tk]['command'].payload
-		# Extract from cache the Slotframe object the new cell should belong to
-		frame = old_payload['frame']
-		# Extract from cache the channeloffset and slotoffset of the cell
-		so = old_payload['so']
-		co = old_payload['co']
+		attached_frame = self.cache[tk]['command'].attachment('frame')
+		# If successful installation of link, insert the link into local link container
+		if isinstance(payload, list):
+			for i in payload:
+				if isinstance(i, (int, long)):
+					success = i > 0
+					if success:
+						so = old_payload[terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']]
+						co = old_payload[terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']]
+						lo = old_payload[terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']]
+						lt = old_payload[terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']]
+						tx = self.cache[tk]['command'].attachment('tx')
+						rx = self.cache[tk]['command'].attachment('rx')
+						self.communicate(self._cell(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
+						self.communicate(self.celled(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
+					else:
+						logg.warning("Node " + str(response.remote[0]) + " could not set the link " + str(i)) # TODO: properly handle and pass control to user
+				else:
+					logg.critical("Node " + str(response.remote[0]) + " replied on a link post with invalid payload format i.e. " + str(i) + ". Integer was expected.")
 		# Remove cached command that triggered this response
 		cached_entry = self._decache(tk)
-		# Let this class or user-defined classes define further actions or commands to be triggered by this response
-		self.communicate(self._cell(node_id, so, co, frame, cell_cd, old_payload))
-		self.communicate(self.celled(node_id, so, co, frame, cell_cd, old_payload))
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _receive_deletion(self, response):
@@ -564,14 +573,6 @@ class Reflector(object):
 		"""
 		# determines which function will be called regarding the used URI
 		if isinstance(comm, Command):
-			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) } #id': comm.id, 'op': comm.op, 'to': comm.to, 'uri': comm.uri}
-			# if comm.payload:
-			# 	if isinstance(comm.payload, dict) and 'frame' in comm.payload:
-			# 		if comm.uri == terms.uri['6TP_SF']:
-			# 			comm.payload = [comm.payload['frame'].slots]
-			# 		elif comm.uri == terms.uri['6TP_CL']:
-			# 			comm.payload['fd'] = comm.payload['frame'].get_alias_id(comm.to)
-			# 			del comm.payload['frame']
 			if not comm.callback: # TODO: what if operation/resource not supported?
 				if comm.uri.startswith(terms.get_resource_uri('RPL', 'DAG')):
 					if comm.op == 'get':
@@ -585,7 +586,10 @@ class Reflector(object):
 					# 	comm.callback = self._get_resource
 				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'CELLLIST')):
 					if comm.op == 'post':
-						comm.callback = self._post_link
+						comm.callback = self._post_6top_link
+						if not isinstance(comm.payload[terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']], (long, int)):
+							logg.warning("Link " + str(comm.payload) + " to " + str(comm.to) + " was not posted. Slotframe not known to node")
+							return
 					elif comm.op == 'get':
 						comm.callback = self._get_resource
 					# elif comm.op == 'delete': TODO: support celllist deletion
@@ -596,6 +600,7 @@ class Reflector(object):
 					comm.callback = self._get_resource
 				else:
 					comm.callback = self._get_resource
+			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) }
 			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
 				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
@@ -642,8 +647,8 @@ class Reflector(object):
 
 	def _frame(self, who, frame, remote_fd, old_payload):
 	# handles the actions performed when a node receives his slotframes
-		logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
 		frame.set_alias_id(who, remote_fd)
+		logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
 		return None
 
 	def _register_frames(self, frames):
@@ -658,14 +663,14 @@ class Reflector(object):
 		except:
 			pass
 
-	def _cell(self, who, slotoffs, channeloffs, frame, remote_cell_id, old_payload):
+	def _cell(self, who, tx, rx, slotoffs, channeloffs, frame, linkoption, linktype, old_payload):
 		# handles the actions performed when a node receives his cell/s
-		#get the cell from the frame object and fill in the remote cell id
-		frame.set_remote_cell_id(who,channeloffs,slotoffs,remote_cell_id)
-		logg.info(str(who) + " installed new cell (id=" + str(remote_cell_id) + ") in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+		# add the cell to the appropriate cell container
+		frame.cell_container.append(Cell(who, slotoffs, channeloffs, tx, rx, frame.get_alias_id(who), linktype, linkoption))
+		logg.info(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		#try sending this info to the visualizer
 		try:
-			self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame),"id": str(remote_cell_id), "status" : 1}]))
+			self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame), "status" : 1}]))
 		except:
 			pass
 		return None
@@ -795,7 +800,7 @@ class Reflector(object):
 	def framed(self, who, local_name, remote_alias, old_payload):
 		pass
 
-	def celled(self, who, slotoffs, channeloffs, frame_name, remote_cell_id, old_payload):
+	def celled(self, who, tx, rx, slotoffs, channeloffs, frame, linkoption, linktype, old_payload):
 		pass
 
 	def deleted(self, who, resource, info):
@@ -826,16 +831,26 @@ class SchedulerInterface(Reflector):
 		q.block()
 		return q
 
-	def get_slotframe_by_id(self, node, slotframe):  # TODO: observe (makes sense when distributed scheduling in place)
+	def get_slotframe_by_id(self, node, slotframe):
 		assert isinstance(node, NodeID)
-		assert isinstance(slotframe, Slotframe)
-		q = interface.BlockQueue()
-		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', ID=slotframe.get_alias_id(node))))
-		q.block()
-		return q
+		if isinstance(slotframe, Slotframe):
+			alias = slotframe.get_alias_id(node)
+			if alias:
+				q = interface.BlockQueue()
+				q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', ID=alias)))
+				q.block()
+				return q
+		elif isinstance(slotframe, (int, long)):
+			q = interface.BlockQueue()
+			q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', ID=slotframe)))
+			q.block()
+			return q
+		logg.warning('Slotframe '+str(slotframe)+' is not a valid slotframe ID. Operation is skipped.')
+		return None
 
-	def get_slotframe_by_size(self, node, size):  # TODO: observe (makes sense when distributed scheduling in place)
+	def get_slotframe_by_size(self, node, size):
 		assert isinstance(node, NodeID)
+		assert isinstance(size, (int, long))
 		q = interface.BlockQueue()
 		q.push(Command('get', node, terms.get_resource_uri('6TOP','SLOTFRAME', SLOTS=size)))
 		q.block()
@@ -879,11 +894,18 @@ class SchedulerInterface(Reflector):
 
 	def get_link_by_coords(self, node, slotframe, slot, channel):
 		assert isinstance(node, NodeID)
-		assert isinstance(slotframe, Slotframe)
 		q = interface.BlockQueue()
-		# TODO: get link by coordinates
-		q.block()
-		return q
+		if isinstance(slotframe, (int, long)):
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=slotframe, SLOTOFFSET=slot, CHANNELOFFSET=channel)))
+			q.block()
+			return q
+		elif isinstance(slotframe, Slotframe):
+			alias = slotframe.get_alias_id(node)
+			if alias:
+				q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=alias, SLOTOFFSET=slot, CHANNELOFFSET=channel)))
+				q.block()
+				return q
+		return None
 
 	def get_link_by_id(self, node, link):
 		assert isinstance(node, NodeID)
@@ -899,7 +921,22 @@ class SchedulerInterface(Reflector):
 		q.block()
 		return q
 
-	def post_links(self, slot, channel, slotframe, source, destination, target=None):
+	def get_link_by_slotframe(self, node, slotframe):
+		assert isinstance(node, NodeID)
+		q = interface.BlockQueue()
+		if isinstance(slotframe, (int, long)):
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=slotframe)))
+			q.block()
+			return q
+		elif isinstance(slotframe, Slotframe):
+			alias = slotframe.get_alias_id(node)
+			if alias:
+				q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=alias)))
+				q.block()
+				return q
+		return None
+
+	def post_link(self, slot, channel, slotframe, source, destination, target=None):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
@@ -945,14 +982,16 @@ class SchedulerInterface(Reflector):
 
 		depth_groups = {}
 		for c in cells:
-			slotframe.cell_container.append(c)
-			comm = Command('post', c.owner, terms.get_resource_uri('6TOP','CELLLIST'), None, {
+			comm = Command('post', c.owner, terms.get_resource_uri('6TOP','CELLLIST'), {
 				terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']:c.slot,
 				terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']:c.channel,
-				terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: slotframe,
+				terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: slotframe.get_alias_id(c.owner),
 				terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']:c.option,
 				terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']:c.type
 			})
+			comm.attach(frame = slotframe)
+			comm.attach(tx = c.tx)
+			comm.attach(rx = c.rx)
 			depth = self.dodag.get_node_depth(c.owner)
 			if depth not in depth_groups:
 				depth_groups[depth] = [comm]

@@ -54,8 +54,8 @@ class Command(object):
 	def uri(self):
 		return self.path+'?'+self.query if self.query else self.path
 
-	def attachment(self):
-		return self.xtra
+	def attachment(self, key=None):
+		return self.xtra[key] if key and key in self.xtra else self.xtra
 
 	def attach(self, **kwargs):
 		if not self.xtra:
