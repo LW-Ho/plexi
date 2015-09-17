@@ -13,8 +13,6 @@ class Slotframe(object):
 		self.slots = slots			# Size of this slotframe in number of slots
 		self.name = name			# SchedulerInterface-assigned reference name of this slotframe
 		self.fds = {}   			# Node-assigned ids of this slotframe in (key : value) format --> (node : sf_id)
-		c_minimal = Cell(None, 0, 0, None, None, None, 0, 7)
-		self.cell_container.append(c_minimal)
 
 	# @property
 	# def slots(self):
@@ -27,6 +25,28 @@ class Slotframe(object):
 
 	def set_alias_id(self, node, id):
 		self.fds[node] = id
+
+	def get_link_by_coords(self, slot, channel, owner):
+		links = []
+		for i in self.cell_container:
+			if (i.slot == slot if slot else True) and (i.channel == channel if channel else True) and (i.owner == owner if owner else True):
+				links.append(i)
+		return links
+
+	def add_link(self, link):
+		if self.get_link_by_coords(link.slot, None, link.owner):
+			return False
+		same_cell_links = self.get_link_by_coords(link.slot, link.channel, None)
+		if not same_cell_links:
+			self.cell_container.append(link)
+			return True
+		else:
+			for l in same_cell_links:
+				if link.option & 1 and l.option & 1 and (not link.option & 3 or not l.option & 3):
+					return False
+		return True
+
+
 
 	def get_cells_similar_to(self, **kwargs):
 		matching_cells = []
@@ -81,16 +101,15 @@ class Slotframe(object):
 		return self.name
 
 class Cell(object):
-	def __init__(self, node, so, co, tx, rx, fd, lt, lo):
+	def __init__(self, node, so, co, fd, lt, lo, tna):
 		self._cell_id = None		# Cel ID as set by the owner
 		self._owner = node		# The node to which this cell belongs to
 		self._slotframe_id = fd		# The local frame id (that of the owner), the cell belongs to
 		self._channel = co		# Channel offset
 		self._slot = so			# Slot offset
-		self._tx_node = tx
-		self._rx_node = rx
 		self._link_type = lt
 		self._link_option = lo 		# For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
+		self._target = tna
 		#self.pending = False # TODO: is it needed?
 
 	@property
@@ -134,20 +153,12 @@ class Cell(object):
 		self._slot = slot_offset
 
 	@property
-	def tx(self):
-		return self._tx_node
+	def tna(self):
+		return self._target
 
-	@tx.setter
-	def tx(self, tx_node):
-		self._tx_node = tx_node
-
-	@property
-	def rx(self):
-		return self._rx_node
-
-	@rx.setter
-	def rx(self, rx_node):
-		self._rx_node = rx_node
+	@tna.setter
+	def tna(self, node):
+		self._target = node
 
 	@property
 	def type(self):
@@ -168,6 +179,6 @@ class Cell(object):
 	def __str__(self):
 		ownership = self.owner+'/'+self.slotframe+'/'+self.id
 		coordinates = '['+self.slot+','+self.channel+']'
-		link = self.tx+'->'+(self.rx if self.rx else 'ALL')
+		#link = self.tx+'->'+(self.rx if self.rx else 'ALL')
 		properties = '{'+self.type+','+self.option+'}'
-		return ownership+':'+coordinates+':'+link+':'+properties
+		return ownership+':'+coordinates+':'+':'+properties

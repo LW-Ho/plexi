@@ -556,9 +556,10 @@ class Reflector(object):
 		logg.debug("probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
 		payload = json.loads(clean_payload)
 		###################
+		uri = cache_entry['command'].uri
+		self.communicate(self._report(node_id, uri, payload))
+		self.communicate(self.reported(node_id, uri, payload))
 		cached_entry = self._decache(tk)
-		self.communicate(self._report(node_id, cache_entry['command'].uri, payload))
-		self.communicate(self.reported(node_id, cache_entry['command'].uri, payload))
 		self._touch_session(cached_entry['command'], session_id)
 
 	def _push_command(self, comm, session):
@@ -575,12 +576,25 @@ class Reflector(object):
 		if isinstance(comm, Command):
 			if not comm.callback: # TODO: what if operation/resource not supported?
 				if comm.uri.startswith(terms.get_resource_uri('RPL', 'DAG')):
-					if comm.op == 'get':
+					if comm.op == 'get' or comm.op == 'observe':
 						comm.callback = self._get_rpl_dag
 				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
 					if comm.op == 'post':
+						for f in comm.payload:
+							to_be_transferred_id = f[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]
+							slotframes = comm.attachment('frames')
+							current_frame_id = slotframes[to_be_transferred_id].get_alias_id(comm.to)
+							if current_frame_id is None:
+								logg.warning("Posting frame to " + str(comm.to) + " FAILED >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload) + " ** INCORRECT SLOTFRAME ID **")
+								return
+							elif current_frame_id != to_be_transferred_id:
+								f[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']] = current_frame_id
+								slotframe = slotframes[to_be_transferred_id]
+								del slotframes[to_be_transferred_id]
+								slotframes[current_frame_id] = slotframe
+								comm.attach(frames=slotframes)
 						comm.callback = self._post_6top_slotframe
-					elif comm.op == 'get':
+					elif comm.op == 'get' or comm.op == 'observe':
 						comm.callback = self._get_resource
 					# elif comm.op == 'delete': TODO: support slotframe deletion
 					# 	comm.callback = self._get_resource
@@ -590,7 +604,7 @@ class Reflector(object):
 						if not isinstance(comm.payload[terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']], (long, int)):
 							logg.warning("Link " + str(comm.payload) + " to " + str(comm.to) + " was not posted. Slotframe not known to node")
 							return
-					elif comm.op == 'get':
+					elif comm.op == 'get' or comm.op == 'observe':
 						comm.callback = self._get_resource
 					# elif comm.op == 'delete': TODO: support celllist deletion
 					# 	comm.callback = self._get_resource
@@ -620,7 +634,14 @@ class Reflector(object):
 
 		q = interface.BlockQueue()
 		# q.push(Command('observe', child, terms.uri['RPL_OL']))
-		q.push(Command('observe', child, terms.uri['RPL_DODAG']))
+		q.push(Command('observe', child, terms.get_resource_uri('RPL', 'DAG')))
+		rpl_dag_comm = Command('get', child, terms.get_resource_uri('6TOP', 'SLOTFRAME'))
+		rpl_dag_comm.attach(intent='replicate')
+		q.push(rpl_dag_comm)
+		q.block()
+		celllist_comm = Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST'))
+		celllist_comm.attach(intent='replicate')
+		q.push(celllist_comm)
 		q.block()
 		return q
 
@@ -647,8 +668,11 @@ class Reflector(object):
 
 	def _frame(self, who, frame, remote_fd, old_payload):
 	# handles the actions performed when a node receives his slotframes
-		frame.set_alias_id(who, remote_fd)
-		logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
+		if frame and isinstance(frame, Slotframe):
+			frame.set_alias_id(who, remote_fd)
+			logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
+		else:
+			logg.warning(str(who) + " tried to install an invalid frame: " + str(frame))
 		return None
 
 	def _register_frames(self, frames):
@@ -663,10 +687,10 @@ class Reflector(object):
 		except:
 			pass
 
-	def _cell(self, who, tx, rx, slotoffs, channeloffs, frame, linkoption, linktype, old_payload):
+	def _cell(self, who, slotoffs, channeloffs, frame, linkoption, linktype, target, old_payload):
 		# handles the actions performed when a node receives his cell/s
 		# add the cell to the appropriate cell container
-		frame.cell_container.append(Cell(who, slotoffs, channeloffs, tx, rx, frame.get_alias_id(who), linktype, linkoption))
+		frame.cell_container.append(Cell(who, slotoffs, channeloffs, frame.get_alias_id(who), linktype, linkoption, target))
 		logg.info(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		#try sending this info to the visualizer
 		try:
@@ -746,10 +770,41 @@ class Reflector(object):
 
 	def _report(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		if str(resource) == terms.get_resource_uri('6TOP', 'SLOTFRAME'):
+			payload = copy.copy(info)
+			for local_frame in self.frames.itervalues():
+				i = 0
+				for frame in payload:
+					if frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']] == local_frame.slots:
+						if local_frame.get_alias_id(who) is None:
+							self._frame(who, local_frame, frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']], info)
+							payload.pop(i)
+							break
+						elif local_frame.get_alias_id(who) == frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]:
+							payload.pop(i)
+							break
+					i += 1
+			for remaining_frame in payload:
+				frame = Slotframe(who.eui_64_ip+':'+str(remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]),remaining_frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']])
+				frame.set_alias_id(who, remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']])
+				self.frames[frame.name] = frame
+		elif str(resource) == terms.get_resource_uri('6TOP', 'CELLLIST'):
+			payload = copy.copy(info)
+			for link in payload:
+				frame = link[terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']]
+				slot = link[terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']]
+				channel = link[terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']]
+				option = link[terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']]
+				type = link[terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']]
+				target = NodeID(link[terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL']]) if terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL'] in link else None
+				for f in self.frames.values():
+					if f.get_alias_id(who) == frame:
+						retrieved_link = Cell(who, slot, channel, frame, type, option, target)
+						f.add_link(retrieved_link)
 		return None
 
 	def _delete(self, who, resource, info):
-		logg.info('Deletion confirmed at ' + str(who) + " on " + str(resource) + ' : ' + str(info))
+		logg.info('Deletion confirmed at ' + (str(who) + " on " + str(resource) + ' : ' + str(info)))
 		return None
 
 	def communicate(self, assembly):
@@ -818,8 +873,12 @@ class SchedulerInterface(Reflector):
 	def start(self):
 		super(SchedulerInterface,self)._start()
 		q = interface.BlockQueue()
-		q.push(Command('observe', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
+		q.push(Command('get', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
+		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
 		q.block()
+		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'CELLLIST')))
+		q.block()
+
 		self.communicate(q)
 
 		self.client.start()

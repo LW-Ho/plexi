@@ -32,12 +32,22 @@ class Monitor(SchedulerInterface):
 
 	def start(self):
 		f=Slotframe('test_drame',101)
-		f.set_alias_id(self.root_id,4)
-		q=self.post_link(5,6,f,self.root_id, None)
+		# f.set_alias_id(self.root_id,4)
+		# q=self.post_link(5,6,f,self.root_id, None)
+		# q.block()
+		# q.push(self.get_link_by_slotframe(self.root_id, f))
+		# q.push(self.get_link_by_coords(self.root_id, f, 5, 6))
+		# q.push(self.get_slotframes(self.root_id))
+		q = self.get_slotframes(self.root_id)
+		q.block()
+		q.push(self.get_slotframe_by_id(self.root_id, 0))
+		q.push(self.get_slotframe_by_id(self.root_id, 0))
+		q.block()
+		q.push(self.post_slotframes(self.root_id, f))
+		q.block()
+		q.push(self.get_slotframe_by_size(self.root_id, 101))
 		q.block()
 		q.push(self.get_link_by_slotframe(self.root_id, f))
-		q.push(self.get_link_by_coords(self.root_id, f, 5, 6))
-		q.push(self.get_slotframes(self.root_id))
 		self.communicate(q)
 		# ALWAYS include this at the end of a scheduler's start() method
 		# The twisted.reactor should be run after there is at least one message to be sent

@@ -58,3 +58,6 @@ class NodeID(object):
 		parts = self.eui_64_ip.split(':')
 		parts = parts[len(parts)-2 : len(parts)]
 		return parts[0] + ':' + parts[1]
+
+	def is_broadcast(self):
+		return self.prefix+'fff:ffff:ff:ffff' == self.ip
