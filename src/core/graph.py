@@ -41,7 +41,7 @@ class DoDAG(object):
 		self.root_attrs = {'r':1.0, 'g':0.0, 'b':0.0}
 		self.router_attrs = {'r':0.0, 'g':1.0, 'b':0.0}
 		self.leaf_attrs = {'r':0.0, 'g':0.0, 'b':1.0}
-		self.attach_node(root)
+		# self.attach_node(root)
 
 	#CHANGED BY FRANK
 

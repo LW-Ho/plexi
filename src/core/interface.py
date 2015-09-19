@@ -55,6 +55,8 @@ class Command(object):
 		return self.path+'?'+self.query if self.query else self.path
 
 	def attachment(self, key=None):
+		if self.xtra is None:
+			return None
 		if key and key in self.xtra:
 			return self.xtra[key]
 		elif key and key not in self.xtra:

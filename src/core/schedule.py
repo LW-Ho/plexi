@@ -25,6 +25,7 @@ from twisted.internet import task
 import socket
 import time
 from sets import Set
+import re
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -79,6 +80,7 @@ class Reflector(object):
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.cache = {}
 		self.sessions = {}
+		self.start_commands = []
 		self.count_sessions = 0
 		#nodes who are temporary lost from the network are stored in here
 		#this could be either a rewiring or a true disconnect
@@ -115,6 +117,12 @@ class Reflector(object):
 		"""
 		l = task.LoopingCall(self._TimeTick)
 		l.start(1.0)
+		comms = self.start_commands
+		self.start_commands = None
+		for comm in reversed(comms):
+			self.communicate(comm)
+
+		self.client.start()
 
 
 	def _decache(self, token):
@@ -142,7 +150,6 @@ class Reflector(object):
 		:param assembly: a stack of blocks of commands to be sent to the network nodes
 		:type assembly: BlockQueue
 		"""
-
 		if assembly and len(assembly) > 0:
 			self.count_sessions += 1
 			# Register the BlockQueue to the list of sessions
@@ -153,7 +160,7 @@ class Reflector(object):
 				# Transmit each command
 				self._push_command(comm, self.count_sessions)
 				if self.count_sessions not in self.sessions or len(self.sessions[self.count_sessions]) == 0:
-					break # TODO: a bit confused of the use of this if statement... will check
+					break
 				comm = self.sessions[self.count_sessions].pop()
 
 	def _TimeTick(self):
@@ -341,6 +348,9 @@ class Reflector(object):
 		session_id = self.cache[tk]["session"]
 		#check if the response is valid
 		node_id = NodeID(response.remote[0], response.remote[1])
+		if self.dodag.attach_node(node_id):
+			self._connect(node_id)
+			self.connected(node_id)
 		if response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			cached_entry = self._decache(tk)
@@ -349,17 +359,21 @@ class Reflector(object):
 
 		#report to the logger
 		logg.debug("Observed rpl/dag from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
-		#json parse the payload and decache the token
-		payload = json.loads(parser.clean_payload(response.payload))
-		cached_entry = self._decache(tk)
-		#pass the seperate pieces of information to their functions
-		if cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','PARENT')):
-			self._observe_rpl_parent(payload, node_id)
-		elif cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','CHILD')):
-			self._observe_rpl_children(payload, node_id)
-		else:
-			self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
-			self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
+		try:
+			#json parse the payload and decache the token
+			payload = json.loads(parser.clean_payload(response.payload))
+			cached_entry = self._decache(tk)
+			#pass the seperate pieces of information to their functions
+			if cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','PARENT')):
+				self._observe_rpl_parent(payload, node_id)
+			elif cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','CHILD')):
+				self._observe_rpl_children(payload, node_id)
+			else:
+				self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
+				self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
+		except ValueError as ve:
+			logg.critical(ve.message+'. Command is skipped')
+
 		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
 		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
 		self._touch_session(cached_entry['command'], session_id)
@@ -391,23 +405,26 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		clean_payload = parser.clean_payload(response.payload)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a slotframe post with " + clean_payload + " i.e. MID:" + str(response.mid))
-		payload = json.loads(clean_payload)
-		###################
-		posted_frames = self.cache[tk]['command'].attachment()['frames']
-		posted_payload = self.cache[tk]['command'].payload
-		if isinstance(posted_payload, dict) and len(payload) == 1:
-			posted_payload = [posted_payload]
-		i = 0
-		while i < len(payload):
-			if payload[i] == 1:
+		try:
+			payload = json.loads(clean_payload)
+			###################
+			posted_frames = self.cache[tk]['command'].attachment()['frames']
+			posted_payload = self.cache[tk]['command'].payload
+			if isinstance(posted_payload, dict) and len(payload) == 1:
+				posted_payload = [posted_payload]
+			i = 0
+			while i < len(payload):
 				fd = posted_payload[i][terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]
 				frame = posted_frames[fd]
-				frame.set_alias_id(node_id, fd)
-				# Make sure the local copy of the global slotframe registers the local id returned by responder node
-				self.communicate(self._frame(node_id, frame, fd, posted_payload[i]))
+				if payload[i] == 1:
+					# Make sure the local copy of the global slotframe registers the local id returned by responder node
+					self.communicate(self._frame(node_id, frame, fd, posted_payload[i]))
 				# Let user defined actions/commands run as soon as the frame id is registered
-				self.communicate(self.framed(node_id, frame, fd, posted_payload[i]))
-			i += 1
+				self.communicate(self.framed(node_id, frame, fd if payload[i] == 1 else None, posted_payload[i]))
+				i += 1
+		except ValueError as ve:
+			logg.critical(ve.message+'. Command is skipped')
+			self.communicate(self.framed(node_id, None, None, self.cache[tk]['command'].payload))
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
@@ -435,29 +452,36 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		clean_payload = parser.clean_payload(response.payload)
 		logg.debug("Node " + str(response.remote[0]) + " replied on a cell post with " + clean_payload + " i.e. MID:" + str(response.mid))
-		payload = json.loads(clean_payload)
-		###################
-		# Extract from cache the payload of te command that triggered this response
-		old_payload = self.cache[tk]['command'].payload
-		attached_frame = self.cache[tk]['command'].attachment('frame')
-		# If successful installation of link, insert the link into local link container
-		if isinstance(payload, list):
-			for i in payload:
-				if isinstance(i, (int, long)):
-					success = i > 0
-					if success:
+		try:
+			payload = json.loads(clean_payload)
+			###################
+			# Extract from cache the payload of te command that triggered this response
+			old_payload = self.cache[tk]['command'].payload
+			attached_frame = self.cache[tk]['command'].attachment('frame')
+			# If successful installation of link, insert the link into local link container
+			if isinstance(payload, list):
+				for i in payload:
+					if isinstance(i, (int, long)):
+						success = i > 0
 						so = old_payload[terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']]
 						co = old_payload[terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']]
 						lo = old_payload[terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']]
 						lt = old_payload[terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']]
 						tx = self.cache[tk]['command'].attachment('tx')
 						rx = self.cache[tk]['command'].attachment('rx')
-						self.communicate(self._cell(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
-						self.communicate(self.celled(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
+						if success:
+							self.communicate(self._cell(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
+							self.communicate(self.celled(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
+						else:
+							logg.warning("Node " + str(response.remote[0]) + " could not set the link " + str(i))
+							self.communicate(self.celled(node_id, tx, rx, so, co, attached_frame, None, None, old_payload))
 					else:
-						logg.warning("Node " + str(response.remote[0]) + " could not set the link " + str(i)) # TODO: properly handle and pass control to user
-				else:
-					logg.critical("Node " + str(response.remote[0]) + " replied on a link post with invalid payload format i.e. " + str(i) + ". Integer was expected.")
+						logg.critical("Node " + str(response.remote[0]) + " replied on a link post with invalid payload format i.e. " + str(i) + ". Integer was expected.")
+						self.communicate(self.celled(node_id, None, None, None, None, None, None, None, old_payload))
+		except ValueError as ve:
+			logg.critical(ve.message+'. Command is skipped')
+			self.communicate(self.celled(node_id, None, None, None, None, None, None, None, old_payload))
+
 		# Remove cached command that triggered this response
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
@@ -486,7 +510,6 @@ class Reflector(object):
 		self.communicate(self._delete(node_id, cache_entry['command'].uri, clean_payload))
 		self.communicate(self.deleted(node_id, cache_entry['command'].uri, clean_payload))
 		self._touch_session(cached_entry['command'], session_id)
-
 
 	def _receive_probe(self, response):
 		"""
@@ -554,11 +577,14 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		clean_payload = parser.clean_payload(response.payload)
 		logg.debug("probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
-		payload = json.loads(clean_payload)
-		###################
 		uri = cache_entry['command'].uri
-		self.communicate(self._report(node_id, uri, payload))
-		self.communicate(self.reported(node_id, uri, payload))
+		try:
+			payload = json.loads(clean_payload)
+			self.communicate(self._report(node_id, uri, payload))
+			self.communicate(self.reported(node_id, uri, payload))
+		except ValueError as ve:
+			logg.critical(ve.message+'. Command is skipped')
+			self.communicate(self.reported(node_id, uri, None))
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
@@ -580,14 +606,14 @@ class Reflector(object):
 						comm.callback = self._get_rpl_dag
 				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
 					if comm.op == 'post':
-						for f in comm.payload:
+						for f in comm.payload if isinstance(comm.payload, list) else [comm.payload]:
 							to_be_transferred_id = f[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]
 							slotframes = comm.attachment('frames')
 							current_frame_id = slotframes[to_be_transferred_id].get_alias_id(comm.to)
-							if current_frame_id is None:
+							if current_frame_id is None and to_be_transferred_id is None:
 								logg.warning("Posting frame to " + str(comm.to) + " FAILED >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload) + " ** INCORRECT SLOTFRAME ID **")
 								return
-							elif current_frame_id != to_be_transferred_id:
+							elif current_frame_id is not None and current_frame_id != to_be_transferred_id:
 								f[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']] = current_frame_id
 								slotframe = slotframes[to_be_transferred_id]
 								del slotframes[to_be_transferred_id]
@@ -605,6 +631,27 @@ class Reflector(object):
 							logg.warning("Link " + str(comm.payload) + " to " + str(comm.to) + " was not posted. Slotframe not known to node")
 							return
 					elif comm.op == 'get' or comm.op == 'observe':
+						slotframe = comm.attachment('frame')
+						if isinstance(slotframe, Slotframe):
+							queries = re.split('&|=', comm.query)
+							comm.query = None
+							i = 0
+							j = 0
+							for q in queries:
+								if q == terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']:
+									current_frame_id = slotframe.get_alias_id(comm.to)
+									if current_frame_id is not None and current_frame_id != queries[i+1]:
+										queries[i+1] = current_frame_id
+								if i%2 == 0 and queries[i+1] is not None and queries[i+1] != 'None':
+									if j > 0:
+										comm.query += '&'
+									else:
+										comm.query = ''
+									comm.query += str(q)
+									j += 1
+								elif i%2 == 1 and q is not None and q != 'None':
+									comm.query += '='+str(q)
+								i += 1
 						comm.callback = self._get_resource
 					# elif comm.op == 'delete': TODO: support celllist deletion
 					# 	comm.callback = self._get_resource
@@ -625,7 +672,7 @@ class Reflector(object):
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
 
-	def _connect(self, child, parent, old_parent=None):
+	def _connect(self, child, parent=None, old_parent=None):
 		"""
 		is called when a new node connects, simply installes the observer for the dodaginfo resource.
 		parent and old_parent are deprecated
@@ -770,8 +817,23 @@ class Reflector(object):
 
 	def _report(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
-		if str(resource) == terms.get_resource_uri('6TOP', 'SLOTFRAME'):
+		if str(resource).startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
+
 			payload = copy.copy(info)
+			if isinstance(payload, dict):
+				payload = [payload]
+			to_pop = []
+			for local_frame in self.frames.itervalues():
+				i = 0
+				for frame in payload:
+					if local_frame.get_alias_id(who) == frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]:
+						logg.warning(str(who)+' holds the slotframe ID '+ str(frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]) + ' also held by ' + str(local_frame) + ' Are they identical slotframes?')
+						self.framed(who, None, frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']], frame)
+						to_pop.append(i)
+						break
+					i += 1
+				for j in to_pop:
+					payload.pop(to_pop[j])
 			for local_frame in self.frames.itervalues():
 				i = 0
 				for frame in payload:
@@ -785,7 +847,7 @@ class Reflector(object):
 							break
 					i += 1
 			for remaining_frame in payload:
-				frame = Slotframe(who.eui_64_ip+':'+str(remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]),remaining_frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']])
+				frame = Slotframe(who.eui_64_ip+'#'+str(remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]),remaining_frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']])
 				frame.set_alias_id(who, remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']])
 				self.frames[frame.name] = frame
 		elif str(resource) == terms.get_resource_uri('6TOP', 'CELLLIST'):
@@ -811,6 +873,10 @@ class Reflector(object):
 		"""
 		Handle all the communication with the RICH network.
 		"""
+		if isinstance(self.start_commands, list):
+			self.start_commands.append(assembly)
+			return
+
 		if isinstance(assembly, interface.BlockQueue):
 			self._create_session(assembly)
 		elif isinstance(assembly, list):
@@ -818,7 +884,7 @@ class Reflector(object):
 				if isinstance(i, interface.BlockQueue):
 					self._create_session(i)
 
-	def connected(self, child, parent, old_parent=None):
+	def connected(self, child, parent=None, old_parent=None):
 		"""
 		api call back for when a new node connects to the network
 		This callback is fired AFTER the dodag tree has been updated
@@ -871,17 +937,13 @@ class Reflector(object):
 class SchedulerInterface(Reflector):
 
 	def start(self):
-		super(SchedulerInterface,self)._start()
 		q = interface.BlockQueue()
 		q.push(Command('get', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
-		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
 		q.block()
-		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'CELLLIST')))
-		q.block()
-
 		self.communicate(q)
 
-		self.client.start()
+		super(SchedulerInterface, self)._start()
+
 
 	def get_slotframes(self, node):  # TODO: observe (makes sense when distributed scheduling in place)
 		assert isinstance(node, NodeID)
@@ -918,21 +980,23 @@ class SchedulerInterface(Reflector):
 	def post_slotframes(self, node, slotframes):
 		assert isinstance(node, NodeID)
 		assert isinstance(slotframes, Slotframe) or isinstance(slotframes, list)
-		last_id = -1;
-		for name, frame in self.frames.items():
-			tmp = frame.get_alias_id(node)
-			if tmp > last_id:
-				last_id = tmp
+		if isinstance(slotframes, Slotframe):
+			slotframes = [slotframes]
 		q = interface.BlockQueue()
 		payload = []
 		info = {}
-		if isinstance(slotframes, Slotframe):
-			slotframes = [slotframes]
+		frame_id = 255
 		for item in slotframes:
-			frame_id = item.get_alias_id(node)
-			if not frame_id:
-				last_id += 1
-				frame_id = last_id
+			while frame_id >= 0:
+				free = True
+				for name, frame in self.frames.items():
+					tmp = frame.get_alias_id(node)
+					if tmp == frame_id:
+						free = False
+						break
+				if free:
+					break
+				frame_id -= 1
 			info[frame_id] = item
 			payload.append({terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']: frame_id,
 							terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']: item.slots})
@@ -989,10 +1053,11 @@ class SchedulerInterface(Reflector):
 			return q
 		elif isinstance(slotframe, Slotframe):
 			alias = slotframe.get_alias_id(node)
-			if alias:
-				q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=alias)))
-				q.block()
-				return q
+			comm = Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=alias))
+			comm.attach(frame=slotframe)
+			q.push(comm)
+			q.block()
+			return q
 		return None
 
 	def post_link(self, slot, channel, slotframe, source, destination, target=None):
