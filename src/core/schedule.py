@@ -859,10 +859,14 @@ class Reflector(object):
 				option = link[terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']]
 				type = link[terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']]
 				target = NodeID(link[terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL']]) if terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL'] in link else None
+				retrieved_link = Cell(who, slot, channel, frame, type, option, target)
+				added = False
 				for f in self.frames.values():
 					if f.get_alias_id(who) == frame:
-						retrieved_link = Cell(who, slot, channel, frame, type, option, target)
 						f.add_link(retrieved_link)
+						added = True
+				if not added:
+					logg.critical('Unknown frame id='+str(frame)+'. Link '+str(retrieved_link)+' could not be stored in centralized schedule.')
 		return None
 
 	def _delete(self, who, resource, info):
