@@ -4,12 +4,13 @@ import logging
 import socket
 import time
 import json
-import pickle
+from Event import Event
 import os
 import zmq
 import zmq.auth
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.log.handlers import PUBHandler
+import cPickle as pickle
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -142,11 +143,12 @@ class FrankFancyStreamingInterface(object):
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending ChangeCell to logger, EventID:" + str(self.EventId))
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
-				"EventId"		: self.EventId,
-				"SubjectId" 	: self.ConvertStatus["Cells"][status],
-				"InfoString" 	: json.dumps({"who": who, "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})
-			})])
+			# self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
+			# 	"EventId"		: self.EventId,
+			# 	"SubjectId" 	: self.ConvertStatus["Cells"][status],
+			# 	"InfoString" 	: json.dumps({"who": who, "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})
+			# })])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, self.ConvertStatus["Cells"][status], time.time(), json.dumps({"who": who, "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})))])
 
 	def DumpDotData(self, root_id, dotdata):
 		"""
@@ -175,11 +177,12 @@ class FrankFancyStreamingInterface(object):
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending Addnode to logger, EventID:" + str(self.EventId))
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
-				"EventId"	: self.EventId,
-				"SubjectId"	: 0,
-				"InfoString": json.dumps({"node_id" : node_id, "parent" : parent})
-			})])
+			# self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
+			# 	"EventId"	: self.EventId,
+			# 	"SubjectId"	: 0,
+			# 	"InfoString": json.dumps({"node_id" : node_id, "parent" : parent})
+			# })])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 0, time.time(), json.dumps({"node_id" : node_id, "parent" : parent})))])
 
 	def RewireNode(self, node_id, old_parent, new_parent):
 		"""
@@ -193,11 +196,12 @@ class FrankFancyStreamingInterface(object):
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending RewireNode to logger, EventID: " + str(self.EventId))
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
-				"EventId"	: self.EventId,
-				"SubjectId"	: 2,
-				"InfoString": json.dumps({"node_id" : node_id, "old_parent" : old_parent, "new_parent" : new_parent})
-			})])
+			# self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
+			# 	"EventId"	: self.EventId,
+			# 	"SubjectId"	: 2,
+			# 	"InfoString": json.dumps({"node_id" : node_id, "old_parent" : old_parent, "new_parent" : new_parent})
+			# })])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 2, time.time(), json.dumps({"node_id" : node_id, "old_parent" : old_parent, "new_parent" : new_parent})))])
 
 	def RemoveNode(self, node_id):
 		"""
@@ -209,8 +213,9 @@ class FrankFancyStreamingInterface(object):
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending RemoveNode to logger, EventID: " + str(self.EventId))
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
-				"EventId"	: self.EventId,
-				"SubjectId"	: 1,
-				"InfoString": json.dumps({"node_id" : node_id})
-			})])
+			# self.Logger.send_multipart([self.Name.encode(), pickle.dumps({
+			# 	"EventId"	: self.EventId,
+			# 	"SubjectId"	: 1,
+			# 	"InfoString": json.dumps({"node_id" : node_id})
+			# })])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 1, time.time(), json.dumps({"node_id" : node_id})))])
