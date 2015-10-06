@@ -26,6 +26,7 @@ import socket
 import time
 from sets import Set
 import re
+from util.Visualizer import FrankFancyStreamingInterface
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -72,6 +73,8 @@ class Reflector(object):
 		:type lbr_port: int
 		:param prefix: network prefix prepended to the EUI64 address e.g. aaaa
 		:type prefix:str
+		:param visualizer: a dictionary with keys: VHost: host of active live viewer, PubInterface: interfaces on which the logger publisher service is binded,
+																	PKeyFolder: folder with publisher service private key
 		"""
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
@@ -95,18 +98,13 @@ class Reflector(object):
 		#frame which needs to be latered when there is a rewire happening
 		self.rewireframe = ""
 
+		self.Streamer = None
 		if visualizer is not None:
-			logg.info("connecting to visualizer server")
-			try:
-				HOST = visualizer
-				PORT = 600
-				self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				self.socket.connect((HOST, PORT))
-				self.socket.sendall(lbr_ip)
-			except:
-				logg.critical("could not reach the visualizer server! (are you sure its online and specified correct ip?)")
-		else:
-			self.socket = None
+			logg.info("Booting Streamer Interface")
+			self.Streamer = FrankFancyStreamingInterface(VisualizerHost=visualizer["VHost"],ZeromqHost="*", KeyFolder=visualizer["PKeyFolder"])
+			#TODO: give different root topics for different schedulers to support multiple schedulers running
+			self.Streamer.PublishLogging(LoggingName="RiSCHER",root_topic="RiSCHER")
+			logg.info("Streamer Interface booted")
 
 
 	def _start(self):
@@ -314,6 +312,8 @@ class Reflector(object):
 		for c in cells:
 			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(c.id))))
 		q.block()
+
+		self.Streamer.RewireNode(node_id, old_parent, new_parent)
 		return [q]
 
 	#dumps a png of the current internal dodag graph with timestamp to file
@@ -326,11 +326,12 @@ class Reflector(object):
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
 		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
-		packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
-		try:
-			self.socket.sendall(bytearray(packet))
-		except:
-			pass
+		self.Streamer.DumpDotData(str(self.root_id), json.dumps(dotdata))
+		# packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
+		# try:
+		# 	self.socket.sendall(bytearray(packet))
+		# except:
+		# 	pass
 
 	def _get_rpl_dag(self, response):
 		"""
@@ -690,6 +691,7 @@ class Reflector(object):
 		celllist_comm.attach(intent='replicate')
 		q.push(celllist_comm)
 		q.block()
+		self.Streamer.AddNode(child, parent)
 		return q
 
 	def _disconnect(self, node_id, children):
@@ -700,10 +702,11 @@ class Reflector(object):
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
 				if cell.owner != node_id:
-					try:
-						self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
-					except:
-						pass
+					self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
+					# try:
+					# 	self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
+					# except:
+					# 	pass
 					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
 			del frame.fds[node_id]
 		q.block()
@@ -711,6 +714,9 @@ class Reflector(object):
 		for child in children:
 			q.push(Command('get', child, terms.uri['RPL_DODAG']))
 		q.block()
+
+		self.Streamer.RemoveNode(node_id)
+
 		return q
 
 	def _frame(self, who, frame, remote_fd, old_payload):
@@ -729,21 +735,23 @@ class Reflector(object):
 			l.append({"id":frame.name,"cells":frame.slots})
 			self.frames[frame.name] = frame
 			self.blacklisted[frame.name] = []
-		try:
-			self.socket.sendall(json.dumps(l))
-		except:
-			pass
+		self.Streamer.SendActiveJson(l)
+		# try:
+		# 	self.socket.sendall(json.dumps(l))
+		# except:
+		# 	pass
 
 	def _cell(self, who, slotoffs, channeloffs, frame, linkoption, linktype, target, old_payload):
 		# handles the actions performed when a node receives his cell/s
 		# add the cell to the appropriate cell container
 		frame.cell_container.append(Cell(who, slotoffs, channeloffs, frame.get_alias_id(who), linktype, linkoption, target))
 		logg.info(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+		self.Streamer.ChangeCell(who, slotoffs, channeloffs, frame, "foo", 1)
 		#try sending this info to the visualizer
-		try:
-			self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame), "status" : 1}]))
-		except:
-			pass
+		# try:
+		# 	self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame), "status" : 1}]))
+		# except:
+		# 	pass
 		return None
 
 	def _blacklist(self, who, slotoffs, channeloffs, frame, remote_cell_id):
@@ -796,13 +804,13 @@ class Reflector(object):
 		F.delete_cells(reschedulecells)
 		#report it to logger
 		logg.debug("Blacklisted cell with channeloffset: " + str(channeloffs) + " and slotoffset: " + str(slotoffs) + " and all asociates in frame " + F.name)
-
+		self.Streamer.ChangeCell(who, str(slotoffs), str(channeloffs), F.name, remote_cell_id, 2)
 		#try sending it to the streaming server
 		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
-		try:
-			self.socket.sendall(json.dumps(["changecell", {"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": frame,"id": str(remote_cell_id), "status":2}]))
-		except:
-			pass
+		# try:
+		# 	self.socket.sendall(json.dumps(["changecell", {"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": frame,"id": str(remote_cell_id), "status":2}]))
+		# except:
+		# 	pass
 
 		#return all the cells that need to be rescheduled
 		#build a set of (tx,rx) nodeID items (to prevent duplicates)
@@ -859,10 +867,14 @@ class Reflector(object):
 				option = link[terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']]
 				type = link[terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']]
 				target = NodeID(link[terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL']]) if terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL'] in link else None
+				retrieved_link = Cell(who, slot, channel, frame, type, option, target)
+				added = False
 				for f in self.frames.values():
 					if f.get_alias_id(who) == frame:
-						retrieved_link = Cell(who, slot, channel, frame, type, option, target)
 						f.add_link(retrieved_link)
+						added = True
+				if not added:
+					logg.critical('Unknown frame id='+str(frame)+'. Link '+str(retrieved_link)+' could not be stored in centralized schedule.')
 		return None
 
 	def _delete(self, who, resource, info):

@@ -7,42 +7,42 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__license__ = "GPL"
 #__status__ = "Production"
 
-uri = {
-	'RPL'		: "rpl",
-	'RPL_NL'	: "rpl/nd",
-	# 'RPL_OL'	: "rpl/c",
-	'6TP'		: "6t",
-	'6TP_6'		: "6t/6",
-	'6TP_SF'	: "6t/6/sf",
-	'6TP_CL'	: "6t/6/cl",
-	#'6TP_SV'	: "6t/6/ml",
-	'6TP_SM'	: "6t/6/sm",
-	'RPL_DODAG'	: "rpl/dodag"
-}
-
-keys = {
-	'SM_ID': "md",
-	'SF_ID': "fd",
-	'CL_ID': "cd",
-	'S_OFF': "so",
-	'C_OFF': "co",
-	'LN_OP': "lo",
-	'LN_TP': "lt",
-	'TNA'  : "na",
-	'MTRC' : "mt",
-	'WNDW' : "wi",
-	'RSSI' : "RSSI",
-	'PDR'  : "pdr",
-	'PRR'  : "PRR",
-	'LQI'  : "LQI",
-	'SLT'  : 'SLOT',
-	'ETX'  : 'ETX'
-}
-
-cells = {
-	'broadcast',
-	'unicast'
-}
+# uri = {
+# 	'RPL'		: "rpl",
+# 	'RPL_NL'	: "rpl/nd",
+# 	# 'RPL_OL'	: "rpl/c",
+# 	'6TP'		: "6t",
+# 	'6TP_6'		: "6t/6",
+# 	'6TP_SF'	: "6t/6/sf",
+# 	'6TP_CL'	: "6t/6/cl",
+# 	#'6TP_SV'	: "6t/6/ml",
+# 	'6TP_SM'	: "6t/6/sm",
+# 	'RPL_DODAG'	: "rpl/dodag"
+# }
+#
+# keys = {
+# 	'SM_ID': "md",
+# 	'SF_ID': "fd",
+# 	'CL_ID': "cd",
+# 	'S_OFF': "so",
+# 	'C_OFF': "co",
+# 	'LN_OP': "lo",
+# 	'LN_TP': "lt",
+# 	'TNA'  : "na",
+# 	'MTRC' : "mt",
+# 	'WNDW' : "wi",
+# 	'RSSI' : "RSSI",
+# 	'PDR'  : "pdr",
+# 	'PRR'  : "PRR",
+# 	'LQI'  : "LQI",
+# 	'SLT'  : 'SLOT',
+# 	'ETX'  : 'ETX'
+# }
+#
+# cells = {
+# 	'broadcast',
+# 	'unicast'
+# }
 
 resources = {
 	'RPL': {
@@ -106,3 +106,7 @@ def get_resource_uri(*path_segments,**queries):
 		else:
 			return None
 	return uri
+
+errors = {
+	'GET': ['BAD_JSON', ]
+}
