@@ -99,12 +99,12 @@ class Reflector(object):
 		self.rewireframe = ""
 
 		self.Streamer = None
-		if visualizer is not None:
-			logg.info("Booting Streamer Interface")
-			self.Streamer = FrankFancyStreamingInterface(VisualizerHost=visualizer["VHost"],ZeromqHost="*", KeyFolder=visualizer["PKeyFolder"])
-			#TODO: give different root topics for different schedulers to support multiple schedulers running
-			self.Streamer.PublishLogging(LoggingName="RiSCHER",root_topic="RiSCHER")
-			logg.info("Streamer Interface booted")
+		# if visualizer is not None:
+		# 	logg.info("Booting Streamer Interface")
+		# 	self.Streamer = FrankFancyStreamingInterface(VisualizerHost=visualizer["VHost"],ZeromqHost="*", KeyFolder=visualizer["PKeyFolder"])
+		# 	#TODO: give different root topics for different schedulers to support multiple schedulers running
+		# 	self.Streamer.PublishLogging(LoggingName="RiSCHER",root_topic="RiSCHER")
+		# 	logg.info("Streamer Interface booted")
 
 
 	def _start(self):
@@ -572,20 +572,24 @@ class Reflector(object):
 		cache_entry = self.cache[tk]
 		session_id = cache_entry["session"]
 		node_id = NodeID(response.remote[0], response.remote[1])
-		if response.code != coap.CONTENT:
+		uri = cache_entry['command'].uri
+		if response.code == coap.NOT_FOUND:
+			logg.debug("Probe on " + str(response.remote[0]) + " did not find anything on "+uri+" i.e. MID:" + str(response.mid))
+			self.communicate(self.reported(node_id, uri, None))
+		elif response.code != coap.CONTENT:
 			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
-		clean_payload = parser.clean_payload(response.payload)
-		logg.debug("probe on " + str(response.remote[0]) + " reported " + clean_payload + " i.e. MID:" + str(response.mid))
-		uri = cache_entry['command'].uri
-		try:
-			payload = json.loads(clean_payload)
-			self.communicate(self._report(node_id, uri, payload))
-			self.communicate(self.reported(node_id, uri, payload))
-		except ValueError as ve:
-			logg.critical(ve.message+'. Command is skipped')
-			self.communicate(self.reported(node_id, uri, None))
+		else:
+			clean_payload = parser.clean_payload(response.payload)
+			logg.debug("Probe on " + str(response.remote[0]) + " reported " + str(clean_payload) + " i.e. MID:" + str(response.mid))
+			try:
+				payload = json.loads(clean_payload)
+				self.communicate(self._report(node_id, uri, payload))
+				self.communicate(self.reported(node_id, uri, payload))
+			except ValueError as ve:
+				logg.critical(ve.message+'. Command is skipped')
+				self.communicate(self.reported(node_id, uri, None))
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
@@ -691,7 +695,7 @@ class Reflector(object):
 		celllist_comm.attach(intent='replicate')
 		q.push(celllist_comm)
 		q.block()
-		self.Streamer.AddNode(child, parent)
+		# self.Streamer.AddNode(child, parent)
 		return q
 
 	def _disconnect(self, node_id, children):
