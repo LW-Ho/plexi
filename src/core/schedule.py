@@ -11,7 +11,7 @@ from core.interface import Command
 
 from core.client import LazyCommunicator
 from core.graph import DoDAG
-from core.node import NodeID
+from core.node import NodeID, BROADCASTID
 from util import parser
 import json
 from core.slotframe import Slotframe, Cell
@@ -202,7 +202,7 @@ class Reflector(object):
 			# Get the BlockQueue corresponding to the session_id
 			session = self.sessions[session_id]
 			# Unblock the achieved_comm from the current block of session. Open up the next block if current is finished
-			session.unblock(achieved_comm)
+			session.release(achieved_comm)
 			# if more commands are in the session, transmit them to their destinations
 			if not session.finished():
 				# Note that pop returns None if the current block has still pending replies of commands
@@ -257,7 +257,7 @@ class Reflector(object):
 			if not self.dodag.check_node(k):
 				old_parent = self.dodag.get_parent(k)
 				if self.dodag.attach_child(k, parent_id):
-					self._DumpGraph()
+					#self._DumpGraph()
 					self.communicate(self._connect(k, parent_id, old_parent))
 					self.communicate(self.connected(k, parent_id, old_parent))
 
@@ -458,7 +458,6 @@ class Reflector(object):
 			###################
 			# Extract from cache the payload of te command that triggered this response
 			old_payload = self.cache[tk]['command'].payload
-			attached_frame = self.cache[tk]['command'].attachment('frame')
 			# If successful installation of link, insert the link into local link container
 			if isinstance(payload, list):
 				for i in payload:
@@ -466,24 +465,66 @@ class Reflector(object):
 						success = i > 0
 						so = old_payload[terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']]
 						co = old_payload[terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']]
+						fd = old_payload[terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']]
 						lo = old_payload[terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']]
 						lt = old_payload[terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']]
-						tx = self.cache[tk]['command'].attachment('tx')
-						rx = self.cache[tk]['command'].attachment('rx')
-						if success:
-							self.communicate(self._cell(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
-							self.communicate(self.celled(node_id, tx, rx, so, co, attached_frame, lo, lt, old_payload))
+						tna = old_payload[terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL']]
+						frame = None
+						for f in self.frames.values():
+							if f.get_alias_id(node_id) == int(fd):
+								frame = f
+								break
+						if not frame:
+							logg.critical("Node " + str(response.remote[0]) + " responded on link post with invalid sotframe id")
+							raise ValueError("plexi in panic. local and remote misalignment.")
+						if success and frame:
+							self.communicate(self._cell(node_id, so, co, frame, lo, lt, self.dodag.get_node(tna), old_payload))
+							self.communicate(self.celled(node_id, so, co, frame, lo, lt, self.dodag.get_node(tna), old_payload))
 						else:
 							logg.warning("Node " + str(response.remote[0]) + " could not set the link " + str(i))
-							self.communicate(self.celled(node_id, tx, rx, so, co, attached_frame, None, None, old_payload))
+							self.communicate(self.celled(node_id, so, co, frame, None, None, self.dodag.get_node(tna), old_payload))
 					else:
 						logg.critical("Node " + str(response.remote[0]) + " replied on a link post with invalid payload format i.e. " + str(i) + ". Integer was expected.")
-						self.communicate(self.celled(node_id, None, None, None, None, None, None, None, old_payload))
+						self.communicate(self.celled(node_id, None, None, None, None, None, None, old_payload))
 		except ValueError as ve:
 			logg.critical(ve.message+'. Command is skipped')
-			self.communicate(self.celled(node_id, None, None, None, None, None, None, None, old_payload))
+			self.communicate(self.celled(node_id, None, None, None, None, None, None, old_payload))
 
 		# Remove cached command that triggered this response
+		cached_entry = self._decache(tk)
+		self._touch_session(cached_entry['command'], session_id)
+
+	def _post_6top_statistics(self, response):
+		"""
+		Callback for statistics resource. Triggered upon reception of a reply on the POST 6top/stats command. Simply notifies
+		the applications if the statistics were installed or not.
+
+		The responder returns a Changed_2.04 code if successfull with no payload. If errors occured more error codes are
+		possible:
+		* Bad Request
+		* Not Found
+
+
+		:param response: the response returned by a node after a POST 6t/6/sf request
+		:type response: :class:`txthings.coap.Message`
+		:raises: UnsupportedCase
+		"""
+		###################
+		# TODO: following part same as with other callback functions... maybe make one function to handle that?
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
+			return
+		cache_entry = self.cache[tk]
+		session_id = self.cache[tk]["session"]
+		node_id = NodeID(response.remote[0], response.remote[1])
+		uri = cache_entry['command'].uri
+		if response.code != coap.CHANGED:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			cached_entry = self._decache(tk)
+			self._touch_session(cached_entry['command'], session_id)
+			raise exception.UnsupportedCase(tmp)
+
+		self.communicate(self.reported(node_id, uri, coap.CHANGED))
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
@@ -512,45 +553,6 @@ class Reflector(object):
 		self.communicate(self.deleted(node_id, cache_entry['command'].uri, clean_payload))
 		self._touch_session(cached_entry['command'], session_id)
 
-	def _receive_probe(self, response):
-		"""
-		Callback for any other (i.e. not children, frame or cells) resource.
-
-		Triggered upon reception of a reply on POST, DELETE commands on i.e. 6t/6/sm etc. This can be coupled with
-		:func:`_get_resource` function to implement a 2-way handshake.
-		It supports POST 6t/6/sm for defining a statistics metrics resource (receive its id) and then use the returned id
-		to GET/OBSERVE 6t/6/sm/0 its reported values via :func:`_get_resource` function. Extensible for any other command/resource
-		but payload will passed to :func:`probed` uninterpreted in JSON format as a dictionary or list.
-
-		:param response: the response returned by a node after any request excluding GET rpl/c, POST 6t/6/sf, POST 6t/6/cl
-		:type response: :class:`txthings.coap.Message`
-		:raises: UnsupportedCase
-		"""
-		###################
-		tk = self.client.token(response.token)
-		if tk not in self.cache:
-			return
-		cache_entry = self.cache[tk]
-		session_id = cache_entry["session"]
-		node_id = NodeID(response.remote[0], response.remote[1])
-		if response.code != coap.CONTENT:
-			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(cache_entry)
-			self._decache(tk)
-			raise exception.UnsupportedCase(tmp)
-		clean_payload = parser.clean_payload(response.payload)
-		logg.debug("Node " + str(response.remote[0]) + " replied on a probe with " + clean_payload + " i.e. MID:" + str(response.mid))
-		payload = json.loads(clean_payload)
-		###################
-		info = None
-		if cache_entry['command'].uri == terms.uri['6TP_SM']:
-			info = payload[0]
-		else:
-			info = payload
-		cached_entry = self._decache(tk)
-		self.communicate(self._probe(node_id, cache_entry['command'].uri, info))
-		self.communicate(self.probed(node_id, cache_entry['command'].uri, info))
-		self._touch_session(cached_entry['command'], session_id)
-
 	def _get_resource(self, response):
 		"""
 		Callback for any other (i.e. not children, frame or cells) resource.
@@ -577,19 +579,19 @@ class Reflector(object):
 			logg.debug("Probe on " + str(response.remote[0]) + " did not find anything on "+uri+" i.e. MID:" + str(response.mid))
 			self.communicate(self.reported(node_id, uri, None))
 		elif response.code != coap.CONTENT:
-			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + uri + '>' + response.payload
 			self._decache(tk)
 			raise exception.UnsupportedCase(tmp)
 		else:
 			clean_payload = parser.clean_payload(response.payload)
 			logg.debug("Probe on " + str(response.remote[0]) + " reported " + str(clean_payload) + " i.e. MID:" + str(response.mid))
-			try:
-				payload = json.loads(clean_payload)
-				self.communicate(self._report(node_id, uri, payload))
-				self.communicate(self.reported(node_id, uri, payload))
-			except ValueError as ve:
-				logg.critical(ve.message+'. Command is skipped')
-				self.communicate(self.reported(node_id, uri, None))
+			#try:
+			payload = json.loads(clean_payload)
+			self.communicate(self._report(node_id, uri, payload))
+			self.communicate(self.reported(node_id, uri, payload))
+			#except ValueError as ve:
+			#	logg.critical(ve.message+'. Command is skipped')
+			#	self.communicate(self.reported(node_id, uri, None))
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
@@ -660,10 +662,10 @@ class Reflector(object):
 						comm.callback = self._get_resource
 					# elif comm.op == 'delete': TODO: support celllist deletion
 					# 	comm.callback = self._get_resource
-				elif comm.uri == terms.uri['6TP_SM']:
-					comm.callback = self._receive_probe
-				elif comm.uri.startswith(terms.uri['6TP_SM']):
+				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')):
 					comm.callback = self._get_resource
+				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'STATISTICS')) and comm.op == 'post':
+					comm.callback = self._post_6top_statistics
 				else:
 					comm.callback = self._get_resource
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) }
@@ -685,15 +687,10 @@ class Reflector(object):
 		"""
 
 		q = interface.BlockQueue()
-		# q.push(Command('observe', child, terms.uri['RPL_OL']))
 		q.push(Command('observe', child, terms.get_resource_uri('RPL', 'DAG')))
-		rpl_dag_comm = Command('get', child, terms.get_resource_uri('6TOP', 'SLOTFRAME'))
-		rpl_dag_comm.attach(intent='replicate')
-		q.push(rpl_dag_comm)
+		q.push(Command('get', child, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
 		q.block()
-		celllist_comm = Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST'))
-		celllist_comm.attach(intent='replicate')
-		q.push(celllist_comm)
+		q.push(Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
 		q.block()
 		# self.Streamer.AddNode(child, parent)
 		return q
@@ -750,7 +747,7 @@ class Reflector(object):
 		# add the cell to the appropriate cell container
 		frame.cell_container.append(Cell(who, slotoffs, channeloffs, frame.get_alias_id(who), linktype, linkoption, target))
 		logg.info(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
-		self.Streamer.ChangeCell(who, slotoffs, channeloffs, frame, "foo", 1)
+		# self.Streamer.ChangeCell(who, slotoffs, channeloffs, frame, "foo", 1)
 		#try sending this info to the visualizer
 		# try:
 		# 	self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame), "status" : 1}]))
@@ -823,10 +820,6 @@ class Reflector(object):
 			s.add((c.tx,c.rx))
 		return list(s)
 
-	def _probe(self, who, resource, info):
-		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' returned ' + str(info))
-		return None
-
 	def _report(self, who, resource, info):
 		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		if str(resource).startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
@@ -844,26 +837,24 @@ class Reflector(object):
 						to_pop.append(i)
 						break
 					i += 1
-				for j in to_pop:
-					payload.pop(to_pop[j])
-			for local_frame in self.frames.itervalues():
-				i = 0
-				for frame in payload:
-					if frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']] == local_frame.slots:
-						if local_frame.get_alias_id(who) is None:
-							self._frame(who, local_frame, frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']], info)
-							payload.pop(i)
-							break
-						elif local_frame.get_alias_id(who) == frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]:
-							payload.pop(i)
-							break
-					i += 1
+				for j in list(reversed(to_pop)):
+					payload.pop(j)
 			for remaining_frame in payload:
-				frame = Slotframe(who.eui_64_ip+'#'+str(remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']]),remaining_frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']])
+				if remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']] == 0:
+					naam = 'minimal'
+				else:
+					naam = who.eui_64_ip+'#'+str(remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']])
+				if naam not in self.frames:
+					frame = Slotframe(naam, remaining_frame[terms.resources['6TOP']['SLOTFRAME']['SLOTS']['LABEL']])
+				else:
+					frame = self.frames[naam]
 				frame.set_alias_id(who, remaining_frame[terms.resources['6TOP']['SLOTFRAME']['ID']['LABEL']])
 				self.frames[frame.name] = frame
-		elif str(resource) == terms.get_resource_uri('6TOP', 'CELLLIST'):
+				logg.debug('Added locally remote frame '+str(frame))
+		elif str(resource) == terms.get_resource_uri('6TOP', 'CELLLIST') or str(resource).startswith(terms.get_resource_uri('6TOP', 'CELLLIST')+'?'):
 			payload = copy.copy(info)
+			if not isinstance(payload,list):
+				payload = [payload]
 			for link in payload:
 				frame = link[terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']]
 				slot = link[terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']]
@@ -876,9 +867,17 @@ class Reflector(object):
 				for f in self.frames.values():
 					if f.get_alias_id(who) == frame:
 						f.add_link(retrieved_link)
+						logg.debug('Added remote link '+str(retrieved_link)+' to local frame '+str(f))
 						added = True
 				if not added:
 					logg.critical('Unknown frame id='+str(frame)+'. Link '+str(retrieved_link)+' could not be stored in centralized schedule.')
+		elif str(resource) == terms.get_resource_uri('6TOP', 'CELLLIST', 'ID'):
+			payload = copy.copy(info)
+			q = interface.BlockQueue()
+			for link_id in payload:
+				q.push(Command('get', who, terms.get_resource_uri('6TOP', 'CELLLIST', ID=link_id)))
+			q.block()
+			return q
 		return None
 
 	def _delete(self, who, resource, info):
@@ -937,13 +936,10 @@ class Reflector(object):
 	def framed(self, who, local_name, remote_alias, old_payload):
 		pass
 
-	def celled(self, who, tx, rx, slotoffs, channeloffs, frame, linkoption, linktype, old_payload):
+	def celled(self, who, slotoffs, channeloffs, frame, linkoption, linktype, target, old_payload):
 		pass
 
 	def deleted(self, who, resource, info):
-		pass
-
-	def probed(self, node, resource, value):
 		pass
 
 	def reported(self, node, resource, value):
@@ -954,7 +950,10 @@ class SchedulerInterface(Reflector):
 
 	def start(self):
 		q = interface.BlockQueue()
-		q.push(Command('get', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
+		q.push(Command('observe', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
+		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
+		q.block()
+		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
 		q.block()
 		self.communicate(q)
 
@@ -1024,10 +1023,18 @@ class SchedulerInterface(Reflector):
 		q.block()
 		return q
 
-	def get_links(self, node):
+	def get_link_ids(self, node):
 		assert isinstance(node, NodeID)
 		q = interface.BlockQueue()
-		q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST')))
+		q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
+		q.block()
+		return q
+
+	def get_link_by_id(self, node, id):
+		assert isinstance(node, NodeID)
+		assert isinstance(id,(int, long))
+		q = interface.BlockQueue()
+		q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', ID=id)))
 		q.block()
 		return q
 
@@ -1045,20 +1052,6 @@ class SchedulerInterface(Reflector):
 				q.block()
 				return q
 		return None
-
-	def get_link_by_id(self, node, link):
-		assert isinstance(node, NodeID)
-		q = interface.BlockQueue()
-		if link is None:
-			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST')))
-		elif isinstance(link, (int, long)):
-			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(link))))
-		elif isinstance(link, Cell) and link.id:
-			q.push(Command('get', node, terms.terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(link.id))))
-		else:
-			return None
-		q.block()
-		return q
 
 	def get_link_by_slotframe(self, node, slotframe):
 		assert isinstance(node, NodeID)
@@ -1092,105 +1085,143 @@ class SchedulerInterface(Reflector):
 		found_rx = []
 		for c in slotframe.cell_container:
 			if c.slot == slot and c.channel == channel:
-				if destination is not None and c.tx == source and c.rx == destination:
-					if c.option == 1:
-						found_tx = c.owner
-					elif c.option == 2:
-						found_rx.append(c.owner)
-				elif destination is None:
-					if c.tx == source and c.rx is None:
-						if c.option == 9:
-							found_tx = c.owner
-						elif c.option == 10:
-							found_rx.append(c.owner)
+				if destination is not None and c.option & 1 == 1 and c.owner == source and c.tna == (destination if destination is not None else BROADCASTID):
+					found_tx = c.owner
+				elif destination is not None and c.option & 2 == 2 and c.tna == source and ((c.owner == destination) if destination is not None else c.owner in self.dodag.get_neighbors()):
+					found_rx.append(c.owner)
 		cells = []
 		if destination is not None:
 			if not found_tx and (target is None or target == source):
-				cells.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 0, 1))
+				cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 0, 1, destination))
 			if destination not in found_rx and (target is None or target == destination):
-				cells.append(Cell(destination, slot, channel, source, destination, slotframe.get_alias_id(destination), 0, 2))
+				cells.append(Cell(destination, slot, channel, slotframe.get_alias_id(destination), 0, 2, source))
 		elif destination is None:
 			neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
 			if target is None or target == source:
 				if not found_tx:
-					cells.append(Cell(source, slot, channel, source, destination, slotframe.get_alias_id(source), 1, 9))
-				tmp = [item for item in neighbors if item not in found_rx]
-				for neighbor in tmp:
-					cells.append(Cell(neighbor, slot, channel, source, destination, slotframe.get_alias_id(neighbor), 1, 10))
+					cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 1, 9, BROADCASTID))
+				for neighbor in [item for item in neighbors if item not in found_rx]:
+					cells.append(Cell(neighbor, slot, channel, slotframe.get_alias_id(neighbor), 1, 10, source))
 			elif target and target != source and target in neighbors and target not in found_rx:
-				cells.append(Cell(target, slot, channel, source, destination, slotframe.get_alias_id(target), 1, 10))
-
-		depth_groups = {}
+				cells.append(Cell(target, slot, channel, slotframe.get_alias_id(target), 1, 10, source))
+		rx_cells = []
+		tx_cells = []
 		for c in cells:
-			comm = Command('post', c.owner, terms.get_resource_uri('6TOP','CELLLIST'), {
-				terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']:c.slot,
-				terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']:c.channel,
-				terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: slotframe.get_alias_id(c.owner),
-				terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']:c.option,
-				terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']:c.type
+			comm = Command('post', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST'), {
+				terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']: c.slot,
+				terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']: c.channel,
+				terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: c.slotframe,
+				terms.resources['6TOP']['CELLLIST']['LINKOPTION']['LABEL']: c.option,
+				terms.resources['6TOP']['CELLLIST']['LINKTYPE']['LABEL']: c.type,
+				terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL']: c.tna.eui_64_ip
 			})
-			comm.attach(frame = slotframe)
-			comm.attach(tx = c.tx)
-			comm.attach(rx = c.rx)
-			depth = self.dodag.get_node_depth(c.owner)
-			if depth not in depth_groups:
-				depth_groups[depth] = [comm]
-			else:
-				depth_groups[depth].append(comm)
-		for j in sorted(depth_groups.keys(), reverse=True):
-			for k in depth_groups[j]:
-				q.push(k)
-			q.block()
+			if c.option & 1 == 1:
+				tx_cells.append(comm)
+			elif c.option & 2 == 2:
+				rx_cells.append(comm)
+		for j in rx_cells:
+			q.push(j)
+		q.block()
+		for j in tx_cells:
+			q.push(j)
+		q.block()
 
 		return q
 
-	def get_remote_children(self, node, observe=False):
+
+	def get_neighbor_of(self, node, observable, neighbor=None):
 		assert isinstance(node, NodeID)
+		assert observable is False or observable is True
+		assert neighbor is None or isinstance(neighbor, NodeID)
 		q = interface.BlockQueue()
-		q.push(Command('get' if not observe else 'observe', node, terms.uri['RPL_OL']))
+		if neighbor is None:
+			q.push(Command('get' if not observable else 'observe', node, terms.get_resource_uri('6TOP','NEIGHBORLIST')))
+		else:
+			q.push(Command('get' if not observable else 'observe', node, terms.get_resource_uri('6TOP','NEIGHBORLIST',TARGETADDRESS=neighbor.eui_64_ip)))
 		q.block()
 		return q
 
-	def get_remote_statistics(self, node, statistics=0, observe=False):
+	def get_link_stats(self,cell):
 		q = interface.BlockQueue()
-		if isinstance(statistics, (int, long)):
-			q.push(Command('get' if not observe else 'observe', node, terms.uri['6TP_SM']+'/'+str(statistics)))
+		q.push(Command('get', cell.owner, terms.get_resource_uri('6TOP', 'CELLLIST', 'STATISTICS', SLOTFRAME=cell.slotframe, SLOTOFFSET=cell.slot, CHANNELOFFSET=cell.channel)))
+		q.block()
+		return q
+
+	def get_remote_statistics(self, node, id):
+		q = interface.BlockQueue()
+		if isinstance(id, (int, long)):
+			q.push(Command('get', node, terms.get_resource_uri('6TOP', 'STATISTICS', ID=id)))
 		else:
 			return None
 		q.block()
 		return q
 
-	def set_remote_statistics(self, node, definition):
+	def set_remote_statistics(self, node, id, cell, metric, window, enable=True):
 		q = interface.BlockQueue()
-		q.push(Command('post', node, terms.uri['6TP_SM'], definition))
+		q.push(Command('post', node, terms.get_resource_uri('6TOP', 'STATISTICS'), {
+			terms.resources['6TOP']['CELLLIST']['TARGETADDRESS']['LABEL']: cell.tna.eui_64_ip,
+			terms.resources['6TOP']['STATISTICS']['ID']['LABEL']: id,
+			terms.resources['6TOP']['CELLLIST']['SLOTOFFSET']['LABEL']: cell.slot,
+			terms.resources['6TOP']['CELLLIST']['CHANNELOFFSET']['LABEL']: cell.channel,
+			terms.resources['6TOP']['CELLLIST']['SLOTFRAME']['LABEL']: cell.slotframe,
+			terms.resources['6TOP']['STATISTICS']['METRIC']['LABEL']: metric,
+			terms.resources['6TOP']['STATISTICS']['WINDOW']['LABEL']: window,
+			terms.resources['6TOP']['STATISTICS']['ENABLE']['LABEL']: 1 if enable else 0
+		}))
 		q.block()
 		return q
 
 	def disconnect_node(self, node):
 		pass
 
-	def conflict(self, slot, tx, rx, slotframe):
-		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
-		for item in slotframe.cell_container:
-			if item.slot == slot:
-				if item.rx == tx or (item.rx is None and (item.tx == self.dodag.get_parent(tx) or item.tx in self.dodag.get_children(tx))) or \
-					item.tx == tx:
-						return True
-				elif (item.rx is not None and item.rx == rx) or \
-					(item.rx is None and rx is not None and item.tx in self.dodag.get_neighbors(rx)) or \
-					(item.rx is not None and rx is None and tx in self.dodag.get_neighbors(item.rx)) or \
-					(rx is None and item.rx is None and not set(self.dodag.get_neighbors(tx)).isdisjoint(set(self.dodag.get_neighbors(item.tx)))) or \
-					(rx is None and item.tx == self.dodag.get_parent(tx)) or item.tx == rx:
-						return True
+	def _conflict(self, c1, c2):
+		assert isinstance(c1, Cell) and isinstance(c2, Cell)
+		if c1.slot == c2.slot:
+			if c1.option & 1 == 1:
+				Tx1 = c1.owner
+				Rx1 = c1.tna
+			elif c1.option & 2 == 2:
+				Tx1 = c1.tna
+				Rx1 = c1.owner
+			if c2.option & 1 == 1:
+				Tx2 = c2.owner
+				Rx2 = c2.tna
+			elif c2.option & 2 == 2:
+				Tx2 = c2.tna
+				Rx2 = c1.owner
+			if Tx1 == Tx2 or Rx1 == Rx2 or Tx1 == Rx2 or Rx1 == Tx2 or \
+					(Rx1 == BROADCASTID and ((Tx2 == self.dodag.get_parent(Tx1) or Tx2 in self.dodag.get_children(Tx1)) or \
+					(Rx2 == self.dodag.get_parent(Tx1) or Rx2 in self.dodag.get_children(Tx1)))) or \
+					(Rx2 == BROADCASTID and ((Tx1 == self.dodag.get_parent(Tx2) or Tx1 in self.dodag.get_children(Tx2)) or \
+					(Rx1 == self.dodag.get_parent(Tx2) or Rx2 in self.dodag.get_children(Tx2)))):
+				return True
 		return False
 
-	def interfere(self, slot, tx, rx, slotframe):
+	def conflict(self, slot, tx, rx, slotframe, reservations):
+		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
+		if rx != BROADCASTID:
+			c1 = Cell(tx,slot,0,slotframe.get_alias_id(tx),0,1,rx)
+			c2 = Cell(rx,slot,0,slotframe.get_alias_id(rx),0,2,tx)
+
+		for item in slotframe.cell_container+reservations:
+			if self._conflict(c1,item) or self._conflict(c2,item):
+				return True
+		return False
+
+	def interfere(self, slot, tx, rx, slotframe, reservations):
 		assert isinstance(slotframe, Slotframe) and slotframe in self.frames.values()
 		channels = []
-		for item in slotframe.cell_container:
-			if item.slot == slot and item.rx is not None and rx is not None and \
-				item.rx not in self.dodag.get_neighbors(tx) and \
-				rx not in self.dodag.get_neighbors(item.tx):
+		for item in slotframe.cell_container+reservations:
+			if item.slot == slot:
+				if item.option & 1 == 1:
+					Txi = item.owner
+					Rxi = item.tna
+				elif item.option & 2 == 2:
+					Txi = item.tna
+					Rxi = item.owner
+			if item.slot == slot and Rxi is not None and rx is not None and \
+				Rxi not in self.dodag.get_neighbors(tx) and \
+				rx not in self.dodag.get_neighbors(Txi):
 				channels.append(item.channel)
 		return channels
 

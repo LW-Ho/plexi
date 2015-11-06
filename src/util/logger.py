@@ -19,7 +19,7 @@ nullLogger = NullHandler()
 #fileLogger.setFormatter(logging.Formatter('%(asctime)s [%(name)s:%(levelname)s] %(message)s'))
 
 consoleLogger = logging.StreamHandler()
-consoleLogger.setFormatter(logging.Formatter(fmt='%(asctime)s\t%(levelname)s: %(message)s', datefmt='%H:%M:%S'))
+consoleLogger.setFormatter(logging.Formatter(fmt='%(asctime)s.%(msecs)03d\t%(levelname)s: %(message)s', datefmt='%H:%M:%S'))
 consoleLogger.setLevel(logging.DEBUG)
 
 for loggerName in ['RiSCHER']:

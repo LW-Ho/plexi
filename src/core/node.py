@@ -61,3 +61,5 @@ class NodeID(object):
 
 	def is_broadcast(self):
 		return self.prefix+'fff:ffff:ff:ffff' == self.ip
+
+BROADCASTID = NodeID("fff:ffff:ff:ffff")

@@ -14,6 +14,7 @@ import urllib2, logging
 # import matplotlib.pyplot as plt
 from subprocess import call
 import os
+from core.node import NodeID
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -173,6 +174,16 @@ class DoDAG(object):
 		"""
 		return node_id in self.graph.nodes()
 
+	def get_node(self,node_id):
+		tmp = None
+		if isinstance(node_id, basestring):
+			tmp = NodeID(node_id)
+		elif isinstance(node_id, NodeID):
+			tmp = node_id
+		for x in self.graph.nodes():
+			if x == tmp:
+				return x
+		return tmp
 
 	def attach_child(self, child_id, parent_id):
 		"""

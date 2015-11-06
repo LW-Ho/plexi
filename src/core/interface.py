@@ -23,6 +23,10 @@ class Command(object):
 		if len(tmp) == 2:
 			self.query = tmp[1]
 		self.content = payload
+		# if isinstance(self.content, dict):
+		# 	for k,v in self.content.items():
+		# 		if isinstance(v,basestring):
+		# 			self.content[k]='"'+v+'"'
 		self.xtra = None
 		self.callback = callback
 
@@ -46,7 +50,7 @@ class Command(object):
 
 	@payload.setter
 	def payload(self, load):
-		if load and "frame" in load and isinstance(load["frame"], str):
+		if load and "tna" in load and isinstance(load["tna"], str):
 			raise Exception("got you")
 		self.content = load
 
@@ -165,7 +169,7 @@ class BlockQueue(object):
 
 		return True
 
-	def unblock(self, item):
+	def release(self, item):
 		for i in self.items:
 			if isinstance(i, set):
 				for j in list(i):
@@ -179,6 +183,14 @@ class BlockQueue(object):
 		if len(self.last_point) > 0:
 			self.items.append(self.last_point)
 			self.last_point = set()
+			return True
+		return False
+
+	def unblock(self):
+		if len(self.last_point) == 0:
+			x=self.items.pop()
+			assert isinstance(x,set)
+			self.last_point = x
 			return True
 		return False
 

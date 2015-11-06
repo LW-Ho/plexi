@@ -238,7 +238,7 @@ double Adwin::getEstimation() const
 
 void Adwin::print() const
 {
-/*  ListNode* it;
+  ListNode* it;
   it = bucketList.tail;
   if (it==NULL) printf(" It NULL");
 
@@ -250,7 +250,7 @@ void Adwin::print() const
     printf("\n");
     it = it->prev;i--;
   } while (it != NULL);
-*/}
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

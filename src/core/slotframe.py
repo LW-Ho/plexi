@@ -18,6 +18,9 @@ class Slotframe(object):
 	# def slots(self):
 	# 	return self.slots
 
+	def __len__(self):
+		return self.slots
+
 	def get_alias_id(self, node):
 		if node in self.fds.keys():
 			return self.fds[node]
@@ -59,13 +62,11 @@ class Slotframe(object):
 				continue
 			if 'link_option' in kwargs.keys() and kwargs['link_option'] != i.option:
 				continue
-			if 'cell_id' in kwargs.keys() and kwargs['cell_id'] != i.id:
+			if 'link_type' in kwargs.keys() and kwargs['link_type'] != i.type:
 				continue
 			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe:
 				continue
-			if 'tx_node' in kwargs.keys() and kwargs['tx_node'] != i.tx:
-				continue
-			if 'rx_node' in kwargs.keys() and kwargs['rx_node'] != i.rx:
+			if 'tna' in kwargs.keys() and kwargs['tna'] != i.tna:
 				continue
 			matching_cells.append(i)
 		return matching_cells
@@ -91,18 +92,17 @@ class Slotframe(object):
 		for cell in cells:
 			self.cell_container.remove(cell)
 
-	def set_remote_cell_id(self,who,channel,slot,remote_id):
-		for c in self.cell_container:
-			if c.owner == who and c.channel == channel and c.slot == slot:
-				c.id = remote_id
-				return
+	# def set_remote_cell_id(self,who,channel,slot,remote_id):
+	# 	for c in self.cell_container:
+	# 		if c.owner == who and c.channel == channel and c.slot == slot:
+	# 			c.id = remote_id
+	# 			return
 
 	def __str__(self):
 		return self.name
 
 class Cell(object):
 	def __init__(self, node, so, co, fd, lt, lo, tna):
-		self._cell_id = None		# Cel ID as set by the owner
 		self._owner = node		# The node to which this cell belongs to
 		self._slotframe_id = fd		# The local frame id (that of the owner), the cell belongs to
 		self._channel = co		# Channel offset
@@ -110,15 +110,6 @@ class Cell(object):
 		self._link_type = lt
 		self._link_option = lo 		# For unicast Tx is 1, for unicast Rx is 2, for broadcast Tx is 9, for broadcast Rx is 10
 		self._target = tna
-		#self.pending = False # TODO: is it needed?
-
-	@property
-	def id(self):
-		return self._cell_id
-
-	@id.setter
-	def id(self, cd):
-		self._cell_id = cd
 
 	@property
 	def owner(self):
@@ -177,8 +168,7 @@ class Cell(object):
 		self.link_option = lo
 
 	def __str__(self):
-		ownership = self.owner+'/'+self.slotframe+'/'+self.id
-		coordinates = '['+self.slot+','+self.channel+']'
-		#link = self.tx+'->'+(self.rx if self.rx else 'ALL')
-		properties = '{'+self.type+','+self.option+'}'
+		ownership = str(self.owner)+'/'+str(self.slotframe)
+		coordinates = '['+str(self.slot)+','+str(self.channel)+']'
+		properties = '{'+str(self.type)+','+str(self.option)+'}'
 		return ownership+':'+coordinates+':'+':'+properties

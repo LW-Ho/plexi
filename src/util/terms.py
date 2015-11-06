@@ -68,11 +68,24 @@ resources = {
 			'SLOTOFFSET': {'LABEL': 'slot'},
 			'LINKOPTION': {'LABEL': 'option'},
 			'LINKTYPE': {'LABEL': 'type'},
-			'TARGETADDRESS': {'LABEL': 'target'}
+			'TARGETADDRESS': {'LABEL': 'tna'},
+			'STATISTICS': {'LABEL': 'stats'}
 		},
-		'NEIGHBOURLIST': {
+		'NEIGHBORLIST': {
 			'LABEL': 'nbrList',
-			'AGE':{ 'LABEL': 'age'}
+			'ASN':{ 'LABEL': 'asn'}
+		},
+		'STATISTICS': {
+			'LABEL': 'stats',
+			'ID':{ 'LABEL': 'id'},
+			'METRIC':{ 'LABEL': 'metric'},
+			'ENABLE':{ 'LABEL': 'enable'},
+			'WINDOW':{ 'LABEL': 'window'},
+			'VALUE':{ 'LABEL': 'value'},
+			'RSSI':{ 'LABEL': 'rssi'},
+			'LQI':{ 'LABEL': 'lqi'},
+			'ETX':{ 'LABEL': 'etx'},
+			'PDR':{ 'LABEL': 'pdr'}
 		}
 	}
 }
