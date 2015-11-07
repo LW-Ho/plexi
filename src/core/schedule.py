@@ -29,7 +29,7 @@ import re
 from util.Visualizer import FrankFancyStreamingInterface
 
 logg = logging.getLogger('RiSCHER')
-logg.setLevel(logging.DEBUG)
+logg.setLevel(logging.INFO)
 
 
 class Reflector(object):
@@ -178,7 +178,10 @@ class Reflector(object):
 				children = self.dodag.get_children(key)
 				#disconnect the node and execute commands for this disconnect
 				if self.dodag.detach_node(key):
-					self._DumpGraph()
+					try:
+						self._DumpGraph()
+					except:
+						logg.critical("DumpGraph in TimeTick crashes when file not found")
 					self.communicate(self._disconnect(key, children))
 					self.communicate(self.disconnected(key))
 				self.lost_children.pop(key,0)
@@ -669,7 +672,7 @@ class Reflector(object):
 				else:
 					comm.callback = self._get_resource
 			self.cache[comm.id] = {'session': session, 'command': copy.copy(comm) }
-			logg.info("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
+			logg.debug("Sending to " + str(comm.to) + " >> " + comm.op + " " + comm.uri + " -- " + str(comm.payload))
 			if comm.op == 'get':
 				self.client.GET(comm.to, comm.uri, comm.id, comm.callback)
 			elif comm.op == 'observe':
@@ -697,7 +700,7 @@ class Reflector(object):
 
 	def _disconnect(self, node_id, children):
 	# handles the case of a node disconnects from the network
-		logg.info(str(node_id) + " was removed from the network")
+		logg.debug(str(node_id) + " was removed from the network")
 		q = interface.BlockQueue()
 		for (name, frame) in self.frames.items():
 			deleted_cells = frame.delete_links_of(node_id)
@@ -724,7 +727,7 @@ class Reflector(object):
 	# handles the actions performed when a node receives his slotframes
 		if frame and isinstance(frame, Slotframe):
 			frame.set_alias_id(who, remote_fd)
-			logg.info(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
+			logg.debug(str(who) + " installed new " + frame.name + " frame with id=" + str(remote_fd))
 		else:
 			logg.warning(str(who) + " tried to install an invalid frame: " + str(frame))
 		return None
@@ -746,7 +749,7 @@ class Reflector(object):
 		# handles the actions performed when a node receives his cell/s
 		# add the cell to the appropriate cell container
 		frame.cell_container.append(Cell(who, slotoffs, channeloffs, frame.get_alias_id(who), linktype, linkoption, target))
-		logg.info(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
+		logg.debug(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
 		# self.Streamer.ChangeCell(who, slotoffs, channeloffs, frame, "foo", 1)
 		#try sending this info to the visualizer
 		# try:
@@ -821,7 +824,7 @@ class Reflector(object):
 		return list(s)
 
 	def _report(self, who, resource, info):
-		logg.info('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		if str(resource).startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
 
 			payload = copy.copy(info)
@@ -881,7 +884,7 @@ class Reflector(object):
 		return None
 
 	def _delete(self, who, resource, info):
-		logg.info('Deletion confirmed at ' + (str(who) + " on " + str(resource) + ' : ' + str(info)))
+		logg.debug('Deletion confirmed at ' + (str(who) + " on " + str(resource) + ' : ' + str(info)))
 		return None
 
 	def communicate(self, assembly):

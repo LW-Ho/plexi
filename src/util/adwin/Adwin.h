@@ -27,7 +27,8 @@ class Adwin  {
   
   Adwin(int _M);
 
-  double getEstimation() const; 
+  double getEstimation() const;
+  double getVariance() const;
   bool update(const double &value);
   void print() const;
   int length() const { return W; }

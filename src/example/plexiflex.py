@@ -20,8 +20,6 @@ import logging
 from txthings import coap
 
 logg = logging.getLogger('RiSCHER')
-logg.setLevel(logging.DEBUG)
-
 
 class Plexiflex(SchedulerInterface):
 	"""
@@ -40,21 +38,21 @@ class Plexiflex(SchedulerInterface):
 	def start(self):
 		self.pending_connects.append(self.root_id)
 		self.metainfo[self.root_id] = {'adwin':adwin.Adwin(32), 'timestamp':-1,'pending_cells':[]}
-		self.communicate(self.get_neighbor_of(self.root_id, False))
+		self.communicate(self.get_neighbor_of(self.root_id, True))
 		super(Plexiflex, self).start()
 
 	def connected(self, child, parent=None, old_parent=None):
 		if child not in self.pending_connects:
 			self.pending_connects.append(child)
 			self.metainfo[child] = {'adwin':adwin.Adwin(32), 'timestamp':-1,'pending_cells':[]}
-			self.communicate(self.get_neighbor_of(child, False))
+			self.communicate(self.get_neighbor_of(child, True))
 		return None
 
 	def disconnected(self, node_id):
-		pass
+		raise Exception("You need to take care of disconnections")
 
 	def rewired(self, node_id, old_parent, new_parent):
-		pass
+		raise Exception("You need to take care of rewiring")
 
 	def framed(self, who, local_name, remote_alias, old_payload):
 		pass
@@ -68,6 +66,7 @@ class Plexiflex(SchedulerInterface):
 			q = BlockQueue()
 			cells = frame.get_cells_similar_to(
 				owner=who,
+				tna=self.dodag.get_parent(who),
 				slot=slotoffs,
 				channel=channeloffs,
 				link_option=1
@@ -104,16 +103,34 @@ class Plexiflex(SchedulerInterface):
 					self.pending_connects.remove(node)
 					q.push(self._initiate_schedule(node))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')) and value is not None:
-			last = self.metainfo[node]['timestamp']
-			now = time()
-			if last > 0:
-				timelag = now - last
-				trigger = self.metainfo[node]['adwin'].update(timelag)
-				if trigger:
-					print str(now)+": RESCHEDULE NOW!!!"
-			self.metainfo[node]['timestamp'] = now
+			if not isinstance(value,dict) or "traffic" not in value:
+				q.push(self._adapt(node))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'STATISTICS')) and value == coap.CHANGED:
-			print "Hooray"
+			pass
+		return q
+
+	def _adapt(self,node):
+		q = BlockQueue()
+		previous_variance = self.metainfo[node]['adwin'].getVariance()
+		last = self.metainfo[node]['timestamp']
+		now = time()
+		if last > 0:
+			timelag = now - last
+			trigger = self.metainfo[node]['adwin'].update(timelag)
+			new_estimate = self.metainfo[node]['adwin'].getEstimation()
+			new_variance = self.metainfo[node]['adwin'].getVariance()
+			logg.info("PLEXIFLEX: "+ str(node)+" probes - "+str(timelag)+" - "+ str(new_estimate)+" - "+ str(new_variance))
+			if trigger:
+				logg.info("PLEXIFLEX: "+ str(node)+" needs to take an action")
+				if new_variance > previous_variance:
+					logg.info("PLEXIFLEX: "+ str(node)+" needs more upstream cells")
+					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
+					if so is not None and co is not None:
+						logg.info("PLEXIFLEX: posting cell("+str(so)+","+str(co)+") to "+ str(node))
+						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
+				elif new_variance <= previous_variance:
+					logg.info(str(node)+" has redundant cells")
+		self.metainfo[node]['timestamp'] = now
 		return q
 
 
@@ -174,17 +191,17 @@ class Plexiflex(SchedulerInterface):
 		parent = self.dodag.get_parent(node)
 		if parent:
 			dag_neighbors += [parent]
-		children = self.dodag.get_children(node)
-		if children:
-			dag_neighbors += children
+		#children = self.dodag.get_children(node)
+		#if children:
+		#	dag_neighbors += children
 		q = BlockQueue()
 		for neighbor in dag_neighbors:
 			flags = 0
 			for cell in cells:
 				if cell.tna == neighbor:
-					if cell.link_option & 1 == 1:
+					if cell.option & 1 == 1:
 						flags |= 1
-					elif cell.link_option & 2 == 2:
+					elif cell.option & 2 == 2:
 						flags |= 2
 			if flags & 1 == 0:
 				so,co = self.schedule(node, neighbor, self.frames["mainstream"])
