@@ -29,7 +29,7 @@ import re
 from util.Visualizer import FrankFancyStreamingInterface
 
 logg = logging.getLogger('RiSCHER')
-logg.setLevel(logging.INFO)
+logg.setLevel(logging.DEBUG)
 
 
 class Reflector(object):
@@ -79,7 +79,7 @@ class Reflector(object):
 		NodeID.prefix = prefix
 		self.root_id = NodeID(lbr_ip, lbr_port)
 		logg.info("scheduler interface started with LBR=" + str(self.root_id))
-		self.client = LazyCommunicator(5)
+		self.client = LazyCommunicator(1)
 		self.dodag = DoDAG(net_name, self.root_id, visualizer)
 		self.cache = {}
 		self.sessions = {}
@@ -137,6 +137,7 @@ class Reflector(object):
 		if token is not None:
 			entry = self.cache[token]
 			if entry['command'].op != 'observe':
+				#self.client.forget(token)
 				del self.cache[token]
 		return entry
 
@@ -307,17 +308,23 @@ class Reflector(object):
 		self._DumpGraph()
 
 	def _rewired(self, node_id, old_parent, new_parent):
-		if self.rewireframe == "":
-			return []
-		F = self.frames[self.rewireframe]
 		q = interface.BlockQueue()
-		cells = F.get_cells_similar_to(tx_node = node_id, rx_node=old_parent) + F.get_cells_similar_to({"rx_node":node_id,"tx_node":old_parent})
+		cells = []
+		for f in self.frames.values():
+			cells += f.get_cells_similar_to(owner=node_id, tna=old_parent, link_option=1) + \
+					f.get_cells_similar_to(owner=node_id, tna=old_parent, link_option=2) + \
+					f.get_cells_similar_to(tna=old_parent, owner=node_id, link_option=1) + \
+					f.get_cells_similar_to(tna=old_parent, owner=node_id, link_option=2)
 		for c in cells:
-			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', ID=str(c.id))))
+			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=c.slotframe, SLOT=c.slot, CHANNEL=c.channel)))
 		q.block()
 
-		self.Streamer.RewireNode(node_id, old_parent, new_parent)
-		return [q]
+		try:
+			self.Streamer.RewireNode(node_id, old_parent, new_parent)
+		except:
+			logg.critical("Streamer.RewireNode in _rewired fails if Streamer==None")
+
+		return q
 
 	#dumps a png of the current internal dodag graph with timestamp to file
 	def _DumpGraph(self):
@@ -531,7 +538,7 @@ class Reflector(object):
 		cached_entry = self._decache(tk)
 		self._touch_session(cached_entry['command'], session_id)
 
-	def _receive_deletion(self, response):
+	def _delete_6top_link(self, response):
 		"""
 		Callback for deletion of cell
 
@@ -587,7 +594,7 @@ class Reflector(object):
 			raise exception.UnsupportedCase(tmp)
 		else:
 			clean_payload = parser.clean_payload(response.payload)
-			logg.debug("Probe on " + str(response.remote[0]) + " reported " + str(clean_payload) + " i.e. MID:" + str(response.mid))
+			#logg.debug("Probe on " + str(response.remote[0]) + " reported " + str(clean_payload) + " i.e. MID:" + str(response.mid))
 			#try:
 			payload = json.loads(clean_payload)
 			self.communicate(self._report(node_id, uri, payload))
@@ -663,8 +670,9 @@ class Reflector(object):
 									comm.query += '='+str(q)
 								i += 1
 						comm.callback = self._get_resource
-					# elif comm.op == 'delete': TODO: support celllist deletion
-					# 	comm.callback = self._get_resource
+					elif comm.op == 'delete':
+						comm.callback = self._delete_6top_link
+
 				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')):
 					comm.callback = self._get_resource
 				elif comm.uri.startswith(terms.get_resource_uri('6TOP', 'STATISTICS')) and comm.op == 'post':
@@ -706,20 +714,27 @@ class Reflector(object):
 			deleted_cells = frame.delete_links_of(node_id)
 			for cell in deleted_cells:
 				if cell.owner != node_id:
-					self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
+					try:
+						self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
+					except:
+						logg.error("Streamer.ChangeCell in _disconnect crashes when Streamer not defined")
 					# try:
 					# 	self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
 					# except:
 					# 	pass
-					q.push(Command('delete', cell.owner, terms.uri['6TP_CL']+'/'+str(cell.id)))
-			del frame.fds[node_id]
+					q.push(Command('delete', cell.owner, terms.get_resource_uri("6TOP","CELLLIST",SLOTFRAME=cell.slotframe,SLOT=cell.slot,CHANNEL=cell.channel)))
+			if node_id in frame.fds:
+				del frame.fds[node_id]
 		q.block()
 		#query the new children on where they went
 		for child in children:
-			q.push(Command('get', child, terms.uri['RPL_DODAG']))
+			q.push(Command('get', child, terms.get_resource_uri("RPL", "DAG")))
 		q.block()
 
-		self.Streamer.RemoveNode(node_id)
+		try:
+			self.Streamer.RemoveNode(node_id)
+		except:
+			logg.critical("Buggy streaming thing!!!!!!!")
 
 		return q
 
@@ -824,7 +839,7 @@ class Reflector(object):
 		return list(s)
 
 	def _report(self, who, resource, info):
-		logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		#logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		if str(resource).startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
 
 			payload = copy.copy(info)
@@ -885,6 +900,12 @@ class Reflector(object):
 
 	def _delete(self, who, resource, info):
 		logg.debug('Deletion confirmed at ' + (str(who) + " on " + str(resource) + ' : ' + str(info)))
+		if isinstance(info,dict) and terms.resources["6TOP"]["SLOTFRAME"] in info and terms.resources["6TOP"]["SLOT"] in info and terms.resources["6TOP"]["CHANNEL"] in info:
+			for f in self.frames.values():
+				if f.get_alias_id() == info[terms.resources["6TOP"]["SLOTFRAME"]]:
+					cells = f.get_cells_similar_to(owner=who, slot=info[terms.resources["6TOP"]["SLOT"]], channel=info[terms.resources["6TOP"]["CHANNEL"]])
+					f.delete_cells(cells)
+					break
 		return None
 
 	def communicate(self, assembly):
@@ -1131,6 +1152,20 @@ class SchedulerInterface(Reflector):
 
 		return q
 
+	def delete_link_by_coords(self, node, slotframe, slot, channel):
+		assert isinstance(node, NodeID)
+		q = interface.BlockQueue()
+		if isinstance(slotframe, (int, long)):
+			q.push(Command('delete', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=slotframe, SLOTOFFSET=slot, CHANNELOFFSET=channel)))
+			q.block()
+			return q
+		elif isinstance(slotframe, Slotframe):
+			alias = slotframe.get_alias_id(node)
+			if alias:
+				q.push(Command('delete', node, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=alias, SLOTOFFSET=slot, CHANNELOFFSET=channel)))
+				q.block()
+				return q
+		return None
 
 	def get_neighbor_of(self, node, observable, neighbor=None):
 		assert isinstance(node, NodeID)

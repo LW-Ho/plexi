@@ -37,14 +37,14 @@ class Plexiflex(SchedulerInterface):
 
 	def start(self):
 		self.pending_connects.append(self.root_id)
-		self.metainfo[self.root_id] = {'adwin':adwin.Adwin(32), 'timestamp':-1,'pending_cells':[]}
+		self.metainfo[self.root_id] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':[]}
 		self.communicate(self.get_neighbor_of(self.root_id, True))
 		super(Plexiflex, self).start()
 
 	def connected(self, child, parent=None, old_parent=None):
 		if child not in self.pending_connects:
 			self.pending_connects.append(child)
-			self.metainfo[child] = {'adwin':adwin.Adwin(32), 'timestamp':-1,'pending_cells':[]}
+			self.metainfo[child] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':[]}
 			self.communicate(self.get_neighbor_of(child, True))
 		return None
 
@@ -103,34 +103,57 @@ class Plexiflex(SchedulerInterface):
 					self.pending_connects.remove(node)
 					q.push(self._initiate_schedule(node))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')) and value is not None:
-			if not isinstance(value,dict) or "traffic" not in value:
+			if node != self.root_id and (not isinstance(value,dict) or "traffic" not in value):
 				q.push(self._adapt(node))
+			elif node != self.root_id and isinstance(value,dict) and "traffic" in value:
+				logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value["traffic"]))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'STATISTICS')) and value == coap.CHANGED:
 			pass
 		return q
 
 	def _adapt(self,node):
 		q = BlockQueue()
-		previous_variance = self.metainfo[node]['adwin'].getVariance()
+		old_avg_timelag = self.metainfo[node]['latency_adwin'].getEstimation()
+		old_avg_variance = self.metainfo[node]['variance_adwin'].getEstimation()
 		last = self.metainfo[node]['timestamp']
 		now = time()
+		self.metainfo[node]['timestamp'] = now
 		if last > 0:
 			timelag = now - last
-			trigger = self.metainfo[node]['adwin'].update(timelag)
-			new_estimate = self.metainfo[node]['adwin'].getEstimation()
-			new_variance = self.metainfo[node]['adwin'].getVariance()
-			logg.info("PLEXIFLEX: "+ str(node)+" probes - "+str(timelag)+" - "+ str(new_estimate)+" - "+ str(new_variance))
-			if trigger:
-				logg.info("PLEXIFLEX: "+ str(node)+" needs to take an action")
-				if new_variance > previous_variance:
-					logg.info("PLEXIFLEX: "+ str(node)+" needs more upstream cells")
+			trigger_avg = self.metainfo[node]['latency_adwin'].update(timelag)
+			new_avg_timelag = self.metainfo[node]['latency_adwin'].getEstimation()
+			new_var_timelag = self.metainfo[node]['latency_adwin'].getVariance()
+			trigger_var = self.metainfo[node]['variance_adwin'].update(new_var_timelag)
+			new_avg_variance = self.metainfo[node]['variance_adwin'].getEstimation()
+			logg.info("PLEXIFLEX,PROBE   ,"+ str(node)+","+str(timelag)+","+ str(self.metainfo[node]['latency_adwin'].length())+","+str(new_avg_timelag)+","+ str(new_var_timelag)+","+ str(self.metainfo[node]['variance_adwin'].length())+","+str(new_avg_variance))
+			if trigger_avg:
+				logg.info("PLEXIFLEX,INTERVAL,"+ str(node)+",CHANGE")
+				if old_avg_timelag < new_avg_timelag:
 					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
+					logg.info("PLEXIFLEX,INTERVAL,"+ str(node)+",ADD("+str(so)+","+str(co)+")")
 					if so is not None and co is not None:
-						logg.info("PLEXIFLEX: posting cell("+str(so)+","+str(co)+") to "+ str(node))
 						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
-				elif new_variance <= previous_variance:
-					logg.info(str(node)+" has redundant cells")
-		self.metainfo[node]['timestamp'] = now
+				elif old_avg_timelag > new_avg_timelag:
+					cells = self.frames['mainstream'].get_cells_similar_to(owner=node,tna=self.dodag.get_parent(node),link_option=1)
+					if len(cells) > 1:
+						logg.info("PLEXIFLEX,INTERVAL,"+ str(node)+",REMOVE")
+						so,co = self.deschedule(node, self.dodag.get_parent(node),self.frames["maintenance"])
+						if so is not None and co is not None:
+							q.push(self.delete_link(node, self.frames["mainstream"], so, co))
+			if trigger_var:
+				logg.info("PLEXIFLEX,VARIANCE,"+ str(node)+",CHANGE")
+				if old_avg_variance < new_avg_variance:
+					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
+					logg.info("PLEXIFLEX,VARIANCE,"+ str(node)+",ADD("+str(so)+","+str(co)+")")
+					if so is not None and co is not None:
+						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
+				elif old_avg_variance > new_avg_variance:
+					cells = self.frames['mainstream'].get_cells_similar_to(owner=node,tna=self.dodag.get_parent(node),link_option=1)
+					if len(cells) > 1:
+						logg.info("PLEXIFLEX,VARIANCE,"+ str(node)+",REMOVE")
+						self.deschedule(node, self.dodag.get_parent(node),self.frames["maintenance"])
+						if so is not None and co is not None:
+							q.push(self.delete_link(node, self.frames["mainstream"], so, co))
 		return q
 
 
@@ -184,6 +207,43 @@ class Plexiflex(SchedulerInterface):
 				break
 
 		return None, None
+
+	def deschedule(self, tx, rx, slotframe):
+		"""
+		Schedules a link at a given slotframe.
+
+		Starts from slot 1 and channel 0. All the channels of the slot are scanned. If the intended link does not conflict
+		with any simultaneous transmission at that slot and does not interfere with any other pair of nodes, the link is
+		scheduled at that channel and slot. If no such channel can be found, the next slot is scanned.
+
+		Note that the slots and channels of both Broadcast-Frame and Unicast-Frame slotframes are considered to avoid conflicts
+		and interferences.
+
+		:note: all 16 channels are assumed available
+
+		:param tx: the transmitting node
+		:type tx: NodeID
+		:param rx: the receiving node or None if broadcast link to be scheduled
+		:type rx: NodeID or None
+		:param slotframe: the slotframe the link should be scheduled to
+		:type slotframe: Slotframe
+		:return: (slotoffset, channeloffset)
+		:rtype: (int,int) tuple of (None,None) tuple if cell not found
+		"""
+
+		so = None
+		co = None
+		cells = slotframe.get_cells_similar_to(owner=tx,tna=rx,link_option=1)
+		if len(cells) == 1:
+			so = cells[0].slot
+			co = cells[0].channel
+			cells = slotframe.get_cells_similar_to(owner=rx,tna=tx,link_option=2)
+			if len(cells) == 1 and so == cells[0].slot and co == cells[0].channel:
+				return so,co
+			else:
+				logg.critical("plexiflex in panic. did not find expected cell")
+		return None, None
+
 
 	def _initiate_schedule(self, node):
 		cells = self.frames['mainstream'].get_cells_of(node)

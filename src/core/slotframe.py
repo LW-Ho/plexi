@@ -64,7 +64,7 @@ class Slotframe(object):
 				continue
 			if 'link_type' in kwargs.keys() and kwargs['link_type'] != i.type:
 				continue
-			if 'frame_id' in kwargs.keys() and kwargs['frame_id'] != i.slotframe:
+			if 'slotframe' in kwargs.keys() and kwargs['slotframe'] != i.slotframe:
 				continue
 			if 'tna' in kwargs.keys() and kwargs['tna'] != i.tna:
 				continue

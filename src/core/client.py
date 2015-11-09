@@ -27,6 +27,7 @@ class Communicator(object):
 
 	def __init__(self):
 		self.tickets = {}
+		self.observers = {}
 
 	def start(self):
 		try:
@@ -37,11 +38,30 @@ class Communicator(object):
 	def token(self, ticket):
 		return self.tickets[ticket] if ticket in self.tickets else None
 
+	def forget(self, token):
+		for k,v in self.tickets.items():
+			if v == token:
+				del self.tickets[k]
+				return
+
+
 	def request(self, to_node, operation, uri, token, callback, payload=None):
 		if not payload:
 			payload = ''
-		request = coap.Message(mtype=coap.CON, code=operation if operation != coap.OBSERVE else coap.GET, token=token, payload=payload)
 		tmp = uri.split('?')
+		if operation == coap.OBSERVE and to_node in self.observers:
+			for req in self.observers[to_node]:
+				tmp_path = ""
+				first_item = True
+				for x in req.opt.uri_path:
+					if not first_item:
+						tmp_path += "/"
+					tmp_path += x
+					first_item = False
+				if len(tmp) > 0 and tmp_path == tmp[0]:
+					return
+
+		request = coap.Message(mtype=coap.CON, code=operation if operation != coap.OBSERVE else coap.GET, token=token, payload=payload)
 		request.opt.uri_path = tmp[0].split('/')
 		if len(tmp) == 2:
 			request.opt.uri_query = tmp[1].split('&')
@@ -57,6 +77,10 @@ class Communicator(object):
 		if operation == coap.OBSERVE:
 			request.opt.observe = 0
 			requester = coap.Requester(protocol, request, observeCallback=callback, block1Callback=None, block2Callback=None, observeCallbackArgs=None, block1CallbackArgs=None, block2CallbackArgs=None, observeCallbackKeywords=None, block1CallbackKeywords=None, block2CallbackKeywords=None)
+			if to_node not in self.observers:
+				self.observers[to_node] = [request]
+			else:
+				self.observers[to_node] += [request]
 		else:
 			requester = coap.Requester(protocol, request, observeCallback=None, block1Callback=None, block2Callback=None, observeCallbackArgs=None, block1CallbackArgs=None, block2CallbackArgs=None, observeCallbackKeywords=None, block1CallbackKeywords=None, block2CallbackKeywords=None)
 		if callback is not None:
@@ -69,6 +93,29 @@ class Communicator(object):
 
 	def OBSERVE(self, to_node, uri, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.OBSERVE, uri, token, callback)
+
+	def CANCEL_OBSERVE(self, to_node, uri, token, callback):
+		protocol = coap.Coap(resource.Endpoint(None))
+		ver = netaddr.IPAddress(to_node.ip).version
+		if ver == 6:
+			reactor.listenUDP(0, protocol, interface='::')
+		else:
+			reactor.listenUDP(0, protocol)
+		tmp = uri.split('?')
+		for req in self.observers[to_node]:
+			tmp_path = ""
+			first_item = True
+			for x in req.opt.uri_path:
+				if not first_item:
+					tmp_path += "/"
+				tmp_path += x
+				first_item = False
+			if len(tmp) > 0 and tmp_path == tmp[0]:
+				req.opt.observe = 1
+				requester = coap.Requester(protocol, req, observeCallback=None, block1Callback=None, block2Callback=None, observeCallbackArgs=None, block1CallbackArgs=None, block2CallbackArgs=None, observeCallbackKeywords=None, block1CallbackKeywords=None, block2CallbackKeywords=None)
+				if callback is not None:
+					requester.deferred.addCallback(callback)
+				self.forget(token)
 
 	def POST(self, to_node, uri, payload, token, callback):
 		reactor.callWhenRunning(self.request, to_node, coap.POST, uri, token, callback, payload)
