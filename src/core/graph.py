@@ -86,7 +86,10 @@ class DoDAG(object):
 		stream.write("}\n")
 		stream.close()
 		#activate graphviz to create the graph from the dotfile
-		call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
+		try:
+			call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
+		except:
+			logg.critical("graphviz popped error No such file or directory")
 		return dotdata
 
 	#detaches a node AND ALL ITS CHILDREN

@@ -28,7 +28,7 @@ class Plexiflex(SchedulerInterface):
 		super(Plexiflex,self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
 		self.metainfo = {}
 		self.pending_connects = []
-		self.stats_ids = 1
+		# self.stats_ids = 1
 		self.reserved_cells = []
 		# Define a frame of size 11 slots containing unicast cells
 		mainstream_frame = Slotframe("mainstream", 11)
@@ -37,25 +37,35 @@ class Plexiflex(SchedulerInterface):
 
 	def start(self):
 		self.pending_connects.append(self.root_id)
-		self.metainfo[self.root_id] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':[]}
+		self.metainfo[self.root_id] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':None}
 		self.communicate(self.get_neighbor_of(self.root_id, True))
 		super(Plexiflex, self).start()
 
 	def connected(self, child, parent=None, old_parent=None):
 		if child not in self.pending_connects:
 			self.pending_connects.append(child)
-			self.metainfo[child] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':[]}
+			self.metainfo[child] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':None}
 			self.communicate(self.get_neighbor_of(child, True))
 		return None
 
 	def disconnected(self, node_id):
-		raise Exception("You need to take care of disconnections")
+		if node_id in self.pending_connects:
+			self.pending_connects.remove(node_id)
+		if node_id in self.metainfo:
+			del self.metainfo[node_id]
+		for i in self.reserved_cells:
+			if i.owner == node_id or i.tna == node_id:
+				self.reserved_cells.remove(i)
 
 	def rewired(self, node_id, old_parent, new_parent):
-		raise Exception("You need to take care of rewiring")
+		pass #nothing to be done
 
 	def framed(self, who, local_name, remote_alias, old_payload):
-		pass
+		q = BlockQueue()
+		if who in self.pending_connects and self.metainfo[who]['pending_cells'] is not None and len(self.metainfo[who]['pending_cells']) == 0:
+			self.pending_connects.remove(who)
+			q.push(self._initiate_schedule(who))
+		return q
 
 	def celled(self, who, slotoffs, channeloffs, frame, linkoption, linktype, target, old_payload):
 		for i in self.reserved_cells:
@@ -71,9 +81,9 @@ class Plexiflex(SchedulerInterface):
 				channel=channeloffs,
 				link_option=1
 			)
-			if len(cells) == 1:
-				q.push(self.set_remote_statistics(who, self.stats_ids, cells[0], terms.resources['6TOP']['STATISTICS']['ETX']['LABEL'], 5))
-				self.stats_ids += 1
+			# if len(cells) == 1:
+			# 	q.push(self.set_remote_statistics(who, self.stats_ids, cells[0], terms.resources['6TOP']['STATISTICS']['ETX']['LABEL'], 5))
+			# 	self.stats_ids += 1
 			return q
 		return None
 
@@ -96,10 +106,10 @@ class Plexiflex(SchedulerInterface):
 				if add:
 					q.push(self.post_slotframes(node, self.frames['mainstream']))
 			elif str(resource) == terms.get_resource_uri('6TOP', 'CELLLIST', 'ID') and value is not None:
-				self.metainfo[node]['pending_cells'] += value
+				self.metainfo[node]['pending_cells'] = value
 			elif str(resource).startswith(terms.get_resource_uri('6TOP', 'CELLLIST',ID='')) and value is not None:
 				self.metainfo[node]['pending_cells'].remove(value[terms.resources['6TOP']['CELLLIST']['ID']['LABEL']])
-				if not self.metainfo[node]['pending_cells']:
+				if not self.metainfo[node]['pending_cells'] and self.frames['mainstream'].get_alias_id(node) is not None:
 					self.pending_connects.remove(node)
 					q.push(self._initiate_schedule(node))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')) and value is not None:
@@ -125,7 +135,11 @@ class Plexiflex(SchedulerInterface):
 			new_var_timelag = self.metainfo[node]['latency_adwin'].getVariance()
 			trigger_var = self.metainfo[node]['variance_adwin'].update(new_var_timelag)
 			new_avg_variance = self.metainfo[node]['variance_adwin'].getEstimation()
-			logg.info("PLEXIFLEX,PROBE   ,"+ str(node)+","+str(timelag)+","+ str(self.metainfo[node]['latency_adwin'].length())+","+str(new_avg_timelag)+","+ str(new_var_timelag)+","+ str(self.metainfo[node]['variance_adwin'].length())+","+str(new_avg_variance))
+			logg.info("PLEXIFLEX,PROBE,"+ str(node)+","+str(timelag)+","+ str(self.metainfo[node]['latency_adwin'].length())+","+str(new_avg_timelag)+","+ str(new_var_timelag)+","+ str(self.metainfo[node]['variance_adwin'].length())+","+str(new_avg_variance))
+			tmp = ""
+			for c in self.frames["mainstream"].get_cells_of(node):
+				tmp += str(c.slot)+"#"+str(c.channel)+","
+			logg.info("PLEXIFLEX,SCHEDULE,"+ str(node)+","+tmp)
 			if trigger_avg:
 				logg.info("PLEXIFLEX,INTERVAL,"+ str(node)+",CHANGE")
 				if old_avg_timelag < new_avg_timelag:

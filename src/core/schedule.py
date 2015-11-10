@@ -188,6 +188,10 @@ class Reflector(object):
 				self.lost_children.pop(key,0)
 				#because the dict changed, break here, other disconnections are thus done with 1 second delay
 				break
+			elif value == int(0.9*self.time_until_dissconnect):
+				q = interface.BlockQueue()
+				q.push(Command("get",key,terms.get_resource_uri("RPL", "DAG")))
+				self.communicate(q)
 			else:
 				self.lost_children[key] = value - 1
 
@@ -217,6 +221,50 @@ class Reflector(object):
 			else:
 				del self.sessions[session_id]
 
+	def _get_rpl_dag(self, response):
+		"""
+		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
+		the parent and the second item the children list
+
+		:param response: the incomming data package
+		:type response: :class:`txthings.coap.Message`
+
+		"""
+		#verify the token
+		tk = self.client.token(response.token)
+		if tk not in self.cache:
+			return
+		session_id = self.cache[tk]["session"]
+		#check if the response is valid
+		node_id = NodeID(response.remote[0], response.remote[1])
+
+		if response.code != coap.CONTENT:
+			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+			cached_entry = self._decache(tk)
+			self._touch_session(cached_entry['command'], session_id)
+			raise exception.UnsupportedCase(tmp)
+
+		#report to the logger
+		logg.debug("Observed rpl/dag from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
+		try:
+			#json parse the payload and decache the token
+			payload = json.loads(parser.clean_payload(response.payload))
+			cached_entry = self._decache(tk)
+			#pass the seperate pieces of information to their functions
+			if cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','PARENT')):
+				self._observe_rpl_parent(payload, node_id)
+			elif cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','CHILD')):
+				self._observe_rpl_children(payload, node_id)
+			else:
+				self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
+				self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
+		except ValueError as ve:
+			logg.critical(ve.message+'. Command is skipped')
+
+		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
+		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
+		self._touch_session(cached_entry['command'], session_id)
+
 	def _observe_rpl_children(self, payload, parent_id):
 		"""
 		handles the parsing of received children list resource (part of the dodag resource). If a node is lost it is put
@@ -237,18 +285,18 @@ class Reflector(object):
 		# # Find, remove and return the cache entry of the command that triggered this response
 		# cached_entry = self._decache(tk)
 		dodag_child_list = self.dodag.get_children(parent_id)
-
-		# Detect the children that were deleted, those that are in the local DoDAG but are not in the fetched children list
-		removed_nodes = [item for item in dodag_child_list if item not in observed_children]
-		# Iterate over all deleted children and detach them from the local DoDAG.
-		# If detachment successful,
-		#  build a session (BlockQueue) to remove the related cells from affected neighbors
-		#  let user-defined function add a new session if needed
-		#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
-		for rn in removed_nodes:
-			logg.debug("child is lost: " + str(rn))
-			if rn not in self.lost_children: #do not reset the timer if it is already there for a reason
-				self.lost_children[rn] = self.time_until_dissconnect
+		if dodag_child_list is not None:
+			# Detect the children that were deleted, those that are in the local DoDAG but are not in the fetched children list
+			removed_nodes = [item for item in dodag_child_list if item not in observed_children]
+			# Iterate over all deleted children and detach them from the local DoDAG.
+			# If detachment successful,
+			#  build a session (BlockQueue) to remove the related cells from affected neighbors
+			#  let user-defined function add a new session if needed
+			#  TODO: what if the user would like to have a block queue only after the related cells are deleted?
+			for rn in removed_nodes:
+				logg.debug("child is lost: " + str(rn))
+				if rn not in self.lost_children and self.dodag.get_parent(rn) == parent_id: #do not reset the timer if it is already there for a reason
+					self.lost_children[rn] = self.time_until_dissconnect
 
 
 		# Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already
@@ -257,13 +305,9 @@ class Reflector(object):
 		#  build and send a BlockQueue session to install a children list observer to the new node
 		#  let user-defined function add a new session if needed
 		for k in observed_children:
-			#if a
 			if not self.dodag.check_node(k):
-				old_parent = self.dodag.get_parent(k)
-				if self.dodag.attach_child(k, parent_id):
-					#self._DumpGraph()
-					self.communicate(self._connect(k, parent_id, old_parent))
-					self.communicate(self.connected(k, parent_id, old_parent))
+				#self._DumpGraph()
+				self.communicate(self._connect(k))
 
 
 	def _observe_rpl_parent(self, payload, node_id):
@@ -282,45 +326,54 @@ class Reflector(object):
 		#if the node is the border router do nothing
 		if len(payload) == 0 or node_id == self.root_id:
 			return
+		#save the old parent
+		oldparent = self.dodag.get_parent(node_id)
 		#create an nodeid object for the (supposed) new parent
-		newparent_id = NodeID(payload[0])
+		newparent = NodeID(payload[0])
 		#check if its indeed a parent rewiring
-		if str(newparent_id) == str(self.dodag.get_parent(node_id)):
+		if newparent == oldparent:
 			return
 
 		#remove it from the lost child list if it is on there
 		if node_id in self.lost_children:
-			logg.debug("lost child returned to the network: " + str(node_id) + " to parent " + str(newparent_id))
+			logg.debug("lost child returned to the network: " + str(node_id) + " to parent " + str(newparent))
 			#and report it
 			self.lost_children.pop(node_id,0)
 		else:#otherwise just report the rewiring
-			logg.debug("parent rewiring of node: " + str(node_id) + " to parent " + str(newparent_id))
+			logg.debug("parent rewiring of node: " + str(node_id) + " to parent " + str(newparent))
 
-		#save the old parent
-		oldparent = self.dodag.get_parent(node_id)
 		#update the dodag tree
-		self.dodag.switch_parent(node_id,newparent_id)
-		#do internal cleanup
-		self.communicate(self._rewired(node_id, oldparent, newparent_id))
-		#do a kickback to the api
-		self.communicate(self.rewired(node_id, oldparent, newparent_id))
-		#dump the new graph to file
-		self._DumpGraph()
+		if self.dodag.attach_child(node_id,newparent):
+			if oldparent is None:
+				#do a kickback to the api
+				self.communicate(self.connected(node_id))
+			else:
+				#do internal cleanup
+				self.communicate(self._rewired(node_id, oldparent))
+				#do a kickback to the api
+				self.communicate(self.rewired(node_id, oldparent))
+			try:
+				#dump the new graph to file
+				self._DumpGraph()
+			except:
+				logg.critical("DumpGraph raised exception 'NoneType' object has no attribute 'DumpDotData'")
 
-	def _rewired(self, node_id, old_parent, new_parent):
+	def _rewired(self, node_id, old_parent):
 		q = interface.BlockQueue()
 		cells = []
 		for f in self.frames.values():
 			cells += f.get_cells_similar_to(owner=node_id, tna=old_parent, link_option=1) + \
 					f.get_cells_similar_to(owner=node_id, tna=old_parent, link_option=2) + \
-					f.get_cells_similar_to(tna=old_parent, owner=node_id, link_option=1) + \
-					f.get_cells_similar_to(tna=old_parent, owner=node_id, link_option=2)
+					f.get_cells_similar_to(owner=node_id, tna=old_parent, link_option=10) + \
+					f.get_cells_similar_to(owner=old_parent, tna=node_id, link_option=1) + \
+					f.get_cells_similar_to(owner=old_parent, tna=node_id, link_option=2) + \
+					f.get_cells_similar_to(owner=old_parent, tna=node_id, link_option=10)
 		for c in cells:
-			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=c.slotframe, SLOT=c.slot, CHANNEL=c.channel)))
+			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=c.slotframe, SLOTOFFSET=c.slot, CHANNELOFFSET=c.channel)))
 		q.block()
 
 		try:
-			self.Streamer.RewireNode(node_id, old_parent, new_parent)
+			self.Streamer.RewireNode(node_id, old_parent, self.dodag.get_parent(node_id))
 		except:
 			logg.critical("Streamer.RewireNode in _rewired fails if Streamer==None")
 
@@ -343,7 +396,7 @@ class Reflector(object):
 		# except:
 		# 	pass
 
-	def _get_rpl_dag(self, response):
+	def _get_rpl_dag_bkp(self, response):
 		"""
 		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
 		the parent and the second item the children list
@@ -711,20 +764,21 @@ class Reflector(object):
 		logg.debug(str(node_id) + " was removed from the network")
 		q = interface.BlockQueue()
 		for (name, frame) in self.frames.items():
-			deleted_cells = frame.delete_links_of(node_id)
-			for cell in deleted_cells:
-				if cell.owner != node_id:
-					try:
-						self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
-					except:
-						logg.error("Streamer.ChangeCell in _disconnect crashes when Streamer not defined")
-					# try:
-					# 	self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
-					# except:
-					# 	pass
-					q.push(Command('delete', cell.owner, terms.get_resource_uri("6TOP","CELLLIST",SLOTFRAME=cell.slotframe,SLOT=cell.slot,CHANNEL=cell.channel)))
-			if node_id in frame.fds:
-				del frame.fds[node_id]
+			if name != 'minimal':
+				deleted_cells = frame.delete_links_of(node_id)
+				for cell in deleted_cells:
+					if cell.owner != node_id:
+						try:
+							self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
+						except:
+							logg.error("Streamer.ChangeCell in _disconnect crashes when Streamer not defined")
+						# try:
+						# 	self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
+						# except:
+						# 	pass
+						q.push(Command('delete', cell.owner, terms.get_resource_uri("6TOP","CELLLIST",SLOTFRAME=cell.slotframe,SLOTOFFSET=cell.slot,CHANNELOFFSET=cell.channel)))
+				if node_id in frame.fds:
+					del frame.fds[node_id]
 		q.block()
 		#query the new children on where they went
 		for child in children:
