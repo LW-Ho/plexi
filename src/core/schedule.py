@@ -893,7 +893,7 @@ class Reflector(object):
 		return list(s)
 
 	def _report(self, who, resource, info):
-		#logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		if str(resource).startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
 
 			payload = copy.copy(info)
@@ -1147,7 +1147,7 @@ class SchedulerInterface(Reflector):
 			return q
 		return None
 
-	def post_link(self, slot, channel, slotframe, source, destination, target=None):
+	def post_link(self, slot, channel, slotframe, source, destination, shared, target=None):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
@@ -1155,6 +1155,11 @@ class SchedulerInterface(Reflector):
 		assert destination is None or isinstance(destination, NodeID)
 
 		q = interface.BlockQueue()
+
+		if shared:
+			shared = 4
+		else:
+			shared = 0
 
 		if target and target != source and target not in self.dodag.get_children(source):
 			return False
@@ -1170,18 +1175,18 @@ class SchedulerInterface(Reflector):
 		cells = []
 		if destination is not None:
 			if not found_tx and (target is None or target == source):
-				cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 0, 1, destination))
+				cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 0, 1 | shared, destination))
 			if destination not in found_rx and (target is None or target == destination):
-				cells.append(Cell(destination, slot, channel, slotframe.get_alias_id(destination), 0, 2, source))
+				cells.append(Cell(destination, slot, channel, slotframe.get_alias_id(destination), 0, 2 | shared, source))
 		elif destination is None:
 			neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
 			if target is None or target == source:
 				if not found_tx:
-					cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 1, 9, BROADCASTID))
+					cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 1, 9 | shared, BROADCASTID))
 				for neighbor in [item for item in neighbors if item not in found_rx]:
-					cells.append(Cell(neighbor, slot, channel, slotframe.get_alias_id(neighbor), 1, 10, source))
+					cells.append(Cell(neighbor, slot, channel, slotframe.get_alias_id(neighbor), 1, 10 | shared, source))
 			elif target and target != source and target in neighbors and target not in found_rx:
-				cells.append(Cell(target, slot, channel, slotframe.get_alias_id(target), 1, 10, source))
+				cells.append(Cell(target, slot, channel, slotframe.get_alias_id(target), 1, 10 | shared, source))
 		rx_cells = []
 		tx_cells = []
 		for c in cells:

@@ -31,7 +31,7 @@ class Plexiflex(SchedulerInterface):
 		# self.stats_ids = 1
 		self.reserved_cells = []
 		# Define a frame of size 11 slots containing unicast cells
-		mainstream_frame = Slotframe("mainstream", 11)
+		mainstream_frame = Slotframe("mainstream", 37)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[mainstream_frame.name] = mainstream_frame
 
@@ -113,10 +113,11 @@ class Plexiflex(SchedulerInterface):
 					self.pending_connects.remove(node)
 					q.push(self._initiate_schedule(node))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')) and value is not None:
+			logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value))
 			if node != self.root_id and (not isinstance(value,dict) or "traffic" not in value):
 				q.push(self._adapt(node))
-			elif node != self.root_id and isinstance(value,dict) and "traffic" in value:
-				logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value["traffic"]))
+			# elif node != self.root_id and isinstance(value,dict) and "traffic" in value:
+			# 	logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value["traffic"]))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'STATISTICS')) and value == coap.CHANGED:
 			pass
 		return q
@@ -146,7 +147,7 @@ class Plexiflex(SchedulerInterface):
 					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
 					logg.info("PLEXIFLEX,INTERVAL,"+ str(node)+",ADD("+str(so)+","+str(co)+")")
 					if so is not None and co is not None:
-						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
+						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node), True))
 				elif old_avg_timelag > new_avg_timelag:
 					cells = self.frames['mainstream'].get_cells_similar_to(owner=node,tna=self.dodag.get_parent(node),link_option=1)
 					if len(cells) > 1:
@@ -160,7 +161,7 @@ class Plexiflex(SchedulerInterface):
 					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
 					logg.info("PLEXIFLEX,VARIANCE,"+ str(node)+",ADD("+str(so)+","+str(co)+")")
 					if so is not None and co is not None:
-						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
+						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node), True))
 				elif old_avg_variance > new_avg_variance:
 					cells = self.frames['mainstream'].get_cells_similar_to(owner=node,tna=self.dodag.get_parent(node),link_option=1)
 					if len(cells) > 1:
@@ -280,7 +281,7 @@ class Plexiflex(SchedulerInterface):
 			if flags & 1 == 0:
 				so,co = self.schedule(node, neighbor, self.frames["mainstream"])
 				if so is not None and co is not None:
-					q.push(self.post_link(so, co, self.frames["mainstream"], node, neighbor))
+					q.push(self.post_link(so, co, self.frames["mainstream"], node, neighbor, True))
 					self.reserved_cells.append(Cell(node,so,co,self.frames["mainstream"].get_alias_id(node),0,1,neighbor))
 					self.reserved_cells.append(Cell(neighbor,so,co,self.frames["mainstream"].get_alias_id(neighbor),0,2,node))
 				else:
@@ -288,7 +289,7 @@ class Plexiflex(SchedulerInterface):
 			if flags & 2 == 0:
 				so,co = self.schedule(neighbor, node, self.frames["mainstream"])
 				if so is not None and co is not None:
-					q.push(self.post_link(so, co, self.frames["mainstream"], neighbor, node))
+					q.push(self.post_link(so, co, self.frames["mainstream"], neighbor, node, True))
 					self.reserved_cells.append(Cell(node,so,co,self.frames["mainstream"].get_alias_id(node),0,2,neighbor))
 					self.reserved_cells.append(Cell(neighbor,so,co,self.frames["mainstream"].get_alias_id(neighbor),0,1,node))
 				else:
