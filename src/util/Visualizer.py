@@ -11,10 +11,10 @@ import zmq.auth
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.log.handlers import PUBHandler
 import cPickle as pickle
+from core.graph import DoDAG
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
-
 
 class FrankFancyStreamingInterface(object):
 	"""
@@ -32,7 +32,7 @@ class FrankFancyStreamingInterface(object):
 	}
 
 	#TODO: give every scheduler an unique topic to easily distinguish between them on the queue
-	def __init__(self,VisualizerHost="localhost", ZeromqHost = "*", KeyFolder=".", root_id=None):
+	def __init__(self, name, privatekey, VisualizerHost, ZeromqHost = "*", root_id=None, empty=False):
 		"""
 		Calls internal methods to open the connections to both the Active Live visualizer and the logger
 
@@ -50,12 +50,16 @@ class FrankFancyStreamingInterface(object):
 		self.Active = None
 		self.Logger = None
 		self.EventId = 0
-		self.Name = "Scheduler1" #used as topic on the queue
+		self.Name = name #used as topic on the queue
+		if not empty:
+			if privatekey is not None:
+				self._connectLogger(privatekey, Host=ZeromqHost)
+			if VisualizerHost is not None:
+				self._connectVisualizer(VisualizerHost, root_id)
+				self.g = DoDAG(root_id, root_id)
+				self.root_id = root_id
 
-		self._connectLogger(ZeromqHost, KeyFolder)
-		self._connectVisualizer(VisualizerHost, root_id)
-
-	def _connectVisualizer(self, Host="localhost", root_id=""):
+	def _connectVisualizer(self, Host, root_id):
 		"""
 		Connect to the Active Live Visualizer
 
@@ -68,33 +72,34 @@ class FrankFancyStreamingInterface(object):
 			self.Active = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			self.Active.connect((Host, 600))
 			self.Active.sendall(root_id)
+
 		except:
 			logg.debug("Connection to Active Viewer failed!")
 			self.Active = None
 
-	def _connectLogger(self,Host="localhost", KeyFolder="."):
+	def _connectLogger(self, key, Host="localhost"):
 		"""
 		Open a zeromq queue with publisher service
 
 		:param Host: which interface the zeromq service needs to bind too ("*" for all interfaces)
-		:param KeyFolder: The folder with the privatekey of the publisher service
+		:param key: privatekey file of the scheduler
 		:return:
 		"""
 		#TODO: error handling on certificates missing and stuff
 		#TODO: expose more security options such as white/blacklisting ips and domain filtering
-		context = zmq.Context()
-		auth = ThreadAuthenticator(context)
-		auth.start()
-		# auth.allow('127.0.0.1')
-		auth.configure_curve(domain='*', location=os.path.join(KeyFolder, "public_keys"))
+		self.context = zmq.Context()
+		self.auth = ThreadAuthenticator(self.context)
+		self.auth.start()
+		self.auth.configure_curve(domain='*', location=os.path.join("keys", "public"))
 
-		self.Logger = context.socket(zmq.PUB)
-		server_secret_file = os.path.join(*["private_keys", "server.key_secret"])
-		server_public, server_secret = zmq.auth.load_certificate(server_secret_file)
-		socket.curve_secretkey = server_secret
-		socket.curve_publickey = server_public
-		socket.curve_server = True
-		socket.bind("tcp://*:%s" % 600)
+		self.Logger = self.context.socket(zmq.PUB)
+		scheduler_public, scheduler_secret = zmq.auth.load_certificate(os.path.join("keys", "plexi1.key_secret"))
+		self.Logger.curve_secretkey = scheduler_secret
+		self.Logger.curve_publickey = scheduler_public
+		self.Logger.curve_server = True
+		self.Logger.bind("tcp://127.0.0.1:6000")
+		# raw_input("Press enter when the logger has opened subscription to us")
+
 
 	def SendActiveJson(self,data):
 		"""
@@ -139,7 +144,7 @@ class FrankFancyStreamingInterface(object):
 		"""
 		if self.Active is not None:
 			logg.debug("Sending ChangeCell to active viewer")
-			self.Active.sendall(json.dumps(["changecell",{"who": who, "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID, "status":status}]))
+			self.Active.sendall(json.dumps(["changecell",{"who": str(who), "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID, "status":status}]))
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending ChangeCell to logger, EventID:" + str(self.EventId))
@@ -148,21 +153,20 @@ class FrankFancyStreamingInterface(object):
 			# 	"SubjectId" 	: self.ConvertStatus["Cells"][status],
 			# 	"InfoString" 	: json.dumps({"who": who, "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})
 			# })])
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, self.ConvertStatus["Cells"][status], time.time(), json.dumps({"who": who, "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})))])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, self.ConvertStatus["Cells"][status], time.time(), json.dumps({"node_id": str(who), "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})))])
 
-	def DumpDotData(self, root_id, dotdata):
+	def DumpDotData(self):
 		"""
 		dumps an entire dot file to the active viewer. This is not used for the logger
 
-		:param root_id: ip6 of the LBR
-		:type root_id: str
-		:param dotdata: the dotfile to be send
 		:return:
 		"""
 		# packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
 		if self.Active is not None:
 			logg.debug("Sending dotdata")
-			self.Active.sendall(bytearray("[\"" + root_id + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + dotdata + "]"))
+			# self.Active.sendall(bytearray("[\"" + root_id + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + dotdata + "]"))
+			dotdata = self.g.draw_graph()
+			self.Active.sendall(bytearray(json.dumps(["\"" + self.root_id + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"", dotdata])))
 
 	def AddNode(self, node_id, parent):
 		"""
@@ -182,7 +186,13 @@ class FrankFancyStreamingInterface(object):
 			# 	"SubjectId"	: 0,
 			# 	"InfoString": json.dumps({"node_id" : node_id, "parent" : parent})
 			# })])
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 0, time.time(), json.dumps({"node_id" : node_id, "parent" : parent})))])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 0, time.time(), json.dumps({"node_id" : str(node_id), "parent" : str(parent)})))])
+		if self.Active is not None:
+			if parent == "root":
+				self.g.attach_node(node_id)
+			else:
+				self.g.attach_child(node_id, parent)
+			self.DumpDotData()
 
 	def RewireNode(self, node_id, old_parent, new_parent):
 		"""
@@ -201,7 +211,11 @@ class FrankFancyStreamingInterface(object):
 			# 	"SubjectId"	: 2,
 			# 	"InfoString": json.dumps({"node_id" : node_id, "old_parent" : old_parent, "new_parent" : new_parent})
 			# })])
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 2, time.time(), json.dumps({"node_id" : node_id, "old_parent" : old_parent, "new_parent" : new_parent})))])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 2, time.time(), json.dumps({"node_id" : str(node_id), "old_parent" : str(old_parent), "new_parent" : str(new_parent)})))])
+		if self.Active is not None:
+			self.g.attach_child(node_id, new_parent)
+			self.DumpDotData()
+
 
 	def RemoveNode(self, node_id):
 		"""
@@ -218,4 +232,26 @@ class FrankFancyStreamingInterface(object):
 			# 	"SubjectId"	: 1,
 			# 	"InfoString": json.dumps({"node_id" : node_id})
 			# })])
-			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 1, time.time(), json.dumps({"node_id" : node_id})))])
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 1, time.time(), json.dumps({"node_id" : str(node_id)})))])
+		if self.Active is not None:
+			self.g.detach_node(node_id)
+			self.DumpDotData()
+
+	def RegisterFrame(self, num_cells, framename):
+		"""
+		Notifies the logger of a new frame that is defined in the scheduler algorithm
+
+		:param num_cells: number of cells per channel
+		:param framename: unique identifieng name
+		:return:
+		"""
+		if self.Logger is not None:
+			self.EventId += 1
+			logg.debug("Sending RegisterFrame to logger, EventID: " + str(self.EventId))
+			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 7, time.time(), json.dumps({"cells" : num_cells, "name" : framename})))])
+
+
+	def RegisterFrames(self, frames):
+		if self.Active is not None:
+			logg.debug("Sending RegisterFrames to Active")
+			self.Active.sendall(bytearray(json.dumps(frames)))

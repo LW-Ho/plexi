@@ -14,10 +14,11 @@ from core.slotframe import Slotframe, Cell
 from core.interface import BlockQueue
 from example import main
 from time import time
-import adwin
+from util.adwin import adwin
 from util import terms, logger
 import logging
 from txthings import coap
+import os
 
 logg = logging.getLogger('RiSCHER')
 
@@ -31,11 +32,14 @@ class Plexiflex(SchedulerInterface):
 		# self.stats_ids = 1
 		self.reserved_cells = []
 		# Define a frame of size 11 slots containing unicast cells
-		mainstream_frame = Slotframe("mainstream", 37)
+		mainstream_frame = Slotframe("mainstream", 11)
 		# Register that frame to the dictionary of frames of the parent Reflector
 		self.frames[mainstream_frame.name] = mainstream_frame
+		self._register_frames([mainstream_frame])
 
 	def start(self):
+		self.rewireframe = "mainstream"
+
 		self.pending_connects.append(self.root_id)
 		self.metainfo[self.root_id] = {'latency_adwin':adwin.Adwin(5), 'variance_adwin':adwin.Adwin(5), 'timestamp':-1,'pending_cells':None}
 		self.communicate(self.get_neighbor_of(self.root_id, True))
@@ -113,11 +117,10 @@ class Plexiflex(SchedulerInterface):
 					self.pending_connects.remove(node)
 					q.push(self._initiate_schedule(node))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'NEIGHBORLIST')) and value is not None:
-			logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value))
 			if node != self.root_id and (not isinstance(value,dict) or "traffic" not in value):
 				q.push(self._adapt(node))
-			# elif node != self.root_id and isinstance(value,dict) and "traffic" in value:
-			# 	logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value["traffic"]))
+			elif node != self.root_id and isinstance(value,dict) and "traffic" in value:
+				logg.info("PLEXIFLEX,MESSAGE,"+ str(node)+","+str(value["traffic"]))
 		elif str(resource).startswith(terms.get_resource_uri('6TOP', 'STATISTICS')) and value == coap.CHANGED:
 			pass
 		return q
@@ -147,7 +150,7 @@ class Plexiflex(SchedulerInterface):
 					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
 					logg.info("PLEXIFLEX,INTERVAL,"+ str(node)+",ADD("+str(so)+","+str(co)+")")
 					if so is not None and co is not None:
-						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node), True))
+						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
 				elif old_avg_timelag > new_avg_timelag:
 					cells = self.frames['mainstream'].get_cells_similar_to(owner=node,tna=self.dodag.get_parent(node),link_option=1)
 					if len(cells) > 1:
@@ -161,7 +164,7 @@ class Plexiflex(SchedulerInterface):
 					so,co = self.schedule(node, self.dodag.get_parent(node), self.frames["mainstream"])
 					logg.info("PLEXIFLEX,VARIANCE,"+ str(node)+",ADD("+str(so)+","+str(co)+")")
 					if so is not None and co is not None:
-						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node), True))
+						q.push(self.post_link(so, co, self.frames["mainstream"], node, self.dodag.get_parent(node)))
 				elif old_avg_variance > new_avg_variance:
 					cells = self.frames['mainstream'].get_cells_similar_to(owner=node,tna=self.dodag.get_parent(node),link_option=1)
 					if len(cells) > 1:
@@ -281,7 +284,7 @@ class Plexiflex(SchedulerInterface):
 			if flags & 1 == 0:
 				so,co = self.schedule(node, neighbor, self.frames["mainstream"])
 				if so is not None and co is not None:
-					q.push(self.post_link(so, co, self.frames["mainstream"], node, neighbor, True))
+					q.push(self.post_link(so, co, self.frames["mainstream"], node, neighbor))
 					self.reserved_cells.append(Cell(node,so,co,self.frames["mainstream"].get_alias_id(node),0,1,neighbor))
 					self.reserved_cells.append(Cell(neighbor,so,co,self.frames["mainstream"].get_alias_id(neighbor),0,2,node))
 				else:
@@ -289,7 +292,7 @@ class Plexiflex(SchedulerInterface):
 			if flags & 2 == 0:
 				so,co = self.schedule(neighbor, node, self.frames["mainstream"])
 				if so is not None and co is not None:
-					q.push(self.post_link(so, co, self.frames["mainstream"], neighbor, node, True))
+					q.push(self.post_link(so, co, self.frames["mainstream"], neighbor, node))
 					self.reserved_cells.append(Cell(node,so,co,self.frames["mainstream"].get_alias_id(node),0,2,neighbor))
 					self.reserved_cells.append(Cell(neighbor,so,co,self.frames["mainstream"].get_alias_id(neighbor),0,1,node))
 				else:
@@ -299,7 +302,12 @@ class Plexiflex(SchedulerInterface):
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = Plexiflex(x.network_name, x.lbr, x.port, x.prefix, False)
+		v = {
+			"name"	:	"plexi1",
+			"Key"	:	os.path.join("keys", "plexi1.key_secret"),
+			"VHost"	:	None
+		}
+		sch = Plexiflex(x.network_name, x.lbr, x.port, x.prefix, v)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)
