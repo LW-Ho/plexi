@@ -100,11 +100,11 @@ class Reflector(object):
 
 		if visualizer is not None:
 			logg.info("Booting Streamer Interface")
-			self.Streamer = FrankFancyStreamingInterface(visualizer["name"], visualizer["Key"], VisualizerHost=visualizer["VHost"],ZeromqHost="*")
+			self.Streamer = FrankFancyStreamingInterface(visualizer["name"], visualizer["Key"], visualizer["VHost"], lbr_ip, ZeromqHost="*")
 			self.Streamer.AddNode(str(self.root_id), "root")
 			logg.info("Streamer Interface booted")
 		else:
-			self.Streamer = FrankFancyStreamingInterface("", "", empty=True)
+			self.Streamer = FrankFancyStreamingInterface("", "", "", "", empty=True)
 
 
 	def _start(self):
@@ -307,7 +307,14 @@ class Reflector(object):
 		for k in observed_children:
 			if not self.dodag.check_node(k):
 				#self._DumpGraph()
-				self.communicate(self._connect(k))
+				logg.debug("Node {} joined the network with parent {}".format(k, parent_id))
+				#add to the graph
+				self.dodag.attach_child(k, parent_id)
+				#install new observers
+				self.communicate(self._connect(k, parent_id))
+				#do a kickback to API
+				self.communicate(self.connected(k, parent_id))
+				self._DumpGraph()
 
 
 	def _observe_rpl_parent(self, payload, node_id):
@@ -352,11 +359,9 @@ class Reflector(object):
 				self.communicate(self._rewired(node_id, oldparent))
 				#do a kickback to the api
 				self.communicate(self.rewired(node_id, oldparent))
-			try:
-				#dump the new graph to file
-				self._DumpGraph()
-			except:
-				logg.critical("DumpGraph raised exception 'NoneType' object has no attribute 'DumpDotData'")
+
+			#dump the new graph to file
+			self._DumpGraph()
 
 	def _rewired(self, node_id, old_parent):
 		q = interface.BlockQueue()
@@ -384,55 +389,57 @@ class Reflector(object):
 		"""
 		tijd = datetime.datetime.time(datetime.datetime.now())
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
-		dotdata = self.dodag.draw_graph(graphname=filename)
-		logg.debug("Dumped dodag graph to file: " + filename)
-		# self.Streamer.DumpDotData(str(self.root_id), json.dumps(dotdata))
-
-	def _get_rpl_dag_bkp(self, response):
-		"""
-		callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
-		the parent and the second item the children list
-
-		:param response: the incomming data package
-		:type response: :class:`txthings.coap.Message`
-
-		"""
-		#verify the token
-		tk = self.client.token(response.token)
-		if tk not in self.cache:
-			return
-		session_id = self.cache[tk]["session"]
-		#check if the response is valid
-		node_id = NodeID(response.remote[0], response.remote[1])
-		if self.dodag.attach_node(node_id):
-			self._connect(node_id)
-			self.connected(node_id)
-		if response.code != coap.CONTENT:
-			tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
-			cached_entry = self._decache(tk)
-			self._touch_session(cached_entry['command'], session_id)
-			raise exception.UnsupportedCase(tmp)
-
-		#report to the logger
-		logg.debug("Observed rpl/dag from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
 		try:
-			#json parse the payload and decache the token
-			payload = json.loads(parser.clean_payload(response.payload))
-			cached_entry = self._decache(tk)
-			#pass the seperate pieces of information to their functions
-			if cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','PARENT')):
-				self._observe_rpl_parent(payload, node_id)
-			elif cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','CHILD')):
-				self._observe_rpl_children(payload, node_id)
-			else:
-				self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
-				self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
-		except ValueError as ve:
-			logg.critical(ve.message+'. Command is skipped')
+			self.dodag.draw_graph(graphname=filename)
+		except:
+			logg.critical("Graphviz is not installed correctly! Could not dump to file")
+		logg.debug("Dumped dodag graph to file: " + filename)
 
-		# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
-		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
-		self._touch_session(cached_entry['command'], session_id)
+	# def _get_rpl_dag_bkp(self, response):
+	# 	"""
+	# 	callback for the dodaginfo observe resource. This resource consists off a 2 item list with at first position
+	# 	the parent and the second item the children list
+	#
+	# 	:param response: the incomming data package
+	# 	:type response: :class:`txthings.coap.Message`
+	#
+	# 	"""
+	# 	#verify the token
+	# 	tk = self.client.token(response.token)
+	# 	if tk not in self.cache:
+	# 		return
+	# 	session_id = self.cache[tk]["session"]
+	# 	#check if the response is valid
+	# 	node_id = NodeID(response.remote[0], response.remote[1])
+	# 	if self.dodag.attach_node(node_id):
+	# 		self._connect(node_id)
+	# 		self.connected(node_id)
+	# 	if response.code != coap.CONTENT:
+	# 		tmp = str(node_id) + ' returned a ' + coap.responses[response.code] + '\n\tRequest: ' + str(self.cache[tk])
+	# 		cached_entry = self._decache(tk)
+	# 		self._touch_session(cached_entry['command'], session_id)
+	# 		raise exception.UnsupportedCase(tmp)
+	#
+	# 	#report to the logger
+	# 	logg.debug("Observed rpl/dag from " + str(response.remote[0]) + " >> " + parser.clean_payload(response.payload))
+	# 	try:
+	# 		#json parse the payload and decache the token
+	# 		payload = json.loads(parser.clean_payload(response.payload))
+	# 		cached_entry = self._decache(tk)
+	# 		#pass the seperate pieces of information to their functions
+	# 		if cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','PARENT')):
+	# 			self._observe_rpl_parent(payload, node_id)
+	# 		elif cached_entry['command'].uri.startswith(terms.get_resource_uri('RPL','DAG','CHILD')):
+	# 			self._observe_rpl_children(payload, node_id)
+	# 		else:
+	# 			self._observe_rpl_parent(payload[terms.resources['RPL']['DAG']['PARENT']['LABEL']], node_id)
+	# 			self._observe_rpl_children(payload[terms.resources['RPL']['DAG']['CHILD']['LABEL']], node_id)
+	# 	except ValueError as ve:
+	# 		logg.critical(ve.message+'. Command is skipped')
+	#
+	# 	# Make sure the command is removed from the session it belongs to. If the session is empty, it will also be removed
+	# 	# from the session registry. Otherwise, commands from the next block of this session will be transmitted
+	# 	self._touch_session(cached_entry['command'], session_id)
 
 	def _post_6top_slotframe(self, response):
 		"""
@@ -735,11 +742,10 @@ class Reflector(object):
 			elif comm.op == 'delete':
 				self.client.DELETE(comm.to, comm.uri, comm.id, comm.callback)
 
-	def _connect(self, child, parent=None, old_parent=None):
+	def _connect(self, child, parent, old_parent=None):
 		"""
 		is called when a new node connects, simply installes the observer for the dodaginfo resource.
-		parent and old_parent are deprecated
-
+		old_parent is deprecated
 		"""
 
 		q = interface.BlockQueue()
@@ -748,7 +754,7 @@ class Reflector(object):
 		q.block()
 		q.push(Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
 		q.block()
-		self.Streamer.AddNode(child, parent)
+		self.Streamer.AddNode(str(child), str(parent))
 		return q
 
 	def _disconnect(self, node_id, children):
@@ -792,6 +798,7 @@ class Reflector(object):
 			self.blacklisted[frame.name] = []
 			self.Streamer.RegisterFrame(frame.slots, frame.name)
 		self.Streamer.SendActiveJson(l)
+		time.sleep(1)
 
 
 	def _cell(self, who, slotoffs, channeloffs, frame, linkoption, linktype, target, old_payload):

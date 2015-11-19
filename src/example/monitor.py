@@ -13,7 +13,8 @@ from core.slotframe import Slotframe
 from core.interface import BlockQueue, Command
 from util import terms
 import sys
-
+from twisted.internet import task
+from core.node import NodeID
 
 class Monitor(SchedulerInterface):
 	"""
@@ -30,21 +31,66 @@ class Monitor(SchedulerInterface):
 	that slot, if available. Otherwise, the next slot is checked.
 	"""
 
+	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=None):
+		super(Monitor,self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
+		mainstream_frame = Slotframe("broadcast", 25)
+		self.frames[mainstream_frame.name] = mainstream_frame
+		self._register_frames([mainstream_frame])
+		self.Streamer.DumpDotData()
+		#dictionary is build as:
+		#key: ip of node
+		#value: dict with
+		#	key: ip of target
+		#	value: number of packets in queue
+		self.qstats = {}
+
+	def RequestAllQueues(self):
+		#TODO: ask all queues at once instead of the block
+		logg.debug("Requesting all queues")
+		for node in self.dodag.graph.nodes():
+			self.communicate(self.get_remote_queues(node))
+
+
 	def start(self):
-		self.get_remote_queues(self.root_id)
+		self.l = task.LoopingCall(self.RequestAllQueues)
+		self.l.start(10)
 	# 	# ALWAYS include this at the end of a scheduler's start() method
 	# 	# The twisted.reactor should be run after there is at least one message to be sent
 	 	super(Monitor, self).start()
 
 	def reported(self, node, resource, value):
 		if str(resource).startswith(terms.get_resource_uri('6TOP', 'QUEUELIST')):
-			for k,v in value:
-				logg.info("Queue "+str(k)+": length: "+str(v))
+			# logg.debug("Received list:{}".format(value))
+			change = False
+			if str(node) not in self.qstats:
+				self.qstats[str(node)] = {}
+			for k,v in value.iteritems():
+				if k.split(":")[0] != "215":
+					continue
+				target = NodeID(k)
+				if str(target) not in self.qstats[str(node)]:
+					self.qstats[str(node)][str(target)] = "QueueLength:{}".format(v)
+					logg.info("Node {} reported: Queue {}: length: {}".format(node,k,v))
+					change = True
+				else:
+					if self.qstats[str(node)][str(target)] != "QueueLength:{}".format(v):
+						change = True
+						self.qstats[str(node)][str(target)] = "QueueLength:{}".format(v)
+						logg.info("Node {} reported: Queue {}: length: {}".format(node,k,v))
+					else:
+						logg.debug("Node {} reported: Queue {}: length: {}".format(node,k,v))
+			if change:
+				self.Streamer.DumpDotData(labels=self.qstats)
 
 if __name__ == '__main__':
 	x = main.get_user_input(None)
 	if isinstance(x, main.UserInput):
-		sch = Monitor(x.network_name, x.lbr, x.port, x.prefix, False)
+		v = {
+			"name"	:	"plexi1",
+			"Key"	:	None,
+			"VHost"	:	"192.168.64.1"
+		}
+		sch = Monitor(x.network_name, x.lbr, x.port, x.prefix, v)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)

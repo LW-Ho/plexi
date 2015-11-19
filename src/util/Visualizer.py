@@ -32,7 +32,7 @@ class FrankFancyStreamingInterface(object):
 	}
 
 	#TODO: give every scheduler an unique topic to easily distinguish between them on the queue
-	def __init__(self, name, privatekey, VisualizerHost, ZeromqHost = "*", root_id=None, empty=False):
+	def __init__(self, name, privatekey, VisualizerHost, root_id, ZeromqHost = "*", empty=False):
 		"""
 		Calls internal methods to open the connections to both the Active Live visualizer and the logger
 
@@ -71,6 +71,7 @@ class FrankFancyStreamingInterface(object):
 			logg.debug("Connecting Streaming Interface to Active Viewer")
 			self.Active = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			self.Active.connect((Host, 600))
+			logg.debug("Sending to Active Viewer:{}".format(root_id))
 			self.Active.sendall(root_id)
 
 		except:
@@ -155,7 +156,7 @@ class FrankFancyStreamingInterface(object):
 			# })])
 			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, self.ConvertStatus["Cells"][status], time.time(), json.dumps({"node_id": str(who), "channeloffs":channeloffs, "slotoffs":slotoffs, "frame":frame, "id":ID})))])
 
-	def DumpDotData(self):
+	def DumpDotData(self, labels={}):
 		"""
 		dumps an entire dot file to the active viewer. This is not used for the logger
 
@@ -165,8 +166,9 @@ class FrankFancyStreamingInterface(object):
 		if self.Active is not None:
 			logg.debug("Sending dotdata")
 			# self.Active.sendall(bytearray("[\"" + root_id + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + dotdata + "]"))
-			dotdata = self.g.draw_graph()
+			dotdata = self.g.draw_graph(labels=labels)
 			self.Active.sendall(bytearray(json.dumps(["\"" + self.root_id + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"", dotdata])))
+			time.sleep(.5)
 
 	def AddNode(self, node_id, parent):
 		"""
@@ -178,6 +180,8 @@ class FrankFancyStreamingInterface(object):
 		:type parent: str
 		:return:
 		"""
+		node_id = str(node_id)
+		parent = str(parent)
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending Addnode to logger, EventID:" + str(self.EventId))
@@ -188,11 +192,12 @@ class FrankFancyStreamingInterface(object):
 			# })])
 			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 0, time.time(), json.dumps({"node_id" : str(node_id), "parent" : str(parent)})))])
 		if self.Active is not None:
+			logg.debug("Sending Addnode to Active Visualizer, node:{}, parent:{}".format(node_id, parent))
 			if parent == "root":
 				self.g.attach_node(node_id)
 			else:
 				self.g.attach_child(node_id, parent)
-			self.DumpDotData()
+				self.DumpDotData()
 
 	def RewireNode(self, node_id, old_parent, new_parent):
 		"""
@@ -203,6 +208,9 @@ class FrankFancyStreamingInterface(object):
 		:param new_parent: ip6 of the new parent
 		:return:
 		"""
+		node_id = str(node_id)
+		old_parent = str(old_parent)
+		new_parent = str(new_parent)
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending RewireNode to logger, EventID: " + str(self.EventId))
@@ -224,6 +232,7 @@ class FrankFancyStreamingInterface(object):
 		:param node_id: ip6 of the node that has disconnected
 		:return:
 		"""
+		node_id = str(node_id)
 		if self.Logger is not None:
 			self.EventId += 1
 			logg.debug("Sending RemoveNode to logger, EventID: " + str(self.EventId))

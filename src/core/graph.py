@@ -49,7 +49,7 @@ class DoDAG(object):
 
 	#creates a .dot file and parses it to a graph using graphviz
 	#to use this install graphviz package and make sure dot is in your path
-	def draw_graph(self, shape="circle", color="blue", penwidth=1, fullmac=False, graphname=None):
+	def draw_graph(self, shape="circle", color="blue", penwidth=1, fullmac=False, graphname=None, labels={}):
 		"""
 		Saves a snapshot of the current dodag tree to a dot file and creates a png figure from that
 
@@ -97,13 +97,18 @@ class DoDAG(object):
 				if parent is None:
 					continue
 				#write the dot file
+				label = ""
+				if nid in labels:
+					if parent in labels[nid]:
+						label = labels[nid][parent]
 				try:
 					if fullmac:
-						stream.write('\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+						stream.write('\t"{}" -> "{}" [color = {}, penwidth = {}, label="{}"];\n'.format(parent, nid, color, penwidth, label))
 					else:
-						stream.write('\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+						stream.write('\t"{}" -> "{}" [color = {}, penwidth = {}, label="{}"];\n'\
+									 .format(str(parent).split(":")[5].strip("]"), str(nid).split(":")[5].strip("]"), color, penwidth, label))
 				except:
-					stream.write('\t"' + str(parent) + '" -> "' + str(nid) + '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+					stream.write('\t"{}" -> "{}" [color = {}, penwidth = {}, label="{}"];\n'.format(parent, nid, color, penwidth, label))
 		# dotdata += "}\n"
 		stream.write("}\n")
 		if graphname is not None:
