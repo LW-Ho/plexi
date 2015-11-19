@@ -1268,6 +1268,12 @@ class SchedulerInterface(Reflector):
 		q.block()
 		return q
 
+	def get_remote_queues(self, node):
+		q = interface.BlockQueue()
+		q.push(Command('get', node, terms.get_resource_uri('6TOP', 'QUEUELIST')))
+		q.block()
+		return q
+
 	def disconnect_node(self, node):
 		pass
 

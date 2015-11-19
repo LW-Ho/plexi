@@ -86,6 +86,11 @@ resources = {
 			'LQI':{ 'LABEL': 'lqi'},
 			'ETX':{ 'LABEL': 'etx'},
 			'PDR':{ 'LABEL': 'pdr'}
+		},
+		'QUEUELIST': {
+			'LABEL': 'qList',
+			'ID':{ 'LABEL': 'id'},
+			'TXLEN':{ 'LABEL': 'txlen'}
 		}
 	}
 }

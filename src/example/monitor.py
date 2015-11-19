@@ -31,30 +31,15 @@ class Monitor(SchedulerInterface):
 	"""
 
 	def start(self):
-	 	f=Slotframe('test_drame',101)
-	# 	# f.set_alias_id(self.root_id,4)
-	# 	# q=self.post_link(5,6,f,self.root_id, None)
-	# 	# q.block()
-	# 	# q.push(self.get_link_by_slotframe(self.root_id, f))
-	# 	# q.push(self.get_link_by_coords(self.root_id, f, 5, 6))
-	# 	# q.push(self.get_slotframes(self.root_id))
-		q = self.get_slotframes(self.root_id)
- 		q.push(self.post_slotframes(self.root_id, f))
-		q.push(self.get_slotframe_by_id(self.root_id, 255))
-		q.push(self.get_link_by_slotframe(self.root_id, f))
-		q.push(self.get_link_by_slotframe(self.root_id, 0))
-		for k,v in self.frames:
-			print(v.cell_container)
-	 	self.communicate(q)
+		self.get_remote_queues(self.root_id)
 	# 	# ALWAYS include this at the end of a scheduler's start() method
 	# 	# The twisted.reactor should be run after there is at least one message to be sent
 	 	super(Monitor, self).start()
 
-	def framed(self, who, local_name, remote_alias, old_payload):
-		if remote_alias is None:
-			logg.critical('Failed to frame '+str(who)+' with '+str(local_name))
-		elif local_name is None:
-			logg.critical('Retrieved frame ID '+str(remote_alias) + ' similar to an existing but non-posted frame')
+	def reported(self, node, resource, value):
+		if str(resource).startswith(terms.get_resource_uri('6TOP', 'QUEUELIST')):
+			for k,v in value:
+				logg.info("Queue "+str(k)+": length: "+str(v))
 
 if __name__ == '__main__':
 	x = main.get_user_input(None)
