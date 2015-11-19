@@ -15,6 +15,7 @@ import urllib2, logging
 from subprocess import call
 import os
 from core.node import NodeID
+import StringIO
 
 logg = logging.getLogger('RiSCHER')
 logg.setLevel(logging.DEBUG)
@@ -48,7 +49,7 @@ class DoDAG(object):
 
 	#creates a .dot file and parses it to a graph using graphviz
 	#to use this install graphviz package and make sure dot is in your path
-	def draw_graph(self, shape="circle", color="blue", penwidth=1, fullmac=False, graphname="graph.png"):
+	def draw_graph(self, shape="circle", color="blue", penwidth=1, fullmac=False, graphname=None):
 		"""
 		Saves a snapshot of the current dodag tree to a dot file and creates a png figure from that
 
@@ -59,14 +60,17 @@ class DoDAG(object):
 		:type fullmac: bool
 		:param graphname: the name of the dot and png file to be created
 		"""
-		#check if the necesarry folders exist and create them if not
-		if not os.path.exists("snapshots"):
-			os.makedirs("snapshots")
-		if not os.path.exists("graphs"):
-			os.makedirs("graphs")
-		#setup the filestream and dot file
-		dotfile = "snapshots/" + graphname.split(".")[0] + ".dot"
-		stream = open(dotfile, 'w')
+		if graphname is not None:
+			#check if the necesarry folders exist and create them if not
+			if not os.path.exists("snapshots"):
+				os.makedirs("snapshots")
+			if not os.path.exists("graphs"):
+				os.makedirs("graphs")
+			#setup the filestream and dot file
+			dotfile = "snapshots/" + graphname.split(".")[0] + ".dot"
+			stream = open(dotfile, 'w')
+		else:
+			stream = StringIO.StringIO()
 		dotdata = "digraph Test {\n\tnode [shape = " + shape + "];\n\tsplines=false;\n"
 		stream.write(dotdata)
 		#iterate through the nodes
@@ -76,20 +80,43 @@ class DoDAG(object):
 				continue
 			# stream.write('\t' + parent + ' -> ' + str(id) +  ' [label="' + str(count) + '", color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
 			#write the dot file
-			if fullmac:
-				dotdata +='\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n'
-				stream.write('\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
-			else:
-				dotdata += '\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n'
-				stream.write('\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
-		dotdata += "}\n"
+		# dotdata = "digraph DoDag {\n\tnode [shape = " + shape + "];\n\tsplines=false;\n"
+		if len(self.graph.nodes()) == 1:
+			parent = nid = self.graph.nodes()[0]
+			try:
+				if fullmac:
+					stream.write('\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+				else:
+					stream.write('\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+			except:
+				stream.write('\t"' + str(parent) + '" -> "' + str(nid) + '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+		else:
+			#iterate through the nodes
+			for nid in self.graph.nodes():
+				parent = self.get_parent(nid)
+				if parent is None:
+					continue
+				#write the dot file
+				try:
+					if fullmac:
+						stream.write('\t"' + str(parent) + '" -> "' + str(nid) +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+					else:
+						stream.write('\t"' + str(parent).split(":")[5].strip("]") + '" -> "' + str(nid).split(":")[5].strip("]") +  '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+				except:
+					stream.write('\t"' + str(parent) + '" -> "' + str(nid) + '" [color = ' + color + ', penwidth = ' + str(penwidth) + '];\n')
+		# dotdata += "}\n"
 		stream.write("}\n")
-		stream.close()
-		#activate graphviz to create the graph from the dotfile
-		try:
-			call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
-		except:
-			logg.critical("graphviz popped error No such file or directory")
+		if graphname is not None:
+			stream.close()
+			#activate graphviz to create the graph from the dotfile
+			try:
+				call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
+			except:
+				logg.critical("graphviz not installed correctly!")
+		else:
+			dotdata = stream.getvalue()
+			stream.close()
+
 		return dotdata
 
 	#detaches a node AND ALL ITS CHILDREN

@@ -98,13 +98,13 @@ class Reflector(object):
 		#frame which needs to be latered when there is a rewire happening
 		self.rewireframe = ""
 
-		self.Streamer = None
-		# if visualizer is not None:
-		# 	logg.info("Booting Streamer Interface")
-		# 	self.Streamer = FrankFancyStreamingInterface(VisualizerHost=visualizer["VHost"],ZeromqHost="*", KeyFolder=visualizer["PKeyFolder"])
-		# 	#TODO: give different root topics for different schedulers to support multiple schedulers running
-		# 	self.Streamer.PublishLogging(LoggingName="RiSCHER",root_topic="RiSCHER")
-		# 	logg.info("Streamer Interface booted")
+		if visualizer is not None:
+			logg.info("Booting Streamer Interface")
+			self.Streamer = FrankFancyStreamingInterface(visualizer["name"], visualizer["Key"], VisualizerHost=visualizer["VHost"],ZeromqHost="*")
+			self.Streamer.AddNode(str(self.root_id), "root")
+			logg.info("Streamer Interface booted")
+		else:
+			self.Streamer = FrankFancyStreamingInterface("", "", empty=True)
 
 
 	def _start(self):
@@ -372,10 +372,7 @@ class Reflector(object):
 			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=c.slotframe, SLOTOFFSET=c.slot, CHANNELOFFSET=c.channel)))
 		q.block()
 
-		try:
-			self.Streamer.RewireNode(node_id, old_parent, self.dodag.get_parent(node_id))
-		except:
-			logg.critical("Streamer.RewireNode in _rewired fails if Streamer==None")
+		self.Streamer.RewireNode(node_id, old_parent, self.dodag.get_parent(node_id))
 
 		return q
 
@@ -389,12 +386,7 @@ class Reflector(object):
 		filename = str(tijd.hour) + ":" + str(tijd.minute) + ":" + str(tijd.second) + ".png"
 		dotdata = self.dodag.draw_graph(graphname=filename)
 		logg.debug("Dumped dodag graph to file: " + filename)
-		self.Streamer.DumpDotData(str(self.root_id), json.dumps(dotdata))
-		# packet = "[\"" + str(self.root_id) + " at " + time.strftime("%Y-%m-%d %H:%M:%S") + "\"," + json.dumps(dotdata) + "]"
-		# try:
-		# 	self.socket.sendall(bytearray(packet))
-		# except:
-		# 	pass
+		# self.Streamer.DumpDotData(str(self.root_id), json.dumps(dotdata))
 
 	def _get_rpl_dag_bkp(self, response):
 		"""
@@ -756,7 +748,7 @@ class Reflector(object):
 		q.block()
 		q.push(Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
 		q.block()
-		# self.Streamer.AddNode(child, parent)
+		self.Streamer.AddNode(child, parent)
 		return q
 
 	def _disconnect(self, node_id, children):
@@ -768,14 +760,7 @@ class Reflector(object):
 				deleted_cells = frame.delete_links_of(node_id)
 				for cell in deleted_cells:
 					if cell.owner != node_id:
-						try:
-							self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
-						except:
-							logg.error("Streamer.ChangeCell in _disconnect crashes when Streamer not defined")
-						# try:
-						# 	self.socket.sendall(json.dumps(["changecell",{"who": cell.owner, "channeloffs":cell.channel, "slotoffs":cell.slot, "frame":str(frame), "id":"foo", "status":0}]))
-						# except:
-						# 	pass
+						self.Streamer.ChangeCell(cell.owner, cell.slot, cell.channel, str(frame), "foo", 0)
 						q.push(Command('delete', cell.owner, terms.get_resource_uri("6TOP","CELLLIST",SLOTFRAME=cell.slotframe,SLOTOFFSET=cell.slot,CHANNELOFFSET=cell.channel)))
 				if node_id in frame.fds:
 					del frame.fds[node_id]
@@ -785,10 +770,7 @@ class Reflector(object):
 			q.push(Command('get', child, terms.get_resource_uri("RPL", "DAG")))
 		q.block()
 
-		try:
-			self.Streamer.RemoveNode(node_id)
-		except:
-			logg.critical("Buggy streaming thing!!!!!!!")
+		self.Streamer.RemoveNode(node_id)
 
 		return q
 
@@ -808,23 +790,16 @@ class Reflector(object):
 			l.append({"id":frame.name,"cells":frame.slots})
 			self.frames[frame.name] = frame
 			self.blacklisted[frame.name] = []
+			self.Streamer.RegisterFrame(frame.slots, frame.name)
 		self.Streamer.SendActiveJson(l)
-		# try:
-		# 	self.socket.sendall(json.dumps(l))
-		# except:
-		# 	pass
+
 
 	def _cell(self, who, slotoffs, channeloffs, frame, linkoption, linktype, target, old_payload):
 		# handles the actions performed when a node receives his cell/s
 		# add the cell to the appropriate cell container
 		frame.cell_container.append(Cell(who, slotoffs, channeloffs, frame.get_alias_id(who), linktype, linkoption, target))
 		logg.debug(str(who) + " installed new cell in frame " + frame.name + " at slotoffset=" + str(slotoffs) + " and channel offset=" + str(channeloffs))
-		# self.Streamer.ChangeCell(who, slotoffs, channeloffs, frame, "foo", 1)
-		#try sending this info to the visualizer
-		# try:
-		# 	self.socket.sendall(json.dumps(["changecell",{"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": str(frame), "status" : 1}]))
-		# except:
-		# 	pass
+		self.Streamer.ChangeCell(who, slotoffs, channeloffs, frame, "foo", 1)
 		return None
 
 	def _blacklist(self, who, slotoffs, channeloffs, frame, remote_cell_id):
@@ -880,10 +855,6 @@ class Reflector(object):
 		self.Streamer.ChangeCell(who, str(slotoffs), str(channeloffs), F.name, remote_cell_id, 2)
 		#try sending it to the streaming server
 		#only one cell has to be given as the visualizer will calculate the rest to keep network traffic down
-		# try:
-		# 	self.socket.sendall(json.dumps(["changecell", {"who":str(who), "slotoffs":slotoffs,"channeloffs": channeloffs,"frame": frame,"id": str(remote_cell_id), "status":2}]))
-		# except:
-		# 	pass
 
 		#return all the cells that need to be rescheduled
 		#build a set of (tx,rx) nodeID items (to prevent duplicates)
@@ -893,7 +864,7 @@ class Reflector(object):
 		return list(s)
 
 	def _report(self, who, resource, info):
-		logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
+		#logg.debug('Probe at ' + str(who) + ' on ' + str(resource) + ' reported ' + str(info))
 		if str(resource).startswith(terms.get_resource_uri('6TOP', 'SLOTFRAME')):
 
 			payload = copy.copy(info)
@@ -1147,7 +1118,7 @@ class SchedulerInterface(Reflector):
 			return q
 		return None
 
-	def post_link(self, slot, channel, slotframe, source, destination, shared, target=None):
+	def post_link(self, slot, channel, slotframe, source, destination, target=None):
 		assert isinstance(slotframe, Slotframe)
 		assert channel <= 16
 		assert slot < slotframe.slots
@@ -1155,11 +1126,6 @@ class SchedulerInterface(Reflector):
 		assert destination is None or isinstance(destination, NodeID)
 
 		q = interface.BlockQueue()
-
-		if shared:
-			shared = 4
-		else:
-			shared = 0
 
 		if target and target != source and target not in self.dodag.get_children(source):
 			return False
@@ -1175,18 +1141,18 @@ class SchedulerInterface(Reflector):
 		cells = []
 		if destination is not None:
 			if not found_tx and (target is None or target == source):
-				cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 0, 1 | shared, destination))
+				cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 0, 1, destination))
 			if destination not in found_rx and (target is None or target == destination):
-				cells.append(Cell(destination, slot, channel, slotframe.get_alias_id(destination), 0, 2 | shared, source))
+				cells.append(Cell(destination, slot, channel, slotframe.get_alias_id(destination), 0, 2, source))
 		elif destination is None:
 			neighbors = [self.dodag.get_parent(source)]+self.dodag.get_children(source) if self.dodag.get_parent(source) else []+self.dodag.get_children(source)
 			if target is None or target == source:
 				if not found_tx:
-					cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 1, 9 | shared, BROADCASTID))
+					cells.append(Cell(source, slot, channel, slotframe.get_alias_id(source), 1, 9, BROADCASTID))
 				for neighbor in [item for item in neighbors if item not in found_rx]:
-					cells.append(Cell(neighbor, slot, channel, slotframe.get_alias_id(neighbor), 1, 10 | shared, source))
+					cells.append(Cell(neighbor, slot, channel, slotframe.get_alias_id(neighbor), 1, 10, source))
 			elif target and target != source and target in neighbors and target not in found_rx:
-				cells.append(Cell(target, slot, channel, slotframe.get_alias_id(target), 1, 10 | shared, source))
+				cells.append(Cell(target, slot, channel, slotframe.get_alias_id(target), 1, 10, source))
 		rx_cells = []
 		tx_cells = []
 		for c in cells:
