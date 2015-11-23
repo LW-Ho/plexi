@@ -7,6 +7,9 @@ __copyright__ = "Copyright 2014, The RICH Project"
 #__license__ = "GPL"
 #__status__ = "Production"
 
+import os
+import sys
+import ipaddress
 
 class NodeID(object):
 	prefix = "aaaa"
@@ -22,12 +25,16 @@ class NodeID(object):
 				self.port = port
 			else:
 				raise TypeError('IP address is a string value and the port is an integer')
-			if self.ip.count(':') == 3:
-				self.ip = NodeID.prefix + '::' + self.ip
-			self.eui_64_ip = ''
-			parts = self.ip.split(':')
-			parts = parts[len(parts)-4 : len(parts)]
-			self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
+			# if self.ip.count(':') == 3:
+			# 	self.ip = NodeID.prefix + '::' + self.ip
+			# self.eui_64_ip = ''
+			if self.prefix in self.ip:
+				self.ip = self.ip.split('::')[-1]
+			self.eui_64_ip = str(ipaddress.ip_address('::' + self.ip))
+			self.ip = self.prefix + str(ipaddress.ip_address('::' + self.ip))
+			# parts = self.ip.split(':')
+			# parts = parts[len(parts)-4 : len(parts)]
+			# self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
 			self.port = port
 		else:
 			raise TypeError('IP address is a string value and the port is an integer')
@@ -49,15 +56,15 @@ class NodeID(object):
 		return self.__str__()
 
 	def __str__(self):
-		return '[' + str(self.ip) + ']:' + str(self.port)
+		return '[' + self.prefix + str(self.ip) + ']:' + str(self.port)
 
 	def __hash__(self):
 		return hash(self.__str__())
 
-	def stripdown(self):
-		parts = self.eui_64_ip.split(':')
-		parts = parts[len(parts)-2 : len(parts)]
-		return parts[0] + ':' + parts[1]
+	# def stripdown(self):
+	# 	parts = self.eui_64_ip.split(':')
+	# 	parts = parts[len(parts)-2 : len(parts)]
+	# 	return parts[0] + ':' + parts[1]
 
 	def is_broadcast(self):
 		return self.prefix+'fff:ffff:ff:ffff' == self.ip

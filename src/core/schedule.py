@@ -279,9 +279,10 @@ class Reflector(object):
 		"""
 
 		# Build a list of fetched children from the payload
-		observed_children = []
+		observed_children = Set()
 		for n in payload:
-			observed_children.append(NodeID(str(n)))
+			observed_children.add(NodeID(str(n)))
+		observed_children = list(observed_children)
 		# # Find, remove and return the cache entry of the command that triggered this response
 		# cached_entry = self._decache(tk)
 		dodag_child_list = self.dodag.get_children(parent_id)

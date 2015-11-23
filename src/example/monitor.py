@@ -64,8 +64,11 @@ class Monitor(SchedulerInterface):
 			change = False
 			if str(node) not in self.qstats:
 				self.qstats[str(node)] = {}
+
 			for k,v in value.iteritems():
 				if k.split(":")[0] != "215":
+					continue
+				if str(node) == str(self.dodag.get_parent(self.dodag.get_node(v))):
 					continue
 				target = NodeID(k)
 				if str(target) not in self.qstats[str(node)]:
@@ -88,7 +91,7 @@ if __name__ == '__main__':
 		v = {
 			"name"	:	"plexi1",
 			"Key"	:	None,
-			"VHost"	:	"192.168.64.1"
+			"VHost"	:	"localhost"
 		}
 		sch = Monitor(x.network_name, x.lbr, x.port, x.prefix, v)
 		sch.start()

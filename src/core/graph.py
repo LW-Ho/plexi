@@ -114,10 +114,10 @@ class DoDAG(object):
 		if graphname is not None:
 			stream.close()
 			#activate graphviz to create the graph from the dotfile
-			try:
-				call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
-			except:
-				logg.critical("graphviz not installed correctly!")
+			# try:
+			# 	call(["dot", "-Tpng", dotfile, "-o", "graphs/" + graphname])
+			# except:
+			# 	logg.critical("graphviz not installed correctly!")
 		else:
 			dotdata = stream.getvalue()
 			stream.close()
