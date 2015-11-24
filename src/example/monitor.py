@@ -34,9 +34,9 @@ class Monitor(SchedulerInterface):
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=None):
 		super(Monitor,self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
 		self.observeflag = True
-		mainstream_frame = Slotframe("broadcast", 25)
-		self.frames[mainstream_frame.name] = mainstream_frame
-		self._register_frames([mainstream_frame])
+		#mainstream_frame = Slotframe("broadcast", 25)
+		#self.frames[mainstream_frame.name] = mainstream_frame
+		self._register_frames([])
 		self.Streamer.DumpDotData()
 		#dictionary is build as:
 		#key: ip of node

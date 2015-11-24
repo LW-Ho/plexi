@@ -90,7 +90,7 @@ class Reflector(object):
 		#key: NodeID value: time left on lost list
 		self.lost_children = {}
 		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
-		self.time_until_dissconnect = 5
+		self.time_until_dissconnect = 10
 		#dictionary with frames as key and lists of blacklisted cells as value. blacklisted cell in format: [channeloff, slotoff]
 		self.blacklisted = {}
 		#dictionary with all defined frames
@@ -268,6 +268,15 @@ class Reflector(object):
 		# from the session registry. Otherwise, commands from the next block of this session will be transmitted
 		self._touch_session(cached_entry['command'], session_id)
 
+		for n in self.dodag.graph.nodes():
+			if len(self.dodag.get_neighbors(n)) == 0:
+				logg.debug("removed dangling node {} in internal dodag".format(str(n)))
+				self.dodag.detach_node(n)
+		for n in self.Streamer.g.graph.nodes():
+			if len(self.Streamer.g.get_neighbors(n)) == 0:
+				logg.debug("removed dangling node {} in streamer graph".format(n))
+				self.Streamer.g.detach_node(n)
+
 	def _observe_rpl_children(self, payload, parent_id):
 		"""
 		handles the parsing of received children list resource (part of the dodag resource). If a node is lost it is put
@@ -301,6 +310,11 @@ class Reflector(object):
 				logg.debug("child is lost: " + str(rn))
 				if rn not in self.lost_children and self.dodag.get_parent(rn) == parent_id: #do not reset the timer if it is already there for a reason
 					self.lost_children[rn] = self.time_until_dissconnect
+					#ask the lost child if he is really lost
+					q = interface.BlockQueue()
+					q.push(Command('get', rn, terms.get_resource_uri('RPL', 'DAG')))
+					q.block()
+					self.communicate(q)
 
 
 		# Iterate over all fetched children and try to attach them to the local DoDAG if they are not attached already
@@ -319,6 +333,13 @@ class Reflector(object):
 				#do a kickback to API
 				self.communicate(self.connected(k, parent_id))
 				self._DumpGraph()
+			elif str(self.dodag.get_parent(k)) != str(parent_id):
+				#childrenlist reports rewire, check if this is true
+				q = interface.BlockQueue()
+				q.push(Command('get', k, terms.get_resource_uri('RPL', 'DAG')))
+				q.block()
+				self.communicate(q)
+
 
 
 	def _observe_rpl_parent(self, payload, node_id):
@@ -352,20 +373,28 @@ class Reflector(object):
 			self.lost_children.pop(node_id,0)
 		else:#otherwise just report the rewiring
 			logg.debug("parent rewiring of node: " + str(node_id) + " to parent " + str(newparent))
+			if not self.dodag.check_node(newparent):
+				logg.debug("parent {} is unkown".format(str(newparent)))
+			else:
+				logg.debug("potential redundant get request")
+			q = interface.BlockQueue()
+			q.push(Command('get', node_id, terms.get_resource_uri('RPL', 'DAG')))
+			q.block()
+			self.communicate(q)
 
 		#update the dodag tree
-		if self.dodag.attach_child(node_id,newparent):
-			if oldparent is None:
-				#do a kickback to the api
-				self.communicate(self.connected(node_id))
-			else:
-				#do internal cleanup
-				self.communicate(self._rewired(node_id, oldparent))
-				#do a kickback to the api
-				self.communicate(self.rewired(node_id, oldparent))
+		self.dodag.attach_child(node_id,newparent)
+		if oldparent is None:
+			#do a kickback to the api
+			self.communicate(self.connected(node_id))
+		else:
+			#do internal cleanup
+			self.communicate(self._rewired(node_id, oldparent))
+			#do a kickback to the api
+			self.communicate(self.rewired(node_id, oldparent))
 
-			#dump the new graph to file
-			self._DumpGraph()
+		#dump the new graph to file
+		self._DumpGraph()
 
 	def _rewired(self, node_id, old_parent):
 		q = interface.BlockQueue()
@@ -381,6 +410,13 @@ class Reflector(object):
 			q.push(Command('delete', c.owner, terms.get_resource_uri('6TOP', 'CELLLIST', SLOTFRAME=c.slotframe, SLOTOFFSET=c.slot, CHANNELOFFSET=c.channel)))
 		q.block()
 
+		#ask the parent of the parent (if applicable) if the oldparent is not dead
+		parent_of_parent = self.dodag.get_parent(old_parent)
+		if parent_of_parent is not None:
+			q = interface.BlockQueue()
+			q.push(Command('get', parent_of_parent, terms.get_resource_uri('RPL', 'DAG')))
+			q.block()
+			self.communicate(q)
 		self.Streamer.RewireNode(node_id, old_parent, self.dodag.get_parent(node_id))
 
 		return q

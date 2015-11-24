@@ -221,6 +221,7 @@ class FrankFancyStreamingInterface(object):
 			# })])
 			self.Logger.send_multipart([self.Name.encode(), pickle.dumps(Event(self.EventId, 2, time.time(), json.dumps({"node_id" : str(node_id), "old_parent" : str(old_parent), "new_parent" : str(new_parent)})))])
 		if self.Active is not None:
+			logg.debug("Sending Rewire to the Active")
 			self.g.attach_child(node_id, new_parent)
 			self.DumpDotData()
 
