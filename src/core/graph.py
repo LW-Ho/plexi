@@ -146,7 +146,10 @@ class DoDAG(object):
 				if 'child' in self.graph.edge[node_id][neighbor]:
 					if self.graph.edge[node_id][neighbor]['child'] is not node_id:
 						self.detach_node(self.graph.edge[node_id][neighbor]['child'])
-			self.graph.remove_node(node_id)
+			try:
+				self.graph.remove_node(node_id)
+			except:
+				pass
 			return True
 		return False
 

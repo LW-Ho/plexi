@@ -90,13 +90,16 @@ class Reflector(object):
 		#key: NodeID value: time left on lost list
 		self.lost_children = {}
 		#ammount of time a lost node can be on this list until truely disconnecting, in seconds
-		self.time_until_dissconnect = 30
+		self.time_until_dissconnect = 5
 		#dictionary with frames as key and lists of blacklisted cells as value. blacklisted cell in format: [channeloff, slotoff]
 		self.blacklisted = {}
 		#dictionary with all defined frames
 		self.frames = {}
 		#frame which needs to be latered when there is a rewire happening
 		self.rewireframe = ""
+
+		#flag if the API is run in observe only mode, this way nothing will be done with slotframes and cells
+		self.observeflag = False
 
 		if visualizer is not None:
 			logg.info("Booting Streamer Interface")
@@ -182,16 +185,16 @@ class Reflector(object):
 					try:
 						self._DumpGraph()
 					except:
-						logg.critical("DumpGraph in TimeTick crashes when file not found")
+						logg.critical("Graphviz not installed corrected")
 					self.communicate(self._disconnect(key, children))
 					self.communicate(self.disconnected(key))
 				self.lost_children.pop(key,0)
 				#because the dict changed, break here, other disconnections are thus done with 1 second delay
 				break
-			elif value == int(0.9*self.time_until_dissconnect):
-				q = interface.BlockQueue()
-				q.push(Command("get",key,terms.get_resource_uri("RPL", "DAG")))
-				self.communicate(q)
+			# elif value == int(0.9*self.time_until_dissconnect):
+			# 	q = interface.BlockQueue()
+			# 	q.push(Command("get",key,terms.get_resource_uri("RPL", "DAG")))
+			# 	self.communicate(q)
 			else:
 				self.lost_children[key] = value - 1
 
@@ -751,9 +754,10 @@ class Reflector(object):
 
 		q = interface.BlockQueue()
 		q.push(Command('observe', child, terms.get_resource_uri('RPL', 'DAG')))
-		q.push(Command('get', child, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
-		q.block()
-		q.push(Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
+		if not self.observeflag:
+			q.push(Command('get', child, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
+			q.block()
+			q.push(Command('get', child, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
 		q.block()
 		self.Streamer.AddNode(str(child), str(parent))
 		return q
@@ -978,7 +982,7 @@ class Reflector(object):
 		"""
 		pass
 
-	def rewired(self, node_id, old_parent, new_parent):
+	def rewired(self, node_id, old_parent):
 		"""
 		api callback for when a node has been rewired in the dodag tree by rpl. This callback is fired AFTER the dodag
 		tree has been updated, returns a list of blockqueue for commands to the network
@@ -1008,9 +1012,10 @@ class SchedulerInterface(Reflector):
 	def start(self):
 		q = interface.BlockQueue()
 		q.push(Command('observe', self.root_id, terms.get_resource_uri('RPL', 'DAG')))
-		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
-		q.block()
-		q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
+		if not self.observeflag:
+			q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'SLOTFRAME')))
+			q.block()
+			q.push(Command('get', self.root_id, terms.get_resource_uri('6TOP', 'CELLLIST', 'ID')))
 		q.block()
 		self.communicate(q)
 

@@ -33,6 +33,7 @@ class Monitor(SchedulerInterface):
 
 	def __init__(self, net_name, lbr_ip, lbr_port, prefix, visualizer=None):
 		super(Monitor,self).__init__(net_name, lbr_ip, lbr_port, prefix, visualizer)
+		self.observeflag = True
 		mainstream_frame = Slotframe("broadcast", 25)
 		self.frames[mainstream_frame.name] = mainstream_frame
 		self._register_frames([mainstream_frame])
@@ -52,8 +53,8 @@ class Monitor(SchedulerInterface):
 
 
 	def start(self):
-		self.l = task.LoopingCall(self.RequestAllQueues)
-		self.l.start(10)
+		# self.l = task.LoopingCall(self.RequestAllQueues)
+		# self.l.start(30)
 	# 	# ALWAYS include this at the end of a scheduler's start() method
 	# 	# The twisted.reactor should be run after there is at least one message to be sent
 	 	super(Monitor, self).start()

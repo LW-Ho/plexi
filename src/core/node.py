@@ -56,7 +56,7 @@ class NodeID(object):
 		return self.__str__()
 
 	def __str__(self):
-		return '[' + self.prefix + str(self.ip) + ']:' + str(self.port)
+		return '[' + str(self.ip) + ']:' + str(self.port)
 
 	def __hash__(self):
 		return hash(self.__str__())
