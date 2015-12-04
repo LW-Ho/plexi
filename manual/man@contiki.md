@@ -9,7 +9,9 @@
 
 ## CoAP Interface
 ![Resource mapping to **_plexi_** structures and CoAP methods][resource_interface]
-
+![][plexi_resources_specs_a]
+![][plexi_resources_specs_b]
+- Queue statistics is 'kinda' done. In the next few weeks, we will complete it
 ## *plexi* @ Contiki 3.x
 
 ### Resource types
@@ -31,3 +33,5 @@ Supporting block communication and semaphores for simultaneous requests
 [plexi_architecture]: figures/plexi_architecture.png
 [plexi_resources]: figures/plexi_resources.png
 [resource_interface]: figures/plexi_at_node.png
+[plexi_resources_specs_a]: figures/plexi_resources_specs_a.png
+[plexi_resources_specs_b]: figures/plexi_resources_specs_b.png
