@@ -18,7 +18,7 @@ nullLogger = NullHandler()
 #fileLogger = logging.handlers.RotatingFileHandler(filename='test.log', mode='w', backupCount=5, )
 #fileLogger.setFormatter(logging.Formatter('%(asctime)s [%(name)s:%(levelname)s] %(message)s'))
 
-fileLogger = logging.handlers.RotatingFileHandler("logs/RiSCHER.log", maxBytes=1e6, backupCount=25)
+fileLogger = logging.handlers.RotatingFileHandler("logs/plexi.log", maxBytes=1e6, backupCount=25)
 fileLogger.setFormatter(logging.Formatter(fmt='%(asctime)s\t%(levelname)s: %(message)s', datefmt='(%d-%m)%H:%M:%S'))
 
 consoleLogger = logging.StreamHandler()

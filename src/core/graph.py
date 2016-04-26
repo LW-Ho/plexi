@@ -155,7 +155,7 @@ class DoDAG(object):
 
 	def get_neighbors(self, node):
 		"""
-		Returns an array of :class: `node.NodeID`s within communication range of node.
+		Returns an array of :class: `node.NodeID` s within communication range of node.
 
 		There is no guarantee that the local centralized replica of DoDAG has the most up-to-date information.
 
@@ -181,7 +181,7 @@ class DoDAG(object):
 
 	def get_children(self, parent_id):
 		"""
-		Returns an array of children :class: `node.NodeID`of parent_id. These are nodes connected to parent_id with a rank \
+		Returns an array of children :class: `node.NodeID` of parent_id. These are nodes connected to parent_id with a rank \
 		higher than parent's rank just by one hop.
 
 		:param parent_id:
@@ -228,9 +228,9 @@ class DoDAG(object):
 		Creates a parent-child link in the graph
 
 		:param child_id: the id of the child of the link
-		:type child_id: :class:`node.NodeID`
+		:type child_id: :class: `node.NodeID`
 		:param parent_id: the id of the parent of the link
-		:type parent_id :class:`node.NodeID`
+		:type parent_id :class: `node.NodeID`
 		:return: boolean
 
 		"""

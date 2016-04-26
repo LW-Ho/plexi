@@ -30,8 +30,8 @@ class NodeID(object):
 			# self.eui_64_ip = ''
 			if self.prefix in self.ip:
 				self.ip = self.ip.split('::')[-1]
-			self.eui_64_ip = str(ipaddress.ip_address('::' + self.ip))
-			self.ip = self.prefix + str(ipaddress.ip_address('::' + self.ip))
+			self.eui_64_ip = str(ipaddress.ip_address(u'::' + unicode(self.ip)))
+			self.ip = self.prefix + str(ipaddress.ip_address(u'::' + unicode(self.ip)))
 			# parts = self.ip.split(':')
 			# parts = parts[len(parts)-4 : len(parts)]
 			# self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
