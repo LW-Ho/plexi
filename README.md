@@ -1,3 +1,20 @@
+# ___plexi___ network management entity
+
+<div style="padding:1em;padding-top:0.5em;padding-bottom:0.5em;background-color:#f2f2f2">
+  Exarchakos, G., Oztelcan, I., Sarakiotis, D., Liotta, A. "plexi: Adaptive re-scheduling web service of time synchronized low-power wireless networks", 2016, JNCA, Elsevier [in press] <a style="font-family:arial;font-weight:bold;font-size:0.7em;padding-left:0.6em;padding-right:0.6em;padding-top:0.2em;padding-bottom:0.2em;background-color:gray;color:white" href="http://www.journals.elsevier.com/journal-of-network-and-computer-applications/call-for-papers/special-issue-on-engineering-future-interoperable-and-open-i">CFP</a>  <a style="font-family:arial;font-weight:bold;font-size:0.7em;padding-left:0.6em;padding-right:0.6em;padding-top:0.2em;padding-bottom:0.2em;background-color:gray;color:white" href="{{ site.baseurl }}/files/plexi.jnca.elsevier.camera.pdf">PREPRINT</a>
+</div>
+
+_plexi_ is a restful web service API for monitoring and scheduling IEEE802.15.4e network resources hiding the complexity of schedule deployment and modification. The aim of the project is to enable applications configure and trigger at runtime new schedules of data transmissions after monitoring the network's performance. Re-scheduling TSCH networks to fulfill the expectations of one or more applications implies the network resources are continuously monitored and communication links created, moved, deleted over time.
+
+For interoperability and scheduling purposes, _plexi_ exposes TSCH network resources e.g. communication channels and timeslots via a restful web interface for low power devices known as CoAP. For monitoring, _plexi_ captures the L2 and L3 network topology as well as the L2 schedule configuration and the performance metrics per link per node such as the number of retransmissions, packet delivery ratio, link quality indicator and received signal strength. _plexi_ consists of two parts:
+
+|network management entity|device plexi interface|
+|-------------------------|----------------------|
+| NME is an API provided to either external schedulers or applications.|device CoAP interface to monitor the links and modify their schedule.|
+|-------------------------|----------------------|
+|<a href="https://george.autonomic-networks.ele.tue.nl/api/plexi/nme">api docs</a>    <a href="#">tutorials</a> | <a href="https://github.com/gexarchakos/contiki/tree/plexi/apps/plexi">source code</a>    <a href="https://george.autonomic-networks.ele.tue.nl/api/plexi/node/contiki">api docs</a>    <a href="#">tutorials</a>|
+
+
 # RiSCHER: the RICH scheduler
 
 _RiSCHER_ schedules timeslots and channels to all nodes of a Low-power Lossy Network. It is a centralized entity sitting outside the network and communicates with every node through the border router (LBR).

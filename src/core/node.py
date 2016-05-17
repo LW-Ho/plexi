@@ -22,12 +22,16 @@ class NodeID(object):
 				self.port = port
 			else:
 				raise TypeError('IP address is a string value and the port is an integer')
-			if self.ip.count(':') == 3:
-				self.ip = NodeID.prefix + '::' + self.ip
-			self.eui_64_ip = ''
-			parts = self.ip.split(':')
-			parts = parts[len(parts)-4 : len(parts)]
-			self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
+			# if self.ip.count(':') == 3:
+			# 	self.ip = NodeID.prefix + '::' + self.ip
+			# self.eui_64_ip = ''
+			if self.prefix in self.ip:
+				self.ip = self.ip.split('::')[-1]
+			self.eui_64_ip = str(ipaddress.ip_address(u'::' + self.ip))
+			self.ip = self.prefix + str(ipaddress.ip_address(u'::' + self.ip))
+			# parts = self.ip.split(':')
+			# parts = parts[len(parts)-4 : len(parts)]
+			# self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
 			self.port = port
 		else:
 			raise TypeError('IP address is a string value and the port is an integer')

@@ -1,0 +1,43 @@
+(26-04)04:08:00	INFO: scheduler interface started with LBR=[aaaa::215:8d00:57:6466]:5684
+(26-04)04:08:00	INFO: Booting Streamer Interface
+(26-04)04:08:00	DEBUG: Connecting Streaming Interface to Active Viewer
+(26-04)04:08:00	DEBUG: Connection to Active Viewer failed!
+(26-04)04:08:00	INFO: Streamer Interface booted
+(26-04)04:08:01	DEBUG: Sending to [aaaa::215:8d00:57:6466]:5684 >> observe rpl/dag -- None
+(26-04)04:08:01	DEBUG: Observed rpl/dag from aaaa::215:8d00:57:6466 >> {"parent":[],"child":["215:8d00:57:64a2"]}
+(26-04)04:08:01	DEBUG: Node [aaaa::215:8d00:57:64a2]:5684 joined the network with parent [aaaa::215:8d00:57:6466]:5684
+(26-04)04:08:01	DEBUG: Sending to [aaaa::215:8d00:57:64a2]:5684 >> observe rpl/dag -- None
+(26-04)04:08:01	DEBUG: Dumped dodag graph to file: 4:8:1.png
+(26-04)04:08:02	DEBUG: Observed rpl/dag from aaaa::215:8d00:57:64a2 >> {"parent":["215:8d00:57:6466"],"child":[]}
+(26-04)04:11:20	INFO: scheduler interface started with LBR=[aaaa::215:8d00:57:6466]:5684
+(26-04)04:11:20	INFO: Booting Streamer Interface
+(26-04)04:11:20	DEBUG: Connecting Streaming Interface to Active Viewer
+(26-04)04:11:20	DEBUG: Connection to Active Viewer failed!
+(26-04)04:11:20	INFO: Streamer Interface booted
+(26-04)04:11:21	DEBUG: Sending to [aaaa::215:8d00:57:6466]:5684 >> observe rpl/dag -- None
+(26-04)04:11:21	DEBUG: Observed rpl/dag from aaaa::215:8d00:57:6466 >> {"parent":[],"child":["215:8d00:57:64a2"]}
+(26-04)04:11:21	DEBUG: Node [aaaa::215:8d00:57:64a2]:5684 joined the network with parent [aaaa::215:8d00:57:6466]:5684
+(26-04)04:11:21	DEBUG: Sending to [aaaa::215:8d00:57:64a2]:5684 >> observe rpl/dag -- None
+(26-04)04:11:21	DEBUG: Dumped dodag graph to file: 4:11:21.png
+(26-04)04:11:22	DEBUG: Observed rpl/dag from aaaa::215:8d00:57:64a2 >> {"parent":["215:8d00:57:6466"],"child":[]}
+(26-04)04:29:04	INFO: scheduler interface started with LBR=[aaaa::215:8d00:57:6466]:5684
+(26-04)04:29:04	INFO: Booting Streamer Interface
+(26-04)04:29:04	DEBUG: Connecting Streaming Interface to Active Viewer
+(26-04)04:29:04	DEBUG: Connection to Active Viewer failed!
+(26-04)04:29:04	INFO: Streamer Interface booted
+(26-04)04:29:05	DEBUG: Sending to [aaaa::215:8d00:57:6466]:5684 >> observe rpl/dag -- None
+(26-04)04:29:05	DEBUG: Sending to [aaaa::215:8d00:57:6466]:5684 >> get 6top/slotFrame -- None
+(26-04)04:29:05	DEBUG: Observed rpl/dag from aaaa::215:8d00:57:6466 >> {"parent":[],"child":["215:8d00:57:64a2"]}
+(26-04)04:29:05	DEBUG: Node [aaaa::215:8d00:57:64a2]:5684 joined the network with parent [aaaa::215:8d00:57:6466]:5684
+(26-04)04:29:05	DEBUG: Sending to [aaaa::215:8d00:57:64a2]:5684 >> observe rpl/dag -- None
+(26-04)04:29:05	DEBUG: Sending to [aaaa::215:8d00:57:64a2]:5684 >> get 6top/slotFrame -- None
+(26-04)04:29:05	DEBUG: Dumped dodag graph to file: 4:29:5.png
+(26-04)04:29:06	DEBUG: Added locally remote frame minimal
+(26-04)04:29:06	DEBUG: Sending to [aaaa::215:8d00:57:6466]:5684 >> get 6top/cellList/link -- None
+(26-04)04:29:08	DEBUG: Observed rpl/dag from aaaa::215:8d00:57:64a2 >> {"parent":["215:8d00:57:6466"],"child":[]}
+(26-04)04:29:08	DEBUG: Added locally remote frame minimal
+(26-04)04:29:08	DEBUG: Sending to [aaaa::215:8d00:57:64a2]:5684 >> get 6top/cellList/link -- None
+(26-04)04:29:09	DEBUG: Sending to [aaaa::215:8d00:57:6466]:5684 >> get 6top/cellList?link=0 -- None
+(26-04)04:29:10	DEBUG: Sending to [aaaa::215:8d00:57:64a2]:5684 >> get 6top/cellList?link=0 -- None
+(26-04)04:29:11	DEBUG: Added remote link [aaaa::215:8d00:57:6466]:5684/0:[0,0]::{1,15} to local frame minimal
+(26-04)04:29:13	DEBUG: Added remote link [aaaa::215:8d00:57:64a2]:5684/0:[0,0]::{1,15} to local frame minimal
