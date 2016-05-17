@@ -29,9 +29,9 @@ class NodeID(object):
 			# 	self.ip = NodeID.prefix + '::' + self.ip
 			# self.eui_64_ip = ''
 			if self.prefix in self.ip:
-				self.ip = self.ip.split('::')[-1]
-			self.eui_64_ip = str(ipaddress.ip_address('::' + self.ip))
-			self.ip = self.prefix + str(ipaddress.ip_address('::' + self.ip))
+				self.ip = self.ip.split(u'::')[-1]
+			self.eui_64_ip = str(ipaddress.ip_address(u'::' + self.ip))
+			self.ip = self.prefix + str(ipaddress.ip_address(u'::' + self.ip))
 			# parts = self.ip.split(':')
 			# parts = parts[len(parts)-4 : len(parts)]
 			# self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
@@ -69,4 +69,4 @@ class NodeID(object):
 	def is_broadcast(self):
 		return self.prefix+'fff:ffff:ff:ffff' == self.ip
 
-BROADCASTID = NodeID("fff:ffff:ff:ffff")
+BROADCASTID = NodeID(u"fff:ffff:ff:ffff")
