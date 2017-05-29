@@ -234,7 +234,7 @@ class Reflector(object):
 
 		"""
 		#verify the token
-		tk = self.client.token(response.token)
+		tk = self.client.ticket(response.token)
 		if tk not in self.cache:
 			return
 		session_id = self.cache[tk]["session"]
@@ -496,7 +496,7 @@ class Reflector(object):
 		"""
 		###################
 		# TODO: following part same as with other callback functions... maybe make one function to handle that?
-		tk = self.client.token(response.token)
+		tk = self.client.ticket(response.token)
 		if tk not in self.cache:
 			return
 		session_id = self.cache[tk]["session"]
@@ -544,7 +544,7 @@ class Reflector(object):
 		:raises: UnsupportedCase
 		"""
 		###################
-		tk = self.client.token(response.token)
+		tk = self.client.ticket(response.token)
 		if tk not in self.cache:
 			return
 		session_id = self.cache[tk]["session"]
@@ -613,7 +613,7 @@ class Reflector(object):
 		"""
 		###################
 		# TODO: following part same as with other callback functions... maybe make one function to handle that?
-		tk = self.client.token(response.token)
+		tk = self.client.ticket(response.token)
 		if tk not in self.cache:
 			return
 		cache_entry = self.cache[tk]
@@ -639,7 +639,7 @@ class Reflector(object):
 		:raises: UnsupportedCase
 		"""
 
-		tk = self.client.token(response.token)
+		tk = self.client.ticket(response.token)
 		if tk not in self.cache:
 			return
 		cache_entry = self.cache[tk]
@@ -670,7 +670,7 @@ class Reflector(object):
 		:raises: UnsupportedCase
 		"""
 		###################
-		tk = self.client.token(response.token)
+		tk = self.client.ticket(response.token)
 		if tk not in self.cache:
 			return
 		cache_entry = self.cache[tk]

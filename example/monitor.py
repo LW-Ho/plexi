@@ -94,7 +94,7 @@ if __name__ == '__main__':
 			"Key"	:	None,
 			"VHost"	:	"localhost"
 		}
-		sch = Monitor(x.network_name, x.lbr, x.port, x.prefix, v)
+		sch = Monitor(x.network_name, x.lbr, x.port, x.prefix, None)
 		sch.start()
 		sys.exit(0)
 	sys.exit(x)

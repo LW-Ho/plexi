@@ -9,7 +9,7 @@ __copyright__ = "Copyright 2014, The RICH Project"
 
 import os
 import sys
-import ipaddress
+from ipaddress import ip_address, IPv6Address
 
 class NodeID(object):
 	prefix = "aaaa"
@@ -17,24 +17,28 @@ class NodeID(object):
 		if isinstance(ip, unicode):
 			ip = str(ip.encode('utf-8'))
 		if isinstance(ip, str):
+			temp_ip = ''
 			if ip[0] == '[':
-				self.ip, self.port = ip.split('[')[1].split(']')
+				temp_ip, self.port = ip.split('[')[1].split(']')
 				self.port = self.port.split(':')[1]
 			elif isinstance(port, int):
-				self.ip = ip
+				temp_ip = ip
 				self.port = port
 			else:
 				raise TypeError('IP address is a string value and the port is an integer')
 			# if self.ip.count(':') == 3:
 			# 	self.ip = NodeID.prefix + '::' + self.ip
 			# self.eui_64_ip = ''
-			if self.prefix in self.ip:
-				self.ip = self.ip.split(u'::')[-1]
-			self.eui_64_ip = str(ipaddress.ip_address(u'::' + self.ip))
-			self.ip = self.prefix + str(ipaddress.ip_address(u'::' + self.ip))
+			if self.prefix in temp_ip:
+				temp_ip = temp_ip.split(u'::')[-1]
+			self.eui_64_ip = ip_address(u'::' + temp_ip)
+			self.ip = ip_address(self.prefix + str(self.eui_64_ip))
 			# parts = self.ip.split(':')
 			# parts = parts[len(parts)-4 : len(parts)]
 			# self.eui_64_ip += parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3]
+			self.port = port
+		elif isinstance(ip, IPv6Address):
+			self.ip = ip
 			self.port = port
 		else:
 			raise TypeError('IP address is a string value and the port is an integer')
